@@ -9,7 +9,7 @@ const page = () => {
     const [message, setMessage] = useState('')
 
     const handleSubmit = async () => {
-        const res = await fetch('api/createUser', {
+        const res = await fetch('api/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(values)

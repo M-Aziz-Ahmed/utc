@@ -1,16 +1,15 @@
-import Image from "next/image";
-import Loading from "./loading";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
+import Me from "./hooks/Me";
 
 export default async function Home() {
-   const cookieStore = await cookies();
-  const user = cookieStore.get("user");
- 
-  if (!user){
-    redirect("/login") 
+  const { user } = await Me()
+
+  if (!user) {
+    redirect("/login")
   }
 
-  if(!user){return (<Loading/>)}
+  return (
+    <span className='text-[white!important]'>{user?.email}</span>
+  )
 
 }

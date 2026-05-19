@@ -1,5 +1,6 @@
 import User from "@/models/User"
 import dbConnect from "@/utils/dbConnection"
+import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
 export const POST = async (req) => {
@@ -11,6 +12,8 @@ export const POST = async (req) => {
             return NextResponse.json({message:'user already exists'}, {status:400})
         }
         await User.create({email, pass:password})
+        const cookie = cookies()
+         await cookie.set('user', user)
         return NextResponse.json({message:'user created successfully'}, {status:200})
     }
     catch(error){
