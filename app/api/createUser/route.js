@@ -2,11 +2,15 @@ import User from "@/models/User"
 import dbConnect from "@/utils/dbConnection"
 import { NextResponse } from "next/server"
 
-const createUser = async (req) => {
-    const {name, email, pass, role, verified, number} = req.json()
+export const POST = async (req) => {
+    const {email, password} = await req.json()
     try{
         await dbConnect()
-        User.create({name:name, email:email, pass:pass, role:role, verified:verified, number:number})
+        const user = await User.findOne({email})
+        if (user){
+            return NextResponse.json({message:'user already exists'}, {status:400})
+        }
+        await User.create({email, pass:password})
         return NextResponse.json({message:'user created successfully'}, {status:200})
     }
     catch(error){
