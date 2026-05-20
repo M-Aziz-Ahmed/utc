@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { isReactCompilerRequired } from "next/dist/build/swc";
 
 const DynFeildsSchema= new mongoose.Schema({   
     label : { type: String},
