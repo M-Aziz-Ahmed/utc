@@ -1,3 +1,4 @@
+import DynamicFeilds from "@/models/DynamicFeilds";
 import User from "@/models/User"
 import dbConnect from "@/utils/dbConnection"
 import { NextResponse } from "next/server"
@@ -11,19 +12,15 @@ export const POST = async (req) => {
         if (existingUser) {
             return NextResponse.json({ message: 'Field already exists' }, { status: 400 });
         }
-        const newField = await Dynamic.create(body);
-        const cookieValue = `user=${encodeURIComponent(JSON.stringify({ id: newUser._id }))}; Path=/; HttpOnly; SameSite=Lax`;
+        const newField = await DynamicFeilds.create(body);
         return NextResponse.json(
-            { message: 'user created successfully' },
+            { message: 'Field created successfully' },
             {
                 status: 200,
-                headers: {
-                    'Set-Cookie': cookieValue,
-                },
             }
         );
     } catch (error) {
         console.error('createUser error:', error);
-        return NextResponse.json({ message: 'error creating user' }, { status: 500 });
+        return NextResponse.json({ message: 'error creating Field' }, { status: 500 });
     }
 }
