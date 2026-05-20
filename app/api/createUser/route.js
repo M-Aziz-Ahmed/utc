@@ -1,22 +1,29 @@
 import User from "@/models/User"
 import dbConnect from "@/utils/dbConnection"
-import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
 export const POST = async (req) => {
-    const {email, password} = await req.json()
-    try{
-        await dbConnect()
-        const user = await User.findOne({email})
-        if (user){
-            return NextResponse.json({message:'user already exists'}, {status:400})
+    const body = await req.json();
+    const { email } = body;
+    try {
+        await dbConnect();
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return NextResponse.json({ message: 'user already exists' }, { status: 400 });
         }
-        await User.create({email, pass:password})
-        const cookie = cookies()
-         await cookie.set('user', user)
-        return NextResponse.json({message:'user created successfully'}, {status:200})
-    }
-    catch(error){
-        return NextResponse.json({message:'error creating user'}, {status:500})
+        const newUser = await User.create(body);
+        const cookieValue = `user=${encodeURIComponent(JSON.stringify({ id: newUser._id }))}; Path=/; HttpOnly; SameSite=Lax`;
+        return NextResponse.json(
+            { message: 'user created successfully' },
+            {
+                status: 200,
+                headers: {
+                    'Set-Cookie': cookieValue,
+                },
+            }
+        );
+    } catch (error) {
+        console.error('createUser error:', error);
+        return NextResponse.json({ message: 'error creating user' }, { status: 500 });
     }
 }
