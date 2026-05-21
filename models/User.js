@@ -18,6 +18,12 @@ const userSchema  = new mongoose.Schema({
     newpurchase:{ type: Boolean},
     role:{ type: String},
     verified:{ type: String},
-    
-})
+    files: [{ 
+        name: String,
+        path: String,
+        size: Number,
+        type: String,
+        uploadedAt: { type: Date, default: Date.now }
+    }]
+}, { strict: false })
 export default mongoose.models.User || mongoose.model('User', userSchema)

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import GetAllFields from "@/components/fields/GetAllFields";
 
-const FIELD_TYPES = ["text", "number", "boolean", "password", "email", "date"];
+const FIELD_TYPES = ["text", "number", "boolean", "password", "email", "date", "file", "image"];
 
 const Page = () => {
     const [label, setLabel] = useState("");

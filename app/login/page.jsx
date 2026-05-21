@@ -8,8 +8,9 @@ const page = () => {
     })
     const [message, setMessage] = useState('')
 
-    const handleSubmit = async () => {
-        const res = await fetch('api/login', {
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        const res = await fetch('/api/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(values)
@@ -20,7 +21,7 @@ const page = () => {
 
     return (
         <div className="flex h-[100vh] justify-center items-center">
-            <form action={handleSubmit} className="form bg-white shadow-md shadow-amber-50 p-4 rounded-lg w-100">
+            <form onSubmit={handleSubmit} className="form bg-white shadow-md shadow-amber-50 p-4 rounded-lg w-100">
                 {message && <p className="mb-3 text-sm text-center">{message}</p>}
                 <div className="mb-3 flex flex-col">
                     <label className="text-gray-500">Email</label>
