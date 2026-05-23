@@ -8,8 +8,6 @@ export default async function Home() {
     redirect("/login")
   }
 
-  return (
-    <span className='text-[white!important]'>{user?.email}</span>
-  )
-
+  // Redirect authenticated users to admin dashboard
+  redirect("/admin")
 }

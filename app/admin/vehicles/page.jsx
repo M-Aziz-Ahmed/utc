@@ -117,7 +117,7 @@ const Page = () => {
                         </div>
                         
                         <Link 
-                            href="/vehclemanagement/add-vehicles"
+                            href="/admin/vehicles/add"
                             className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
                         >
                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -196,7 +196,7 @@ const Page = () => {
                         </p>
                         {!searchTerm && (
                             <Link 
-                                href="/vehclemanagement/add-vehicles"
+                                href="/admin/vehicles/add"
                                 className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition"
                             >
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
