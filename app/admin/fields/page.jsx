@@ -1,5 +1,5 @@
 'use client';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import GetAllFields from "@/components/fields/GetAllFields";
 
 const FIELD_TYPES = ["text", "number", "boolean", "password", "email", "date", "file", "image"];
@@ -12,6 +12,49 @@ const Page = () => {
     const [message, setMessage] = useState(null);
     const [refreshKey, setRefreshKey] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [forms, setForms] = useState([]);
+    const [showNewFormModal, setShowNewFormModal] = useState(false);
+    const [newFormName, setNewFormName] = useState("");
+    const [creatingForm, setCreatingForm] = useState(false);
+
+    // Fetch unique forms from fields
+    useEffect(() => {
+        const fetchForms = async () => {
+            try {
+                const res = await fetch('/api/fields');
+                if (!res.ok) throw new Error('Failed to load fields');
+                const data = await res.json();
+                
+                // Extract unique form names
+                const uniqueForms = [...new Set(data.map(f => f.belongsto).filter(Boolean))];
+                setForms(uniqueForms.sort());
+            } catch (e) {
+                console.error('Error fetching forms:', e);
+            }
+        };
+        fetchForms();
+    }, [refreshKey]);
+
+    const handleCreateForm = async (e) => {
+        e.preventDefault();
+        if (!newFormName.trim()) return;
+        
+        setCreatingForm(true);
+        try {
+            // Add the new form to the list
+            const formName = newFormName.trim();
+            if (!forms.includes(formName)) {
+                setForms(prev => [...prev, formName].sort());
+            }
+            setBelongsto(formName);
+            setShowNewFormModal(false);
+            setNewFormName("");
+        } catch (e) {
+            alert('Error creating form');
+        } finally {
+            setCreatingForm(false);
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -39,23 +82,29 @@ const Page = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 py-10 px-4">
-            <div className="max-w-5xl mx-auto">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4">
+            <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="mb-8">
-                    <h1 className="text-2xl font-bold text-gray-900">Dynamic Fields</h1>
-                    <p className="text-sm text-gray-500 mt-1">Create and manage custom fields for your forms.</p>
+                    <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                        <svg className="w-8 h-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Dynamic Fields
+                    </h1>
+                    <p className="text-gray-600 mt-2">Create and manage custom fields for your forms.</p>
                 </div>
 
-                <div className="grid gap-8 lg:grid-cols-2">
+                <div className="grid gap-8 lg:grid-cols-3">
                     {/* Create Field Card */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                        <div className="mb-6">
-                            <h2 className="text-base font-semibold text-gray-900">New Field</h2>
-                            <p className="text-xs text-gray-400 mt-0.5">Fill in the details to add a new dynamic field.</p>
-                        </div>
+                    <div className="lg:col-span-1">
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sticky top-8">
+                            <div className="mb-6">
+                                <h2 className="text-xl font-bold text-gray-900">New Field</h2>
+                                <p className="text-sm text-gray-500 mt-1">Fill in the details to add a new dynamic field.</p>
+                            </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-5">
+                            <form onSubmit={handleSubmit} className="space-y-5">
                             {/* Label */}
                             <div>
                                 <label className="block text-xs font-medium text-gray-600 mb-1.5 uppercase tracking-wide">
@@ -114,19 +163,34 @@ const Page = () => {
                                 </div>
                             </div>
 
-                            {/* Belongs To */}
+                            {/* Belongs To Form - Dropdown */}
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1.5 uppercase tracking-wide">
-                                    Belongs to form
-                                    <span className="ml-1 text-gray-400 normal-case font-normal">(optional)</span>
-                                </label>
-                                <input
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="block text-xs font-medium text-gray-600 uppercase tracking-wide">
+                                        Belongs to form
+                                        <span className="ml-1 text-gray-400 normal-case font-normal">(optional)</span>
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowNewFormModal(true)}
+                                        className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1"
+                                    >
+                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        Add New
+                                    </button>
+                                </div>
+                                <select
                                     value={belongsto}
                                     onChange={(e) => setBelongsto(e.target.value)}
-                                    type="text"
-                                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                                    placeholder="e.g. registration, checkout"
-                                />
+                                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white"
+                                >
+                                    <option value="">Select a form...</option>
+                                    {forms.map((form) => (
+                                        <option key={form} value={form}>{form}</option>
+                                    ))}
+                                </select>
                             </div>
 
                             {/* Submit */}
@@ -172,18 +236,69 @@ const Page = () => {
                                 {message.text}
                             </div>
                         )}
+                        </div>
                     </div>
 
-                    {/* Fields List */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                        <div className="mb-6">
-                            <h2 className="text-base font-semibold text-gray-900">Existing Fields</h2>
-                            <p className="text-xs text-gray-400 mt-0.5">All dynamic fields currently in the system.</p>
+                    {/* Fields List with Search and Filters */}
+                    <div className="lg:col-span-2">
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                            <div className="mb-6">
+                                <h2 className="text-xl font-bold text-gray-900">Existing Fields</h2>
+                                <p className="text-sm text-gray-500 mt-1">All dynamic fields currently in the system.</p>
+                            </div>
+                            <GetAllFields refreshKey={refreshKey} forms={forms} />
                         </div>
-                        <GetAllFields refreshKey={refreshKey} />
                     </div>
                 </div>
             </div>
+
+            {/* Add New Form Modal */}
+            {showNewFormModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowNewFormModal(false)}>
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-xl font-bold text-gray-900">Add New Form</h3>
+                            <button
+                                onClick={() => setShowNewFormModal(false)}
+                                className="p-2 hover:bg-gray-100 rounded-lg transition"
+                            >
+                                <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <form onSubmit={handleCreateForm}>
+                            <div className="mb-4">
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Form Name</label>
+                                <input
+                                    type="text"
+                                    value={newFormName}
+                                    onChange={(e) => setNewFormName(e.target.value)}
+                                    placeholder="e.g. registration, checkout, add-vehicles"
+                                    required
+                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                />
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowNewFormModal(false)}
+                                    className="flex-1 px-4 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={creatingForm}
+                                    className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition disabled:opacity-50"
+                                >
+                                    {creatingForm ? 'Creating...' : 'Create Form'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

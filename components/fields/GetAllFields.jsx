@@ -1,24 +1,30 @@
 'use client'
 import { useEffect, useState } from "react";
 
-const FIELD_TYPES = ["text", "number", "boolean", "password", "email", "date"];
+const FIELD_TYPES = ["text", "number", "boolean", "password", "email", "date","image","file"];
 
 const TYPE_COLORS = {
-    text: 'bg-blue-50 text-blue-700',
-    number: 'bg-purple-50 text-purple-700',
-    boolean: 'bg-yellow-50 text-yellow-700',
-    password: 'bg-red-50 text-red-700',
-    email: 'bg-teal-50 text-teal-700',
-    date: 'bg-orange-50 text-orange-700',
+    text: 'bg-blue-50 text-blue-700 border-blue-200',
+    number: 'bg-purple-50 text-purple-700 border-purple-200',
+    boolean: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+    password: 'bg-red-50 text-red-700 border-red-200',
+    email: 'bg-teal-50 text-teal-700 border-teal-200',
+    date: 'bg-orange-50 text-orange-700 border-orange-200',
+    image: 'bg-pink-50 text-pink-700 border-pink-200',
+    file: 'bg-indigo-50 text-indigo-700 border-indigo-200',
 };
 
-const GetAllFields = ({ refreshKey, onDelete }) => {
+const GetAllFields = ({ refreshKey, onDelete, forms }) => {
     const [fields, setFields] = useState(null);
     const [error, setError] = useState(null);
     const [deleting, setDeleting] = useState(null);
-    const [editing, setEditing] = useState(null);   // id of card in edit mode
-    const [editDraft, setEditDraft] = useState({}); // draft values while editing
+    const [editing, setEditing] = useState(null);
+    const [editDraft, setEditDraft] = useState({});
     const [saving, setSaving] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [filterType, setFilterType] = useState("all");
+    const [filterForm, setFilterForm] = useState("all");
+    const [filterRequired, setFilterRequired] = useState("all");
 
     useEffect(() => {
         let mounted = true;
@@ -105,23 +111,170 @@ const GetAllFields = ({ refreshKey, onDelete }) => {
         );
     }
 
-    if (fields.length === 0) {
+    // Filter fields
+    const filteredFields = fields ? fields.filter(f => {
+        // Search filter
+        if (searchTerm && !f.label.toLowerCase().includes(searchTerm.toLowerCase())) {
+            return false;
+        }
+        // Type filter
+        if (filterType !== "all" && f.type !== filterType) {
+            return false;
+        }
+        // Form filter
+        if (filterForm !== "all") {
+            if (filterForm === "global" && f.belongsto) return false;
+            if (filterForm !== "global" && f.belongsto !== filterForm) return false;
+        }
+        // Required filter
+        if (filterRequired !== "all") {
+            if (filterRequired === "required" && !f.isRequired) return false;
+            if (filterRequired === "optional" && f.isRequired) return false;
+        }
+        return true;
+    }) : [];
+
+    // Group fields by form
+    const groupedFields = {};
+    filteredFields.forEach(f => {
+        const formName = f.belongsto || 'Global Fields';
+        if (!groupedFields[formName]) {
+            groupedFields[formName] = [];
+        }
+        groupedFields[formName].push(f);
+    });
+
+    const sortedFormNames = Object.keys(groupedFields).sort((a, b) => {
+        if (a === 'Global Fields') return -1;
+        if (b === 'Global Fields') return 1;
+        return a.localeCompare(b);
+    });
+
+    if (fields && fields.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
-                    <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-3-3v6M4.5 19.5l15-15" />
+                <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                    <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                 </div>
-                <p className="text-sm font-medium text-gray-500">No fields yet</p>
-                <p className="text-xs text-gray-400 mt-1">Create your first field using the form.</p>
+                <p className="text-base font-semibold text-gray-900 mb-1">No fields yet</p>
+                <p className="text-sm text-gray-500">Create your first field using the form on the left.</p>
             </div>
         );
     }
 
     return (
-        <div className="space-y-2.5 max-h-[520px] overflow-y-auto pr-1">
-            {fields.map((f) => {
+        <div className="space-y-6">
+            {/* Search and Filters */}
+            <div className="space-y-4">
+                {/* Search Bar */}
+                <div className="relative">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input
+                        type="text"
+                        placeholder="Search fields by label..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                </div>
+
+                {/* Filters */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* Type Filter */}
+                    <div>
+                        <select
+                            value={filterType}
+                            onChange={(e) => setFilterType(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        >
+                            <option value="all">All Types</option>
+                            {FIELD_TYPES.map(type => (
+                                <option key={type} value={type}>{type}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Form Filter */}
+                    <div>
+                        <select
+                            value={filterForm}
+                            onChange={(e) => setFilterForm(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        >
+                            <option value="all">All Forms</option>
+                            <option value="global">Global Fields</option>
+                            {forms && forms.map(form => (
+                                <option key={form} value={form}>{form}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Required Filter */}
+                    <div>
+                        <select
+                            value={filterRequired}
+                            onChange={(e) => setFilterRequired(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        >
+                            <option value="all">All Fields</option>
+                            <option value="required">Required Only</option>
+                            <option value="optional">Optional Only</option>
+                        </select>
+                    </div>
+                </div>
+
+                {/* Active Filters & Results Count */}
+                <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">
+                        Showing <span className="font-semibold text-gray-900">{filteredFields.length}</span> of <span className="font-semibold text-gray-900">{fields?.length || 0}</span> fields
+                    </span>
+                    {(searchTerm || filterType !== "all" || filterForm !== "all" || filterRequired !== "all") && (
+                        <button
+                            onClick={() => {
+                                setSearchTerm("");
+                                setFilterType("all");
+                                setFilterForm("all");
+                                setFilterRequired("all");
+                            }}
+                            className="text-blue-600 hover:text-blue-700 font-semibold"
+                        >
+                            Clear filters
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {/* Grouped Fields */}
+            {filteredFields.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                    <svg className="w-16 h-16 text-gray-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <p className="text-base font-semibold text-gray-900 mb-1">No fields match your filters</p>
+                    <p className="text-sm text-gray-500">Try adjusting your search or filters</p>
+                </div>
+            ) : (
+                <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2">
+                    {sortedFormNames.map(formName => (
+                        <div key={formName} className="space-y-3">
+                            {/* Form Group Header */}
+                            <div className="flex items-center gap-3 sticky top-0 bg-gradient-to-br from-gray-50 to-gray-100 py-2 px-4 rounded-lg border border-gray-200">
+                                <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                                </svg>
+                                <h3 className="text-sm font-bold text-gray-900">{formName}</h3>
+                                <span className="ml-auto text-xs font-semibold text-gray-500 bg-white px-2 py-1 rounded-full">
+                                    {groupedFields[formName].length}
+                                </span>
+                            </div>
+
+                            {/* Fields in this group */}
+                            <div className="space-y-2 pl-2">
+                                {groupedFields[formName].map((f) => {
                 const isEditingThis = editing === f._id;
 
                 if (isEditingThis) {
@@ -156,13 +309,16 @@ const GetAllFields = ({ refreshKey, onDelete }) => {
                                 {/* Belongs to */}
                                 <div>
                                     <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Belongs to</label>
-                                    <input
-                                        type="text"
+                                    <select
                                         value={editDraft.belongsto}
                                         onChange={(e) => setEditDraft({ ...editDraft, belongsto: e.target.value })}
-                                        placeholder="e.g. setupUser"
                                         className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                                    />
+                                    >
+                                        <option value="">Select a form...</option>
+                                        {forms && forms.map((form) => (
+                                            <option key={form} value={form}>{form}</option>
+                                        ))}
+                                    </select>
                                 </div>
 
                                 {/* Required toggle */}
@@ -225,33 +381,33 @@ const GetAllFields = ({ refreshKey, onDelete }) => {
                 return (
                     <div
                         key={f._id}
-                        className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 hover:bg-gray-100 transition group"
+                        className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3.5 hover:shadow-md hover:border-gray-300 transition-all group"
                     >
-                        <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-gray-900 truncate">{f.label}</span>
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                                <span className="text-sm font-semibold text-gray-900 truncate">{f.label}</span>
                                 {f.isRequired && (
-                                    <span className="text-xs text-red-500 font-semibold">required</span>
+                                    <span className="inline-flex items-center px-2 py-0.5 text-xs font-bold text-red-600 bg-red-50 border border-red-200 rounded-full">
+                                        REQUIRED
+                                    </span>
                                 )}
                             </div>
-                            <div className="text-xs text-gray-400 mt-0.5 truncate">
-                                {f.belongsto ? `Form: ${f.belongsto}` : 'Global'}
+                            <div className="flex items-center gap-2">
+                                <span className={`inline-flex items-center px-2.5 py-0.5 text-xs font-semibold rounded-md border ${TYPE_COLORS[f.type] ?? 'bg-gray-100 text-gray-700 border-gray-200'}`}>
+                                    {f.type}
+                                </span>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-1.5 ml-3 shrink-0">
-                            <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${TYPE_COLORS[f.type] ?? 'bg-gray-100 text-gray-700'}`}>
-                                {f.type}
-                            </span>
-
+                        <div className="flex items-center gap-2 ml-3 shrink-0">
                             {/* Edit */}
                             <button
                                 onClick={() => startEdit(f)}
                                 title="Edit field"
-                                className="opacity-0 group-hover:opacity-100 transition p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                                className="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition"
                             >
                                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H8v-2.414a2 2 0 01.586-1.414z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
                             </button>
 
@@ -260,7 +416,7 @@ const GetAllFields = ({ refreshKey, onDelete }) => {
                                 onClick={() => handleDelete(f._id)}
                                 disabled={deleting === f._id}
                                 title="Delete field"
-                                className="opacity-0 group-hover:opacity-100 transition p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                                className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
                             >
                                 {deleting === f._id ? (
                                     <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
@@ -269,7 +425,7 @@ const GetAllFields = ({ refreshKey, onDelete }) => {
                                     </svg>
                                 ) : (
                                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0a1 1 0 00-1-1h-4a1 1 0 00-1 1H5" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                     </svg>
                                 )}
                             </button>
@@ -277,6 +433,11 @@ const GetAllFields = ({ refreshKey, onDelete }) => {
                     </div>
                 );
             })}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 };

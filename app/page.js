@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Me from "./hooks/Me";
 
 export default async function Home() {
-  const { user } = await Me()
+  const { user } = Me()
 
   if (!user) {
     redirect("/login")

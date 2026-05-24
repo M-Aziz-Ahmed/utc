@@ -1,0 +1,220 @@
+[{
+  "_id": {
+    "$oid": "6a0d8e80d27cbd7b61526e57"
+  },
+  "label": "Purchase Date",
+  "type": "date",
+  "isRequired": true,
+  "belongsto": "add-vehicles",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0d8fa3d27cbd7b61526e58"
+  },
+  "label": "Purchase From",
+  "type": "text",
+  "isRequired": true,
+  "belongsto": "add-vehicles",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0d90bdd27cbd7b61526e59"
+  },
+  "label": "LOT No.",
+  "type": "text",
+  "isRequired": true,
+  "belongsto": "add-vehicles",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0d90ffd27cbd7b61526e5a"
+  },
+  "label": "Consignee Name",
+  "type": "text",
+  "isRequired": true,
+  "belongsto": "add-vehicles",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0d910fd27cbd7b61526e5b"
+  },
+  "label": "Consignee Address",
+  "type": "text",
+  "isRequired": true,
+  "belongsto": "add-vehicles",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0d914ed27cbd7b61526e5c"
+  },
+  "label": "Model",
+  "type": "text",
+  "isRequired": true,
+  "belongsto": "add-vehicles",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0d916fd27cbd7b61526e5d"
+  },
+  "label": "Fuel Type",
+  "type": "text",
+  "isRequired": true,
+  "belongsto": "add-vehicles",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0d91dbd27cbd7b61526e5e"
+  },
+  "label": "Engine Capacity",
+  "type": "text",
+  "isRequired": true,
+  "belongsto": "add-vehicles",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0d91eed27cbd7b61526e5f"
+  },
+  "label": "Color",
+  "type": "text",
+  "isRequired": true,
+  "belongsto": "add-vehicles",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0d91fbd27cbd7b61526e60"
+  },
+  "label": "Doors",
+  "type": "text",
+  "isRequired": true,
+  "belongsto": "add-vehicles",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0d920ad27cbd7b61526e61"
+  },
+  "label": "Seats",
+  "type": "text",
+  "isRequired": true,
+  "belongsto": "add-vehicles",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0d922dd27cbd7b61526e62"
+  },
+  "label": "Gear Box Type",
+  "type": "text",
+  "isRequired": true,
+  "belongsto": "add-vehicles",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0d92acd27cbd7b61526e63"
+  },
+  "label": "Mileage ",
+  "type": "text",
+  "isRequired": true,
+  "belongsto": "add-vehicles",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0d92e0d27cbd7b61526e64"
+  },
+  "label": "Chassis No.",
+  "type": "text",
+  "isRequired": true,
+  "belongsto": "add-vehicles",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0d92f8d27cbd7b61526e65"
+  },
+  "label": "Measurements",
+  "type": "text",
+  "isRequired": true,
+  "belongsto": "add-vehicles",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0d930dd27cbd7b61526e66"
+  },
+  "label": "Category / Grade",
+  "type": "text",
+  "isRequired": true,
+  "belongsto": "add-vehicles",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0d932ed27cbd7b61526e67"
+  },
+  "label": "Engine No.",
+  "type": "text",
+  "isRequired": true,
+  "belongsto": "add-vehicles",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0d934dd27cbd7b61526e68"
+  },
+  "label": "Car Location",
+  "type": "text",
+  "isRequired": true,
+  "belongsto": "add-vehicles",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0d93c4d27cbd7b61526e69"
+  },
+  "label": "Thumbnail Image(need to change into Image uploder)",
+  "type": "text",
+  "isRequired": true,
+  "belongsto": "add-vehicles",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0d93ecd27cbd7b61526e6a"
+  },
+  "label": "Vehicle Images(need to chnage into image uploder)",
+  "type": "text",
+  "isRequired": true,
+  "belongsto": "add-vehicles",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0d9407d27cbd7b61526e6b"
+  },
+  "label": "Condition",
+  "type": "text",
+  "isRequired": true,
+  "belongsto": "add-vehicles",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a0d943ed27cbd7b61526e6c"
+  },
+  "label": "testing",
+  "type": "text",
+  "isRequired": false,
+  "belongsto": "fdshfjksd",
+  "__v": 0
+}]
