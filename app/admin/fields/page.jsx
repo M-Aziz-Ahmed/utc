@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import GetAllFields from "@/components/fields/GetAllFields";
 
-const FIELD_TYPES = ["text", "number", "boolean", "password", "email", "date", "file", "image"];
+const FIELD_TYPES = ["text", "number", "boolean", "password", "email", "date", "file", "image", "dropdown"];
 
 const Page = () => {
     const [label, setLabel] = useState("");
@@ -16,6 +16,10 @@ const Page = () => {
     const [showNewFormModal, setShowNewFormModal] = useState(false);
     const [newFormName, setNewFormName] = useState("");
     const [creatingForm, setCreatingForm] = useState(false);
+    
+    // Dropdown options state
+    const [dropdownOptions, setDropdownOptions] = useState([""]);
+    const [newOption, setNewOption] = useState("");
 
     // Fetch unique forms from fields
     useEffect(() => {
@@ -56,15 +60,46 @@ const Page = () => {
         }
     };
 
+    const addDropdownOption = () => {
+        if (newOption.trim()) {
+            setDropdownOptions(prev => [...prev, newOption.trim()]);
+            setNewOption("");
+        }
+    };
+
+    const removeDropdownOption = (index) => {
+        setDropdownOptions(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const updateDropdownOption = (index, value) => {
+        setDropdownOptions(prev => prev.map((opt, i) => i === index ? value : opt));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setMessage(null);
         setLoading(true);
         try {
+            const fieldData = { 
+                label, 
+                type, 
+                isRequired, 
+                belongsto: belongsto.trim() || undefined 
+            };
+            
+            // Add dropdown options if type is dropdown
+            if (type === 'dropdown') {
+                const validOptions = dropdownOptions.filter(opt => opt.trim() !== '');
+                if (validOptions.length === 0) {
+                    throw new Error('Please add at least one option for the dropdown');
+                }
+                fieldData.options = validOptions;
+            }
+            
             const res = await fetch('/api/newField', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ label, type, isRequired, belongsto: belongsto.trim() || undefined })
+                body: JSON.stringify(fieldData)
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data?.message || 'Error creating field');
@@ -73,6 +108,8 @@ const Page = () => {
             setType('text');
             setIsRequired(false);
             setBelongsto('');
+            setDropdownOptions(['']);
+            setNewOption('');
             setRefreshKey((k) => k + 1);
         } catch (err) {
             setMessage({ type: 'error', text: err.message });
@@ -127,7 +164,14 @@ const Page = () => {
                                 </label>
                                 <select
                                     value={type}
-                                    onChange={(e) => setType(e.target.value)}
+                                    onChange={(e) => {
+                                        setType(e.target.value);
+                                        // Reset dropdown options when changing type
+                                        if (e.target.value !== 'dropdown') {
+                                            setDropdownOptions(['']);
+                                            setNewOption('');
+                                        }
+                                    }}
                                     className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white"
                                 >
                                     {FIELD_TYPES.map((t) => (
@@ -135,6 +179,73 @@ const Page = () => {
                                     ))}
                                 </select>
                             </div>
+
+                            {/* Dropdown Options - Only show if type is dropdown */}
+                            {type === 'dropdown' && (
+                                <div className="border-2 border-blue-100 rounded-lg p-4 bg-blue-50/50">
+                                    <label className="block text-xs font-medium text-gray-700 mb-3 uppercase tracking-wide">
+                                        Dropdown Options
+                                    </label>
+                                    
+                                    {/* Existing Options */}
+                                    <div className="space-y-2 mb-3">
+                                        {dropdownOptions.map((option, index) => (
+                                            <div key={index} className="flex items-center gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={option}
+                                                    onChange={(e) => updateDropdownOption(index, e.target.value)}
+                                                    placeholder={`Option ${index + 1}`}
+                                                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                                                />
+                                                {dropdownOptions.length > 1 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeDropdownOption(index)}
+                                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                                        title="Remove option"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Add New Option */}
+                                    <div className="flex items-center gap-2 pt-2 border-t border-blue-200">
+                                        <input
+                                            type="text"
+                                            value={newOption}
+                                            onChange={(e) => setNewOption(e.target.value)}
+                                            onKeyPress={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    addDropdownOption();
+                                                }
+                                            }}
+                                            placeholder="Type new option..."
+                                            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={addDropdownOption}
+                                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition flex items-center gap-1.5"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                            </svg>
+                                            Add
+                                        </button>
+                                    </div>
+
+                                    <p className="text-xs text-gray-600 mt-2 italic">
+                                        Press Enter or click Add to add a new option
+                                    </p>
+                                </div>
+                            )}
 
                             {/* Is Required */}
                             <div>

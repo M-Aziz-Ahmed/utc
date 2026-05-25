@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from "react";
 
-const FIELD_TYPES = ["text", "number", "boolean", "password", "email", "date","image","file"];
+const FIELD_TYPES = ["text", "number", "boolean", "password", "email", "date","image","file","dropdown"];
 
 const TYPE_COLORS = {
     text: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -12,6 +12,7 @@ const TYPE_COLORS = {
     date: 'bg-orange-50 text-orange-700 border-orange-200',
     image: 'bg-pink-50 text-pink-700 border-pink-200',
     file: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    dropdown: 'bg-green-50 text-green-700 border-green-200',
 };
 
 const GetAllFields = ({ refreshKey, onDelete, forms }) => {
@@ -45,7 +46,14 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
 
     const startEdit = (f) => {
         setEditing(f._id);
-        setEditDraft({ label: f.label, type: f.type, isRequired: f.isRequired ?? false, belongsto: f.belongsto ?? '' });
+        setEditDraft({ 
+            label: f.label, 
+            type: f.type, 
+            isRequired: f.isRequired ?? false, 
+            belongsto: f.belongsto ?? '',
+            options: f.options || [],
+            newOption: ''
+        });
     };
 
     const cancelEdit = () => {
@@ -56,13 +64,28 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
     const handleSave = async (id) => {
         setSaving(true);
         try {
+            const dataToSave = {
+                label: editDraft.label,
+                type: editDraft.type,
+                isRequired: editDraft.isRequired,
+                belongsto: editDraft.belongsto.trim() || undefined,
+            };
+            
+            // Add options if type is dropdown
+            if (editDraft.type === 'dropdown') {
+                const validOptions = (editDraft.options || []).filter(opt => opt.trim() !== '');
+                if (validOptions.length === 0) {
+                    alert('Please add at least one option for the dropdown');
+                    setSaving(false);
+                    return;
+                }
+                dataToSave.options = validOptions;
+            }
+            
             const res = await fetch(`/api/fields/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ...editDraft,
-                    belongsto: editDraft.belongsto.trim() || undefined,
-                }),
+                body: JSON.stringify(dataToSave),
             });
             if (!res.ok) throw new Error('Failed to save');
             const updated = await res.json();
@@ -297,7 +320,14 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                                     <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Type</label>
                                     <select
                                         value={editDraft.type}
-                                        onChange={(e) => setEditDraft({ ...editDraft, type: e.target.value })}
+                                        onChange={(e) => {
+                                            const newType = e.target.value;
+                                            setEditDraft({ 
+                                                ...editDraft, 
+                                                type: newType,
+                                                options: newType === 'dropdown' ? (editDraft.options || []) : []
+                                            });
+                                        }}
                                         className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                                     >
                                         {FIELD_TYPES.map((t) => (
@@ -305,6 +335,86 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                                         ))}
                                     </select>
                                 </div>
+
+                                {/* Dropdown Options - Only show if type is dropdown */}
+                                {editDraft.type === 'dropdown' && (
+                                    <div className="col-span-2 border-2 border-blue-200 rounded-lg p-3 bg-white">
+                                        <label className="block text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">
+                                            Dropdown Options
+                                        </label>
+                                        
+                                        {/* Existing Options */}
+                                        <div className="space-y-2 mb-2">
+                                            {(editDraft.options || []).map((option, index) => (
+                                                <div key={index} className="flex items-center gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={option}
+                                                        onChange={(e) => {
+                                                            const newOptions = [...(editDraft.options || [])];
+                                                            newOptions[index] = e.target.value;
+                                                            setEditDraft({ ...editDraft, options: newOptions });
+                                                        }}
+                                                        placeholder={`Option ${index + 1}`}
+                                                        className="flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    />
+                                                    {(editDraft.options || []).length > 1 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const newOptions = (editDraft.options || []).filter((_, i) => i !== index);
+                                                                setEditDraft({ ...editDraft, options: newOptions });
+                                                            }}
+                                                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                            </svg>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Add New Option */}
+                                        <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
+                                            <input
+                                                type="text"
+                                                value={editDraft.newOption || ''}
+                                                onChange={(e) => setEditDraft({ ...editDraft, newOption: e.target.value })}
+                                                onKeyPress={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        if ((editDraft.newOption || '').trim()) {
+                                                            setEditDraft({ 
+                                                                ...editDraft, 
+                                                                options: [...(editDraft.options || []), editDraft.newOption.trim()],
+                                                                newOption: ''
+                                                            });
+                                                        }
+                                                    }
+                                                }}
+                                                placeholder="Add new option..."
+                                                className="flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if ((editDraft.newOption || '').trim()) {
+                                                        setEditDraft({ 
+                                                            ...editDraft, 
+                                                            options: [...(editDraft.options || []), editDraft.newOption.trim()],
+                                                            newOption: ''
+                                                        });
+                                                    }
+                                                }}
+                                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition"
+                                            >
+                                                Add
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Belongs to */}
                                 <div>
@@ -392,10 +502,15 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                                     </span>
                                 )}
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                                 <span className={`inline-flex items-center px-2.5 py-0.5 text-xs font-semibold rounded-md border ${TYPE_COLORS[f.type] ?? 'bg-gray-100 text-gray-700 border-gray-200'}`}>
                                     {f.type}
                                 </span>
+                                {f.type === 'dropdown' && f.options && f.options.length > 0 && (
+                                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                                        {f.options.length} {f.options.length === 1 ? 'option' : 'options'}
+                                    </span>
+                                )}
                             </div>
                         </div>
 

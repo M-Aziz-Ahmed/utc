@@ -121,6 +121,29 @@ const Page = () => {
     const renderInput = (field) => {
         const value = formData[field._id] ?? ''
 
+        if (field.type === 'dropdown') {
+            return (
+                <div className="relative">
+                    <select
+                        required={field.isRequired}
+                        value={value}
+                        onChange={(e) => handleChange(field._id, e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none bg-white"
+                    >
+                        <option value="">Select {field.label.toLowerCase()}...</option>
+                        {field.options && field.options.map((option, index) => (
+                            <option key={index} value={option}>{option}</option>
+                        ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </div>
+                </div>
+            )
+        }
+
         if (field.type === 'boolean') {
             return (
                 <div className="flex gap-3">

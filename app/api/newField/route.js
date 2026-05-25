@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 
 export const POST = async (req) => {
     const body = await req.json();
-    const { label, type, isRequired, belongsto } = body;
+    const { label, type, isRequired, belongsto, options } = body;
 
     if (!label || !type) {
         return NextResponse.json({ message: 'Label and type are required' }, { status: 400 });
@@ -18,7 +18,19 @@ export const POST = async (req) => {
             return NextResponse.json({ message: 'A field with this label already exists' }, { status: 400 });
         }
 
-        await DynamicFeilds.create({ label, type, isRequired: isRequired ?? false, belongsto });
+        const fieldData = { 
+            label, 
+            type, 
+            isRequired: isRequired ?? false, 
+            belongsto 
+        };
+        
+        // Add options if provided (for dropdown type)
+        if (options && Array.isArray(options)) {
+            fieldData.options = options;
+        }
+
+        await DynamicFeilds.create(fieldData);
 
         return NextResponse.json({ message: 'Field created successfully' }, { status: 201 });
     } catch (error) {
