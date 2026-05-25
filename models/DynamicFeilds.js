@@ -5,6 +5,6 @@ const DynFeildsSchema= new mongoose.Schema({
     type : { type: String},
     isRequired  : { type: Boolean},
     belongsto : { type: String},
-    options: [{ type: String }]  // Array of options for dropdown type
+    options: [{ type: String, default: [] }]  // Array of options for dropdown type
 });
 export default mongoose.models.DynFeilds || mongoose.model('DynFeilds', DynFeildsSchema)

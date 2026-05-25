@@ -7,7 +7,7 @@ export const PATCH = async (req, { params }) => {
         await dbConnect();
         const { id } = await params;
         const body = await req.json();
-        const updated = await DynamicFeilds.findByIdAndUpdate(id, body, { new: true });
+        const updated = await DynamicFeilds.findByIdAndUpdate(id, { $set: body }, { new: true });
         if (!updated) {
             return NextResponse.json({ message: 'Field not found' }, { status: 404 });
         }
