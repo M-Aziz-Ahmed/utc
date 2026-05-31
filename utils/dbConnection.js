@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-const MONGODB_URI = 'mongodb://localhost:27017/utc'
+const MONGODB_URI = '"mongodb+srv://azizahmed:I_hateyou2>@app.ipk7p3c.mongodb.net/?appName=app/utc'
 
 
 let cached = global.mongoose;
