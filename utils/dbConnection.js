@@ -1,7 +1,10 @@
 import mongoose from 'mongoose';
 
-const MONGODB_URI = '"mongodb+srv://azizahmed:I_hateyou2>@app.ipk7p3c.mongodb.net/?appName=app/utc'
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/utc'
 
+// Log the connection string (without password) for debugging
+console.log('🔍 Attempting to connect to MongoDB...');
+console.log('🔍 URI:', MONGODB_URI.replace(/:[^:@]+@/, ':****@'));
 
 let cached = global.mongoose;
 
@@ -17,11 +20,8 @@ async function dbConnect() {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
-      serverSelectionTimeoutMS: 10000,
+      serverSelectionTimeoutMS: 30000,
       socketTimeoutMS: 45000,
-      family: 4, // Use IPv4, skip trying IPv6
-      retryWrites: true,
-      w: 'majority'
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
@@ -29,6 +29,7 @@ async function dbConnect() {
       return mongoose;
     }).catch((error) => {
       console.error('❌ MongoDB connection error:', error.message);
+      console.error('❌ Error code:', error.code);
       cached.promise = null; // Reset promise on error
       throw error;
     });
