@@ -10,6 +10,7 @@ const consigneeSchema = new mongoose.Schema({
     city:       { type: String },
     country:    { type: String },
     notes:      { type: String },
+    label:      { type: String } // Presold label
 }, { timestamps: true });
 
 export default mongoose.models.Consignee || mongoose.model('Consignee', consigneeSchema);

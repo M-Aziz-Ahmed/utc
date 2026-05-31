@@ -28,6 +28,9 @@ const Page = () => {
     const [loadingFields, setLoadingFields] = useState(true);
     const [files, setFiles] = useState([]);
     const [isDragging, setIsDragging] = useState(false);
+    const [addingOptionFor, setAddingOptionFor] = useState(null);
+    const [newDropdownOption, setNewDropdownOption] = useState('');
+    const [savingOption, setSavingOption] = useState(false);
 
     // Fetch dynamic fields that belong to this form
     useEffect(() => {
@@ -58,6 +61,43 @@ const Page = () => {
 
     const setDyn = (label, value) =>
         setDynamicValues((prev) => ({ ...prev, [label]: value }));
+
+    const handleAddDropdownOption = async () => {
+        if (!newDropdownOption.trim() || !addingOptionFor) return;
+        
+        setSavingOption(true);
+        try {
+            // Update the field in the database
+            const res = await fetch(`/api/fields/${addingOptionFor._id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...addingOptionFor,
+                    options: [...(addingOptionFor.options || []), newDropdownOption.trim()]
+                })
+            });
+            
+            if (!res.ok) throw new Error('Failed to add option');
+            
+            const updatedField = await res.json();
+            
+            // Update local fields state
+            setDynamicFields(prev => prev.map(f => 
+                f._id === updatedField._id ? updatedField : f
+            ));
+            
+            // Set the new option as selected
+            setDyn(addingOptionFor.label, newDropdownOption.trim());
+            
+            // Close modal
+            setAddingOptionFor(null);
+            setNewDropdownOption('');
+        } catch (err) {
+            alert('Failed to add option: ' + err.message);
+        } finally {
+            setSavingOption(false);
+        }
+    };
 
     // File handling functions
     const handleFileSelect = (e) => {
@@ -226,10 +266,25 @@ const Page = () => {
         if (f.type === 'dropdown') {
             return (
                 <div key={f._id} className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                        {f.label}
-                        {f.isRequired && <span className="text-red-400 ml-1">*</span>}
-                    </label>
+                    <div className="flex items-center justify-between">
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            {f.label}
+                            {f.isRequired && <span className="text-red-400 ml-1">*</span>}
+                        </label>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setAddingOptionFor(f);
+                                setNewDropdownOption('');
+                            }}
+                            className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1"
+                        >
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            Add New
+                        </button>
+                    </div>
                     <div className="relative">
                         <select
                             required={f.isRequired}
@@ -653,6 +708,62 @@ const Page = () => {
 
                 </form>
             </div>
+
+            {/* Add Dropdown Option Modal */}
+            {addingOptionFor && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setAddingOptionFor(null)}>
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-xl font-bold text-gray-900">Add New Option</h3>
+                            <button
+                                onClick={() => setAddingOptionFor(null)}
+                                className="p-2 hover:bg-gray-100 rounded-lg transition"
+                            >
+                                <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-4">
+                            Add a new option to <span className="font-semibold">{addingOptionFor.label}</span>
+                        </p>
+                        <div className="mb-4">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">New Option</label>
+                            <input
+                                type="text"
+                                value={newDropdownOption}
+                                onChange={(e) => setNewDropdownOption(e.target.value)}
+                                onKeyPress={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleAddDropdownOption();
+                                    }
+                                }}
+                                placeholder="Enter option name..."
+                                autoFocus
+                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                        </div>
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setAddingOptionFor(null)}
+                                className="flex-1 px-4 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl transition"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleAddDropdownOption}
+                                disabled={savingOption || !newDropdownOption.trim()}
+                                className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {savingOption ? 'Adding...' : 'Add Option'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

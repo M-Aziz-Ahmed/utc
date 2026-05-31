@@ -8,6 +8,9 @@ const Page = () => {
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState(null)
     const [success, setSuccess] = useState(false)
+    const [addingOptionFor, setAddingOptionFor] = useState(null)
+    const [newDropdownOption, setNewDropdownOption] = useState('')
+    const [savingOption, setSavingOption] = useState(false)
 
     useEffect(() => {
         const fetchFields = async () => {
@@ -56,6 +59,43 @@ const Page = () => {
     const handleChange = (id, value) => {
         setFormData((prev) => ({ ...prev, [id]: value }))
     }
+
+    const handleAddDropdownOption = async () => {
+        if (!newDropdownOption.trim() || !addingOptionFor) return;
+        
+        setSavingOption(true);
+        try {
+            // Update the field in the database
+            const res = await fetch(`/api/fields/${addingOptionFor._id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...addingOptionFor,
+                    options: [...(addingOptionFor.options || []), newDropdownOption.trim()]
+                })
+            });
+            
+            if (!res.ok) throw new Error('Failed to add option');
+            
+            const updatedField = await res.json();
+            
+            // Update local fields state
+            setFields(prev => prev.map(f => 
+                f._id === updatedField._id ? updatedField : f
+            ));
+            
+            // Set the new option as selected
+            handleChange(addingOptionFor._id, newDropdownOption.trim());
+            
+            // Close modal
+            setAddingOptionFor(null);
+            setNewDropdownOption('');
+        } catch (err) {
+            alert('Failed to add option: ' + err.message);
+        } finally {
+            setSavingOption(false);
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -358,10 +398,27 @@ const Page = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                                 {fields.filter(f => f.type !== 'file' && f.type !== 'image').map((field) => (
                                     <div key={field._id} className={field.type === 'boolean' ? 'lg:col-span-2' : ''}>
-                                        <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">
-                                            {field.label}
-                                            {field.isRequired && <span className="text-red-500 ml-1">*</span>}
-                                        </label>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className="text-xs font-bold text-gray-700 uppercase tracking-wide">
+                                                {field.label}
+                                                {field.isRequired && <span className="text-red-500 ml-1">*</span>}
+                                            </label>
+                                            {field.type === 'dropdown' && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setAddingOptionFor(field);
+                                                        setNewDropdownOption('');
+                                                    }}
+                                                    className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1"
+                                                >
+                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                                    </svg>
+                                                    Add New
+                                                </button>
+                                            )}
+                                        </div>
                                         {renderInput(field)}
                                     </div>
                                 ))}
@@ -451,6 +508,62 @@ const Page = () => {
                     )}
                 </div>
             </div>
+
+            {/* Add Dropdown Option Modal */}
+            {addingOptionFor && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setAddingOptionFor(null)}>
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-xl font-bold text-gray-900">Add New Option</h3>
+                            <button
+                                onClick={() => setAddingOptionFor(null)}
+                                className="p-2 hover:bg-gray-100 rounded-lg transition"
+                            >
+                                <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-4">
+                            Add a new option to <span className="font-semibold">{addingOptionFor.label}</span>
+                        </p>
+                        <div className="mb-4">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">New Option</label>
+                            <input
+                                type="text"
+                                value={newDropdownOption}
+                                onChange={(e) => setNewDropdownOption(e.target.value)}
+                                onKeyPress={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleAddDropdownOption();
+                                    }
+                                }}
+                                placeholder="Enter option name..."
+                                autoFocus
+                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                        </div>
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setAddingOptionFor(null)}
+                                className="flex-1 px-4 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl transition"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleAddDropdownOption}
+                                disabled={savingOption || !newDropdownOption.trim()}
+                                className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {savingOption ? 'Adding...' : 'Add Option'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <style jsx>{`
                 @keyframes blob {

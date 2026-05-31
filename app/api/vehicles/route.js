@@ -146,3 +146,33 @@ export const GET = async () => {
         return NextResponse.json({ message: 'Error fetching vehicles' }, { status: 500 });
     }
 }
+
+export const PATCH = async (req) => {
+    try {
+        await dbConnect();
+        const body = await req.json();
+        const { vehicleId, ...updateData } = body;
+
+        if (!vehicleId) {
+            return NextResponse.json({ message: 'Vehicle ID is required' }, { status: 400 });
+        }
+
+        const updatedVehicle = await Vehicle.findByIdAndUpdate(
+            vehicleId,
+            { $set: updateData },
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedVehicle) {
+            return NextResponse.json({ message: 'Vehicle not found' }, { status: 404 });
+        }
+
+        return NextResponse.json(updatedVehicle, { status: 200 });
+    } catch (error) {
+        console.error('updateVehicle error:', error);
+        return NextResponse.json({ 
+            message: 'Error updating vehicle',
+            error: error.message 
+        }, { status: 500 });
+    }
+}
