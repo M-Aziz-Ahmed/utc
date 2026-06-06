@@ -24,11 +24,13 @@ const AdminDashboard = () => {
             // Fetch fields count
             const fieldsRes = await fetch('/api/fields')
             const fieldsData = await fieldsRes.json()
+            const usersRes = await fetch('/api/users')
+            const usersData = await usersRes.json()
 
             setStats({
                 totalVehicles: Array.isArray(vehiclesData) ? vehiclesData.length : 0,
                 totalFields: Array.isArray(fieldsData) ? fieldsData.length : 0,
-                totalUsers: 1, // Placeholder
+                totalUsers: usersData.length, // Placeholder
                 recentActivity: 5 // Placeholder
             })
         } catch (error) {
