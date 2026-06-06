@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://azizahmed:jchfksjfhskjfshkfh@app.ipk7p3c.mongodb.net/?appName=app'
 
-// Log the connection string (without password) for debugging
+// Log the connection string (without password)
 console.log('🔍 Attempting to connect to MongoDB...');
 console.log('🔍 URI:', MONGODB_URI.replace(/:[^:@]+@/, ':****@'));
 
