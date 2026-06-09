@@ -27,7 +27,7 @@ const Sidebar = () => {
         },
         {
             name: 'Vehicle Mgm',
-            href: '', 
+            href: '',
             icon: (
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -37,6 +37,15 @@ const Sidebar = () => {
                 {
                     name: 'Management',
                     href: '/admin/vehicles',
+                    icon: (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                    )
+                },
+                {
+                    name: 'Vehicle Allocation',
+                    href: '/admin/vehicles/allocation',
                     icon: (
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -101,8 +110,8 @@ const Sidebar = () => {
             {/* Header Area */}
             <div className="p-4 flex items-center justify-between border-b border-slate-100 min-h-[70px]">
                 {toggle && <span className="font-extrabold text-base text-slate-900 tracking-wider">ADMIN PANEL</span>}
-                <button 
-                    onClick={() => setToggle(prev => !prev)} 
+                <button
+                    onClick={() => setToggle(prev => !prev)}
                     className="p-2 ml-auto rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors focus:outline-none"
                 >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -136,13 +145,13 @@ const Sidebar = () => {
                                 <span className={`flex-shrink-0 ${isActive ? 'text-[white!important]' : 'text-slate-500 group-hover:text-slate-800'}`}>
                                     {n.icon}
                                 </span>
-                                
+
                                 {toggle && (
                                     <div className="flex items-center justify-between w-full ml-3 overflow-hidden">
                                         <span className={`truncate text-sm font-medium tracking-wide ${isActive && 'text-[white!important]'}`}>{n.name}</span>
                                         {n.subL && (
-                                            <svg 
-                                                className={`w-4 h-4 transform transition-transform duration-200 ${isActive ? 'text-[white!important]' : 'text-slate-400 group-hover:text-slate-600'} ${isMenuOpen ? 'rotate-180' : ''}`} 
+                                            <svg
+                                                className={`w-4 h-4 transform transition-transform duration-200 ${isActive ? 'text-[white!important]' : 'text-slate-400 group-hover:text-slate-600'} ${isMenuOpen ? 'rotate-180' : ''}`}
                                                 fill="none" viewBox="0 0 24 24" stroke="currentColor"
                                             >
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
