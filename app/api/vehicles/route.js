@@ -1,8 +1,7 @@
 import Vehicle from "@/models/Vehicle"
 import dbConnect from "@/utils/dbConnection"
+import { uploadToCloudinary } from "@/utils/cloudinary"
 import { NextResponse } from "next/server"
-import { writeFile, mkdir } from 'fs/promises'
-import path from 'path'
 import { cookies } from "next/headers"
 
 export const POST = async (req) => {
@@ -26,37 +25,30 @@ export const POST = async (req) => {
             }
         }
 
-        // Handle file uploads
+        // Handle file uploads to Cloudinary
         const uploadedFiles = [];
         const dynamicFieldFiles = {};
-        const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'vehicles');
-        
-        // Create upload directory if it doesn't exist
-        try {
-            await mkdir(uploadDir, { recursive: true });
-        } catch (err) {
-            // Directory might already exist
-        }
 
         // Process all files
         for (const [key, value] of formData.entries()) {
             if (value instanceof File) {
                 const file = value;
-                const timestamp = Date.now();
-                const randomStr = Math.random().toString(36).substr(2, 9);
-                const fileName = `${timestamp}_${randomStr}_${file.name}`;
-                const filePath = path.join(uploadDir, fileName);
                 
-                // Convert file to buffer and save
+                // Convert file to buffer
                 const bytes = await file.arrayBuffer();
                 const buffer = Buffer.from(bytes);
-                await writeFile(filePath, buffer);
+                
+                // Upload to Cloudinary
+                const cloudinaryResult = await uploadToCloudinary(buffer, 'utc/vehicles');
                 
                 const fileInfo = {
                     name: file.name,
-                    path: `/uploads/vehicles/${fileName}`,
+                    path: cloudinaryResult.secure_url, // Cloudinary URL
+                    publicId: cloudinaryResult.public_id, // For deletion later
                     size: file.size,
-                    type: file.type
+                    type: file.type,
+                    width: cloudinaryResult.width,
+                    height: cloudinaryResult.height
                 };
 
                 // Check if this is a dynamic field file
