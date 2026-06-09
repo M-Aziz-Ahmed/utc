@@ -6,6 +6,7 @@ const AddVehiclePage = () => {
     const [manufacturers, setManufacturers] = useState([])
     const [selectedManufacturer, setSelectedManufacturer] = useState(null)
     const [selectedModel, setSelectedModel] = useState(null)
+    const [selectedVariant, setSelectedVariant] = useState('')
     const [formData, setFormData] = useState({})
     const [fields, setFields] = useState([])
     const [loading, setLoading] = useState(false)
@@ -16,8 +17,10 @@ const AddVehiclePage = () => {
     // Modal states
     const [showAddManufacturer, setShowAddManufacturer] = useState(false)
     const [showAddModel, setShowAddModel] = useState(false)
+    const [showAddVariant, setShowAddVariant] = useState(false)
     const [newManufacturer, setNewManufacturer] = useState({ name: '', country: '' })
     const [newModel, setNewModel] = useState({ name: '', description: '' })
+    const [newVariant, setNewVariant] = useState('')
     const [saving, setSaving] = useState(false)
 
     useEffect(() => {
@@ -83,7 +86,7 @@ const AddVehiclePage = () => {
         try {
             const updatedManufacturer = {
                 ...selectedManufacturer,
-                models: [...(selectedManufacturer.models || []), newModel]
+                models: [...(selectedManufacturer.models || []), { ...newModel, variants: [] }]
             }
             const res = await fetch(`/api/manufacturer/${selectedManufacturer._id}`, {
                 method: 'PATCH',
@@ -94,12 +97,55 @@ const AddVehiclePage = () => {
                 const updated = await res.json()
                 setManufacturers(manufacturers.map(m => m._id === updated._id ? updated : m))
                 setSelectedManufacturer(updated)
-                setSelectedModel(newModel)
+                setSelectedModel(updated.models[updated.models.length - 1])
                 setShowAddModel(false)
                 setNewModel({ name: '', description: '' })
             }
         } catch (err) {
             alert('Failed to add model')
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const handleAddVariant = async () => {
+        if (!newVariant.trim() || !selectedModel || !selectedManufacturer) return
+        setSaving(true)
+        try {
+            // Update the selected model with new variant
+            const updatedModels = selectedManufacturer.models.map(m => {
+                if (m.name === selectedModel.name) {
+                    return {
+                        ...m,
+                        variants: [...(m.variants || []), newVariant.trim()]
+                    }
+                }
+                return m
+            })
+
+            const updatedManufacturer = {
+                ...selectedManufacturer,
+                models: updatedModels
+            }
+
+            const res = await fetch(`/api/manufacturer/${selectedManufacturer._id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedManufacturer)
+            })
+            
+            if (res.ok) {
+                const updated = await res.json()
+                setManufacturers(manufacturers.map(m => m._id === updated._id ? updated : m))
+                setSelectedManufacturer(updated)
+                const updatedModel = updated.models.find(m => m.name === selectedModel.name)
+                setSelectedModel(updatedModel)
+                setSelectedVariant(newVariant.trim())
+                setShowAddVariant(false)
+                setNewVariant('')
+            }
+        } catch (err) {
+            alert('Failed to add variant')
         } finally {
             setSaving(false)
         }
@@ -116,6 +162,7 @@ const AddVehiclePage = () => {
             manufacturer: selectedManufacturer?.name,
             manufacturerId: selectedManufacturer?._id,
             model: selectedModel?.name,
+            variant: selectedVariant,
         }
 
         formDataToSend.append('vehicleData', JSON.stringify(payload))
@@ -219,7 +266,8 @@ const AddVehiclePage = () => {
     const steps = [
         { num: 1, title: 'Manufacturer', icon: '🏭' },
         { num: 2, title: 'Car Model', icon: '🚗' },
-        { num: 3, title: 'Vehicle Details', icon: '📋' }
+        { num: 3, title: 'Variant/Trim', icon: '⚙️' },
+        { num: 4, title: 'Vehicle Details', icon: '📋' }
     ]
 
     return (
@@ -328,7 +376,10 @@ const AddVehiclePage = () => {
                                 {selectedManufacturer?.models?.map((model, idx) => (
                                     <button
                                         key={idx}
-                                        onClick={() => setSelectedModel(model)}
+                                        onClick={() => {
+                                            setSelectedModel(model)
+                                            setSelectedVariant('')
+                                        }}
                                         className={`p-6 border-2 rounded-xl text-left transition ${
                                             selectedModel?.name === model.name
                                                 ? 'border-blue-500 bg-blue-50'
@@ -337,6 +388,7 @@ const AddVehiclePage = () => {
                                     >
                                         <h3 className="font-bold text-lg text-gray-900">{model.name}</h3>
                                         {model.description && <p className="text-sm text-gray-600 mt-1">{model.description}</p>}
+                                        <p className="text-xs text-gray-500 mt-2">{model.variants?.length || 0} variants</p>
                                     </button>
                                 ))}
                             </div>
@@ -353,19 +405,89 @@ const AddVehiclePage = () => {
                                     disabled={!selectedModel}
                                     className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition"
                                 >
+                                    Next: Select Variant
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Step 3: Select Variant */}
+                    {currentStep === 3 && (
+                        <div>
+                            <div className="flex items-center justify-between mb-6">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-gray-900">Select Variant/Trim</h2>
+                                    <p className="text-sm text-gray-600 mt-1">
+                                        {selectedManufacturer?.name} {selectedModel?.name}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setShowAddVariant(true)}
+                                    className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition"
+                                >
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    Add New Variant
+                                </button>
+                            </div>
+
+                            {selectedModel?.variants && selectedModel.variants.length > 0 ? (
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                    {selectedModel.variants.map((variant, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => setSelectedVariant(variant)}
+                                            className={`p-4 border-2 rounded-xl text-center font-semibold transition ${
+                                                selectedVariant === variant
+                                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                                    : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                                            }`}
+                                        >
+                                            {variant}
+                                        </button>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
+                                    <p className="text-gray-600 mb-4">No variants added yet</p>
+                                    <button
+                                        onClick={() => setShowAddVariant(true)}
+                                        className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        Add First Variant
+                                    </button>
+                                </div>
+                            )}
+
+                            <div className="mt-8 flex justify-between">
+                                <button
+                                    onClick={() => setCurrentStep(2)}
+                                    className="px-8 py-3 border-2 border-gray-300 hover:border-gray-400 text-gray-700 font-semibold rounded-xl transition"
+                                >
+                                    Back
+                                </button>
+                                <button
+                                    onClick={() => selectedVariant && setCurrentStep(4)}
+                                    disabled={!selectedVariant}
+                                    className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition"
+                                >
                                     Next: Vehicle Details
                                 </button>
                             </div>
                         </div>
                     )}
 
-                    {/* Step 3: Vehicle Details Form */}
-                    {currentStep === 3 && (
+                    {/* Step 4: Vehicle Details Form */}
+                    {currentStep === 4 && (
                         <div>
                             <div className="mb-6">
                                 <h2 className="text-2xl font-bold text-gray-900">Vehicle Details</h2>
                                 <p className="text-sm text-gray-600 mt-1">
-                                    {selectedManufacturer?.name} - {selectedModel?.name}
+                                    {selectedManufacturer?.name} - {selectedModel?.name} - {selectedVariant}
                                 </p>
                             </div>
 
@@ -415,7 +537,7 @@ const AddVehiclePage = () => {
                                 <div className="mt-8 flex justify-between">
                                     <button
                                         type="button"
-                                        onClick={() => setCurrentStep(2)}
+                                        onClick={() => setCurrentStep(3)}
                                         className="px-8 py-3 border-2 border-gray-300 hover:border-gray-400 text-gray-700 font-semibold rounded-xl transition"
                                     >
                                         Back
@@ -516,6 +638,45 @@ const AddVehiclePage = () => {
                                 <button
                                     onClick={handleAddModel}
                                     disabled={!newModel.name.trim() || saving}
+                                    className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50"
+                                >
+                                    {saving ? 'Adding...' : 'Add'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Add Variant Modal */}
+            {showAddVariant && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowAddVariant(false)}>
+                    <div className="bg-white rounded-2xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-xl font-bold mb-4">Add New Variant</h3>
+                        <p className="text-sm text-gray-600 mb-4">
+                            Adding variant to: {selectedManufacturer?.name} {selectedModel?.name}
+                        </p>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold mb-2">Variant Name *</label>
+                                <input
+                                    type="text"
+                                    value={newVariant}
+                                    onChange={(e) => setNewVariant(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                    placeholder="e.g., GLI, GLX, Altis"
+                                />
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setShowAddVariant(false)}
+                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleAddVariant}
+                                    disabled={!newVariant.trim() || saving}
                                     className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50"
                                 >
                                     {saving ? 'Adding...' : 'Add'}

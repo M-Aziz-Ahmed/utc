@@ -13,6 +13,7 @@ const carModelSchema = new mongoose.Schema({
     name:        { type: String, required: true },
     description: { type: String },
     dimensions:  { type: dimensionsSchema, default: () => ({}) },
+    variants:    [{ type: String }], // Array of variant names (GLI, GLX, Altis, etc.)
 });
 
 const manufacturerSchema = new mongoose.Schema({
