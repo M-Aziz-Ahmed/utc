@@ -230,6 +230,27 @@ const Page = () => {
 // Vehicle Details Modal Component
 const VehicleDetailsModal = ({ vehicle, onClose, getVehicleTitle, formatDate }) => {
     const [currentImageIndex, setCurrentImageIndex] = useState(0)
+    const [fields, setFields] = useState([])
+
+    // Fetch field definitions to get labels
+    useEffect(() => {
+        const fetchFields = async () => {
+            try {
+                const res = await fetch('/api/fields', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ belongsto: 'add-vehicles' })
+                })
+                if (res.ok) {
+                    const data = await res.json()
+                    setFields(data)
+                }
+            } catch (err) {
+                console.error('Failed to fetch fields:', err)
+            }
+        }
+        fetchFields()
+    }, [])
     
     // Collect all images from the vehicle
     const getAllImages = () => {
@@ -282,13 +303,55 @@ const VehicleDetailsModal = ({ vehicle, onClose, getVehicleTitle, formatDate }) 
         return () => window.removeEventListener('keydown', handleEscape)
     }, [onClose])
 
+    // Helper function to get field label from field ID
+    const getFieldLabel = (fieldId) => {
+        const field = fields.find(f => f._id === fieldId)
+        return field ? field.label : fieldId
+    }
+
+    // Helper to check if a key is a field ID (looks like MongoDB ObjectId)
+    const isFieldId = (key) => {
+        return /^[a-f0-9]{24}$/i.test(key)
+    }
+
     return (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-75 flex items-center justify-center p-4" onClick={onClose}>
             <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-200">
                     <div>
-                        <h2 className="text-2xl font-bold text-gray-900">{getVehicleTitle(vehicle)}</h2>
+                        <h2 className="text-2xl font-bold text-gray-900">
+                            {(() => {
+                                const parts = []
+                                
+                                // Model and Variant
+                                if (vehicle.model && vehicle.variant) {
+                                    parts.push(`${vehicle.model} ${vehicle.variant}`)
+                                } else if (vehicle.model) {
+                                    parts.push(vehicle.model)
+                                }
+                                
+                                // Manufactured Year - check multiple possible field names
+                                const yearField = fields.find(f => 
+                                    f.label?.toLowerCase().includes('year') || 
+                                    f.label?.toLowerCase().includes('manufacture')
+                                )
+                                if (yearField && vehicle[yearField._id]) {
+                                    parts.push(vehicle[yearField._id])
+                                }
+                                
+                                // Gear Type - check multiple possible field names
+                                const gearField = fields.find(f => 
+                                    f.label?.toLowerCase().includes('gear') || 
+                                    f.label?.toLowerCase().includes('transmission')
+                                )
+                                if (gearField && vehicle[gearField._id]) {
+                                    parts.push(vehicle[gearField._id])
+                                }
+                                
+                                return parts.length > 0 ? parts.join(' - ') : getVehicleTitle(vehicle)
+                            })()}
+                        </h2>
                         <p className="text-sm text-gray-500 mt-1">Added {formatDate(vehicle.createdAt)}</p>
                     </div>
                     <button
@@ -396,6 +459,10 @@ const VehicleDetailsModal = ({ vehicle, onClose, getVehicleTitle, formatDate }) 
                                             if (key.startsWith('_') || key === 'files' || key === 'createdAt' || key === 'updatedAt' || key === 'createdBy' || key === '__v') {
                                                 return false
                                             }
+                                            // Skip manufacturer/model/variant as they're in the title
+                                            if (key === 'manufacturer' || key === 'manufacturerId' || key === 'model' || key === 'variant') {
+                                                return false
+                                            }
                                             if (Array.isArray(value) || typeof value === 'object') {
                                                 return false
                                             }
@@ -404,15 +471,21 @@ const VehicleDetailsModal = ({ vehicle, onClose, getVehicleTitle, formatDate }) 
                                             }
                                             return true
                                         })
-                                        .map(([key, value]) => (
-                                            <div key={key} className="bg-gray-50 rounded-lg p-4">
-                                                <p className="text-xs text-gray-600 font-semibold uppercase tracking-wider mb-1">{key}</p>
-                                                <p className="text-base text-gray-900 font-medium">{String(value)}</p>
-                                            </div>
-                                        ))}
+                                        .map(([key, value]) => {
+                                            const label = isFieldId(key) ? getFieldLabel(key) : key
+                                            return (
+                                                <div key={key} className="bg-gray-50 rounded-lg p-4">
+                                                    <p className="text-xs text-gray-600 font-semibold uppercase tracking-wider mb-1">{label}</p>
+                                                    <p className="text-base text-gray-900 font-medium">{String(value)}</p>
+                                                </div>
+                                            )
+                                        })}
                                     
                                     {Object.entries(vehicle).filter(([key, value]) => {
                                         if (key.startsWith('_') || key === 'files' || key === 'createdAt' || key === 'updatedAt' || key === 'createdBy' || key === '__v') {
+                                            return false
+                                        }
+                                        if (key === 'manufacturer' || key === 'manufacturerId' || key === 'model' || key === 'variant') {
                                             return false
                                         }
                                         if (Array.isArray(value) || typeof value === 'object') {
@@ -467,12 +540,15 @@ const VehicleDetailsModal = ({ vehicle, onClose, getVehicleTitle, formatDate }) 
                     >
                         Close
                     </button>
-                    <button className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition flex items-center gap-2">
+                    <Link 
+                        href={`/admin/vehicles/edit/${vehicle._id}`}
+                        className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition flex items-center gap-2"
+                    >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
                         Edit Vehicle
-                    </button>
+                    </Link>
                 </div>
             </div>
         </div>
