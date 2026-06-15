@@ -27,6 +27,11 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
     const [filterForm, setFilterForm] = useState("all");
     const [filterRequired, setFilterRequired] = useState("all");
 
+    // Quick-add option state — stores { fieldId, value }
+    const [quickAdd, setQuickAdd] = useState(null);
+    const [quickAddValue, setQuickAddValue] = useState('');
+    const [quickAdding, setQuickAdding] = useState(false);
+
     useEffect(() => {
         let mounted = true;
         setError(null);
@@ -110,6 +115,54 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
             alert(e.message);
         } finally {
             setDeleting(null);
+        }
+    };
+
+    const handleQuickAddOption = async (field) => {
+        const val = quickAddValue.trim();
+        if (!val) return;
+        // Prevent duplicate
+        if ((field.options || []).includes(val)) {
+            setQuickAddValue('');
+            return;
+        }
+        setQuickAdding(true);
+        try {
+            const newOptions = [...(field.options || []), val];
+            const res = await fetch(`/api/fields/${field._id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ options: newOptions }),
+            });
+            if (!res.ok) throw new Error('Failed to add option');
+            const updated = await res.json();
+            setFields(prev => prev.map(f => f._id === field._id ? updated : f));
+            setQuickAddValue('');
+            setQuickAdd(null);
+        } catch (e) {
+            alert(e.message);
+        } finally {
+            setQuickAdding(false);
+        }
+    };
+
+    const handleRemoveOption = async (field, optionIndex) => {
+        if (field.options.length <= 1) {
+            alert('A dropdown must have at least one option.');
+            return;
+        }
+        const newOptions = field.options.filter((_, i) => i !== optionIndex);
+        try {
+            const res = await fetch(`/api/fields/${field._id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ options: newOptions }),
+            });
+            if (!res.ok) throw new Error('Failed to remove option');
+            const updated = await res.json();
+            setFields(prev => prev.map(f => f._id === field._id ? updated : f));
+        } catch (e) {
+            alert(e.message);
         }
     };
 
@@ -281,11 +334,11 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                     <p className="text-sm text-gray-500">Try adjusting your search or filters</p>
                 </div>
             ) : (
-                <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2">
+                <div className="space-y-6 max-h-150 overflow-y-auto pr-2">
                     {sortedFormNames.map(formName => (
                         <div key={formName} className="space-y-3">
                             {/* Form Group Header */}
-                            <div className="flex items-center gap-3 sticky top-0 bg-gradient-to-br from-gray-50 to-gray-100 py-2 px-4 rounded-lg border border-gray-200">
+                            <div className="flex items-center gap-3 sticky top-0 bg-linear-to-br from-gray-50 to-gray-100 py-2 px-4 rounded-lg border border-gray-200">
                                 <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                                 </svg>
@@ -491,60 +544,144 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                 return (
                     <div
                         key={f._id}
-                        className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3.5 hover:shadow-md hover:border-gray-300 transition-all group"
+                        className="rounded-xl border border-gray-200 bg-white hover:shadow-md hover:border-gray-300 transition-all group"
                     >
-                        <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className="text-sm font-semibold text-gray-900 truncate">{f.label}</span>
-                                {f.isRequired && (
-                                    <span className="inline-flex items-center px-2 py-0.5 text-xs font-bold text-red-600 bg-red-50 border border-red-200 rounded-full">
-                                        REQUIRED
+                        {/* Main row */}
+                        <div className="flex items-center justify-between px-4 py-3.5">
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-sm font-semibold text-gray-900 truncate">{f.label}</span>
+                                    {f.isRequired && (
+                                        <span className="inline-flex items-center px-2 py-0.5 text-xs font-bold text-red-600 bg-red-50 border border-red-200 rounded-full">
+                                            REQUIRED
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 text-xs font-semibold rounded-md border ${TYPE_COLORS[f.type] ?? 'bg-gray-100 text-gray-700 border-gray-200'}`}>
+                                        {f.type}
                                     </span>
-                                )}
+                                    {f.type === 'dropdown' && f.options && f.options.length > 0 && (
+                                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                                            {f.options.length} {f.options.length === 1 ? 'option' : 'options'}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <span className={`inline-flex items-center px-2.5 py-0.5 text-xs font-semibold rounded-md border ${TYPE_COLORS[f.type] ?? 'bg-gray-100 text-gray-700 border-gray-200'}`}>
-                                    {f.type}
-                                </span>
-                                {f.type === 'dropdown' && f.options && f.options.length > 0 && (
-                                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                                        {f.options.length} {f.options.length === 1 ? 'option' : 'options'}
-                                    </span>
+
+                            <div className="flex items-center gap-1 ml-3 shrink-0">
+                                {/* Quick-add option button (dropdown only) */}
+                                {f.type === 'dropdown' && (
+                                    <button
+                                        onClick={() => {
+                                            setQuickAdd(quickAdd === f._id ? null : f._id);
+                                            setQuickAddValue('');
+                                        }}
+                                        title="Add option"
+                                        className={`p-2 rounded-lg transition ${quickAdd === f._id ? 'text-green-600 bg-green-50' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'}`}
+                                    >
+                                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                                        </svg>
+                                    </button>
                                 )}
-                            </div>
-                        </div>
 
-                        <div className="flex items-center gap-2 ml-3 shrink-0">
-                            {/* Edit */}
-                            <button
-                                onClick={() => startEdit(f)}
-                                title="Edit field"
-                                className="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition"
-                            >
-                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                            </button>
-
-                            {/* Delete */}
-                            <button
-                                onClick={() => handleDelete(f._id)}
-                                disabled={deleting === f._id}
-                                title="Delete field"
-                                className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                            >
-                                {deleting === f._id ? (
-                                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                                    </svg>
-                                ) : (
+                                {/* Edit */}
+                                <button
+                                    onClick={() => startEdit(f)}
+                                    title="Edit field"
+                                    className="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition"
+                                >
                                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                     </svg>
-                                )}
-                            </button>
+                                </button>
+
+                                {/* Delete */}
+                                <button
+                                    onClick={() => handleDelete(f._id)}
+                                    disabled={deleting === f._id}
+                                    title="Delete field"
+                                    className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                                >
+                                    {deleting === f._id ? (
+                                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                        </svg>
+                                    ) : (
+                                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    )}
+                                </button>
+                            </div>
                         </div>
+
+                        {/* Dropdown options panel */}
+                        {f.type === 'dropdown' && (f.options?.length > 0 || quickAdd === f._id) && (
+                            <div className="border-t border-gray-100 px-4 py-3 bg-gray-50 rounded-b-xl">
+                                {/* Existing options as chips */}
+                                {f.options?.length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5 mb-2">
+                                        {f.options.map((opt, i) => (
+                                            <span key={i} className="group/chip inline-flex items-center gap-1 bg-white border border-gray-200 text-gray-700 text-xs px-2.5 py-1 rounded-full">
+                                                {opt}
+                                                <button
+                                                    onClick={() => handleRemoveOption(f, i)}
+                                                    className="text-gray-300 hover:text-red-500 transition opacity-0 group-hover/chip:opacity-100 ml-0.5"
+                                                    title="Remove option"
+                                                >
+                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Quick-add input */}
+                                {quickAdd === f._id && (
+                                    <div className="flex gap-2 mt-1">
+                                        <input
+                                            autoFocus
+                                            type="text"
+                                            value={quickAddValue}
+                                            onChange={e => setQuickAddValue(e.target.value)}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter') { e.preventDefault(); handleQuickAddOption(f); }
+                                                if (e.key === 'Escape') { setQuickAdd(null); setQuickAddValue(''); }
+                                            }}
+                                            placeholder="New option, press Enter"
+                                            className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-green-400 outline-none bg-white"
+                                        />
+                                        <button
+                                            onClick={() => handleQuickAddOption(f)}
+                                            disabled={!quickAddValue.trim() || quickAdding}
+                                            className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-lg disabled:opacity-50 transition"
+                                        >
+                                            {quickAdding ? '...' : 'Add'}
+                                        </button>
+                                        <button
+                                            onClick={() => { setQuickAdd(null); setQuickAddValue(''); }}
+                                            className="px-2 py-1.5 text-gray-400 hover:text-gray-600 text-xs rounded-lg hover:bg-gray-100 transition"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Show add button inline if panel open but quick-add closed */}
+                                {f.options?.length > 0 && quickAdd !== f._id && (
+                                    <button
+                                        onClick={() => { setQuickAdd(f._id); setQuickAddValue(''); }}
+                                        className="mt-1 text-xs text-green-600 hover:text-green-700 font-medium flex items-center gap-1"
+                                    >
+                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                        Add option
+                                    </button>
+                                )}
+                            </div>
+                        )}
                     </div>
                 );
             })}

@@ -3,12 +3,17 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 
-const Navbar = () => {
+const Navbar = ({ user }) => {
     const pathname = usePathname()
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const [userMenuOpen, setUserMenuOpen] = useState(false)
 
-    const navigation =[]
+    const navigation = []
+
+    const displayName = user?.name || user?.email || 'Admin'
+    const displayEmail = user?.email || ''
+    const displayRole = user?.role || 'User'
+    const initials = displayName.charAt(0).toUpperCase()
 
     const isActive = (href) => {
         if (href === '/admin') {
@@ -72,11 +77,11 @@ const Navbar = () => {
                                 className="flex items-center gap-3 p-2 hover:bg-gray-100 rounded-lg transition"
                             >
                                 <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                                    A
+                                    {initials}
                                 </div>
                                 <div className="hidden sm:block text-left">
-                                    <p className="text-sm font-semibold text-gray-900">Admin User</p>
-                                    <p className="text-xs text-gray-500">Administrator</p>
+                                    <p className="text-sm font-semibold text-gray-900">{displayName}</p>
+                                    <p className="text-xs text-gray-500">{displayRole}</p>
                                 </div>
                                 <svg className={`w-4 h-4 text-gray-600 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -87,8 +92,8 @@ const Navbar = () => {
                             {userMenuOpen && (
                                 <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
                                     <div className="px-4 py-3 border-b border-gray-100">
-                                        <p className="text-sm font-semibold text-gray-900">Admin User</p>
-                                        <p className="text-xs text-gray-500">admin@example.com</p>
+                                        <p className="text-sm font-semibold text-gray-900">{displayName}</p>
+                                        <p className="text-xs text-gray-500">{displayEmail}</p>
                                     </div>
                                     <Link href="/admin/profile" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

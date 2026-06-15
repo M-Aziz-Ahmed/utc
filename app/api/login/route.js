@@ -1,56 +1,57 @@
-import User from "@/models/User"
-import dbConnect from "@/utils/dbConnection"
-import { cookies } from "next/headers"
-import { NextResponse } from "next/server"
+import User from '@/models/User'
+import dbConnect from '@/utils/dbConnection'
+import { setSessionCookie } from '@/utils/auth'
+import { NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
 
 export const POST = async (req) => {
     const { email, password } = await req.json()
-    
+
+    if (!email || !password) {
+        return NextResponse.json({ message: 'Email and password are required' }, { status: 400 })
+    }
+
     try {
         await dbConnect()
-        
-        // Find user by email
+
         const user = await User.findOne({ email })
-        
+
         if (!user) {
-            return NextResponse.json({ message: 'User not found' }, { status: 404 })
+            return NextResponse.json({ message: 'Invalid email or password' }, { status: 401 })
         }
-        
-        // Check password
-        if (user.pass !== password) {
-            return NextResponse.json({ message: 'Invalid password' }, { status: 401 })
+
+        // Support both hashed passwords and legacy plaintext (for migration)
+        let passwordValid = false
+        if (user.pass.startsWith('$2')) {
+            // bcrypt hash
+            passwordValid = await bcrypt.compare(password, user.pass)
+        } else {
+            // Legacy plaintext — compare then upgrade to hash
+            passwordValid = user.pass === password
+            if (passwordValid) {
+                const hashed = await bcrypt.hash(password, 12)
+                await User.findByIdAndUpdate(user._id, { pass: hashed })
+            }
         }
-        
-        // Create user session data
-        const userData = {
+
+        if (!passwordValid) {
+            return NextResponse.json({ message: 'Invalid email or password' }, { status: 401 })
+        }
+
+        await setSessionCookie({
             id: user._id.toString(),
             email: user.email,
             name: user.name,
-            role: user.role || 'User'
-        }
-        
-        // Set cookie with user data
-        const cookieStore = await cookies()
-        cookieStore.set('user', encodeURIComponent(JSON.stringify(userData)), {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 60 * 60 * 24 * 7 // 7 days
+            role: user.role || 'User',
         })
-        
-        return NextResponse.json({ 
-            message: 'Login successful!',
-            user: {
-                email: user.email,
-                name: user.name,
-                role: user.role
-            }
+
+        return NextResponse.json({
+            message: 'Login successful',
+            user: { email: user.email, name: user.name, role: user.role },
         }, { status: 200 })
-        
+
     } catch (error) {
         console.error('Login error:', error)
-        return NextResponse.json({ 
-            message: 'An error occurred during login. Please try again.' 
-        }, { status: 500 })
+        return NextResponse.json({ message: 'An error occurred during login. Please try again.' }, { status: 500 })
     }
 }

@@ -62,7 +62,11 @@ export const PUT = async (req, { params }) => {
         
         // Remove password from update if it's empty
         if (body.pass === '' || body.pass === undefined) {
-            delete body.pass;
+            delete body.pass
+        } else {
+            // Hash updated password
+            const bcrypt = (await import('bcryptjs')).default
+            body.pass = await bcrypt.hash(body.pass, 12)
         }
         
         const updatedUser = await User.findByIdAndUpdate(
