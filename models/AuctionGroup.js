@@ -5,9 +5,7 @@ const auctionGroupSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  options: [
-    {}
-  ]
-});
+  options:{type: Array, default: [{}]}
+})
 
-export default mongoose.model.AuctionGroup || mongoose.model("AuctionGroup", auctionGroupSchema);
+export default mongoose.model.AuctionGroup || mongoose.Model("AuctionGroup", auctionGroupSchema);

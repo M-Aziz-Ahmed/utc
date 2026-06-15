@@ -1,4 +1,4 @@
-import auctionDetails from "@/models/AuctionG;
+import auctionDetails from "@/models/AuctionGroup";
 import dbConnect from "@/utils/dbConnection";
 import { NextResponse } from "next/server";
 
