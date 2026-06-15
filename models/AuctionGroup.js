@@ -5,11 +5,11 @@ const auctionGroupSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  options: {type:Array, default: []},
+  options: {type:Array, default: [{}]},
   createdAt: {
     type: Date,
     default: Date.now
   }
 });
 
-export default mongoose.model.AuctionGroup || mongoose.Model("AuctionGroup", auctionGroupSchema);
+export default mongoose.models.AuctionGroup || mongoose.model("AuctionGroup", auctionGroupSchema);

@@ -5,7 +5,9 @@ import { NextResponse } from "next/server";
 export const POST = async (req) => {
     await dbConnect();
     const body = await req.json();
-    const newAuctionDetail = await auctionDetails.create(body);
+    const {name} = body;
+    const {options} = body;
+    const newAuctionDetail = await auctionDetails.create({name, options});
     return NextResponse.json({ message: 'Auction details saved successfully' }, { status: 200 });
 }
 

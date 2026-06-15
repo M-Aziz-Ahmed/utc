@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import {FaEdit, FaTrash} from 'react-icons/fa'
+import { FaEdit, FaTrash } from 'react-icons/fa'
 function Page() {
     const [data, setData] = useState();
     const [modelOpen, setModelOpen] = useState(false)
@@ -11,19 +11,31 @@ function Page() {
         startingBid: '',
         endDate: '',
     });
-    const [auctionVenue, setAuctionVenue]= useState({
-        group:'',
-        name:'',
-        membership:'',
-        tel:'',
-        fax:'',
-        email:'',
-        postal:'',
-        address:'',
+    const [auctionVenue, setAuctionVenue] = useState({
+        name: '',
+        options: [{
+            group: '',
+            membership: '',
+            tel: '',
+            fax: '',
+            email: '',
+            postal: '',
+            address: '',
+        }],
+
     })
     const [auctionVenues, setAuctionVenues] = useState([])
+    const handleNewSite = async () => {
+        const response = await fetch('/api/auctionGroup', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(auctionVenue),
+        });
+    }
     console.log(values);
-    const fields = async () => {
+    const vanues = async () => {
         const response = await fetch('/api/auctionGroup', {
             method: 'GET',
             headers: {
@@ -31,11 +43,12 @@ function Page() {
             },
         });
         const data = await response.json();
-        setData(data);
+        console.log(data)
+        setAuctionVenues(data);
     }
     // fields();
     useEffect(() => {
-        fields();
+        vanues();
     }, []);
 
     const handleSubmit = async (e) => {
@@ -67,7 +80,7 @@ function Page() {
                         <div className="form-body">
                             <div className="m-3 flex flex-col">
                                 <label htmlFor="">Group Name:</label>
-                                <input type="text" className='shadow-lg border-slate-400 border-1 p-1 rounded focus:border-blue-400 outline-none' value={auctionVenue.group} onChange={(e)=>setAuctionVenue({...auctionVenue, group:e.target.value})}/>
+                                <input type="text" className='shadow-lg border-slate-400 border-1 p-1 rounded focus:border-blue-400 outline-none' value={auctionVenue.name} onChange={(e) => setAuctionVenue({ ...auctionVenue, name: e.target.value, options: [{ ...auctionVenue.options[0], group: e.target.value }] })} />
                             </div>
                             <div className="m-3 flex flex-col">
                                 <div className="header flex justify-between">
@@ -78,66 +91,66 @@ function Page() {
                                     <div className='flex flex-wrap gap-3 items-center'>
                                         <div className="mb-3 flex flex-col">
                                             <label htmlFor="" className='text-sm'>Auction Venue</label>
-                                            <input type="text" className='shadow-lg border-slate-400 border-1 rounded focus:border-blue-400 outline-none' value={auctionVenue.name} onChange={(e)=>setAuctionVenue({...auctionVenue, name:e.target.value})}/>
+                                            <input type="text" className='shadow-lg border-slate-400 border-1 rounded focus:border-blue-400 outline-none' value={auctionVenue.options[0]?.name} onChange={(e) => setAuctionVenue({ ...auctionVenue, options: [{ ...auctionVenue.options[0], name: e.target.value }] })} />
                                         </div>
                                         <div className="mb-3 flex flex-col">
                                             <label htmlFor="" className='text-sm'>Membership#</label>
-                                            <input type="text" className='shadow-lg border-slate-400 border-1 rounded focus:border-blue-400 outline-none' value={auctionVenue.membership} onChange={(e)=>setAuctionVenue({...auctionVenue, membership:e.target.value})}/>
+                                            <input type="text" className='shadow-lg border-slate-400 border-1 rounded focus:border-blue-400 outline-none' value={auctionVenue.options[0]?.membership} onChange={(e) => setAuctionVenue({ ...auctionVenue, options: [{ ...auctionVenue.options[0], membership: e.target.value }] })} />
                                         </div>
                                         <div className="mb-3 flex flex-col">
                                             <label htmlFor="" className='text-sm'>TEL:</label>
-                                            <input type="text" className='shadow-lg border-slate-400 border-1 rounded focus:border-blue-400 outline-none' value={auctionVenue.tel} onChange={(e)=>setAuctionVenue({...auctionVenue, tel:e.target.value})}/>
+                                            <input type="text" className='shadow-lg border-slate-400 border-1 rounded focus:border-blue-400 outline-none' value={auctionVenue.options[0]?.tel} onChange={(e) => setAuctionVenue({ ...auctionVenue, options: [{ ...auctionVenue.options[0], tel: e.target.value }] })} />
                                         </div>
                                         <div className="mb-3 flex flex-col">
                                             <label htmlFor="" className='text-sm'>FAX:</label>
-                                            <input type="text" className='shadow-lg border-slate-400 border-1 rounded focus:border-blue-400 outline-none' value={auctionVenue.fax} onChange={(e)=>setAuctionVenue({...auctionVenue, fax:e.target.value})}/>
+                                            <input type="text" className='shadow-lg border-slate-400 border-1 rounded focus:border-blue-400 outline-none' value={auctionVenue.options[0]?.fax} onChange={(e) => setAuctionVenue({ ...auctionVenue, options: [{ ...auctionVenue.options[0], fax: e.target.value }] })} />
                                         </div>
                                         <div className="mb-3 flex flex-col">
                                             <label htmlFor="" className='text-sm'>Email</label>
-                                            <input type="text" className='shadow-lg border-slate-400 border-1 rounded focus:border-blue-400 outline-none' value={auctionVenue.email} onChange={(e)=>setAuctionVenue({...auctionVenue, email:e.target.value})}/>
+                                            <input type="text" className='shadow-lg border-slate-400 border-1 rounded focus:border-blue-400 outline-none' value={auctionVenue.options[0]?.email} onChange={(e) => setAuctionVenue({ ...auctionVenue, options: [{ ...auctionVenue.options[0], email: e.target.value }] })} />
                                         </div>
                                         <div className="mb-3 flex flex-col">
                                             <label htmlFor="" className='text-sm'>Potal Code</label>
-                                            <input type="text" className='shadow-lg border-slate-400 border-1 rounded focus:border-blue-400 outline-none' value={auctionVenue.postal} onChange={(e)=>setAuctionVenue({...auctionVenue, postal:e.target.value})}/>
+                                            <input type="text" className='shadow-lg border-slate-400 border-1 rounded focus:border-blue-400 outline-none' value={auctionVenue.options[0]?.postal} onChange={(e) => setAuctionVenue({ ...auctionVenue, options: [{ ...auctionVenue.options[0], postal: e.target.value }] })} />
                                         </div>
                                         <div className="mb-3 flex flex-col">
                                             <label htmlFor="" className='text-sm'>Address</label>
-                                            <input type="text" className='shadow-lg border-slate-400 border-1 rounded focus:border-blue-400 outline-none' value={auctionVenue.address} onChange={(e)=>setAuctionVenue({...auctionVenue, address:e.target.value})}/>
+                                            <input type="text" className='shadow-lg border-slate-400 border-1 rounded focus:border-blue-400 outline-none' value={auctionVenue.options[0]?.address} onChange={(e) => setAuctionVenue({ ...auctionVenue, options: [{ ...auctionVenue.options[0], address: e.target.value }] })} />
                                         </div>
-                                        <button className='bg-blue-400 rounded p-2 px-3 mt-1.5 text-white text-sm hover:bg-blue-500' onClick={()=>setAuctionVenues([...auctionVenues, auctionVenue])}>Add</button>
+                                        <button className='bg-blue-400 rounded p-2 px-3 mt-1.5 text-white text-sm hover:bg-blue-500' onClick={handleNewSite}>Add</button>
 
                                     </div>
-                                ): (
+                                ) : (
                                     <div className='flex flex-col gap-2'>
-                                     {auctionVenues.length === 0 ?(
-                                        <div className="flex justify-center items-center bg-slate-200 rounded h-40">
-                                            <div className="text-slate-400">
-                                                No venues Yet
+                                        {auctionVenues.length === 0 ? (
+                                            <div className="flex justify-center items-center bg-slate-200 rounded h-40">
+                                                <div className="text-slate-400">
+                                                    No venues Yet
+                                                </div>
                                             </div>
-                                        </div>
-                                     ):(auctionVenues?.map((av)=>(
-                                        <div className='bg-slate-200 shadow rounded p-3 flex justify-between items-center'>
-                                            <div className="">{av.name}</div>
-                                            <div className="flex gap-2"><FaEdit/><FaTrash/></div>
-                                        </div>
-                                    )))}
-                                    
-                                 </div>
+                                        ) : (auctionVenues?.map((av) => (
+                                            <div className='bg-slate-200 shadow rounded p-3 flex justify-between items-center'>
+                                                <div className="">{av.name}</div>
+                                                <div className="flex gap-2"><FaEdit /><FaTrash /></div>
+                                            </div>
+                                        )))}
+
+                                    </div>
                                 )}
+                            </div>
                         </div>
                     </div>
                 </div>
-                </div>
-    )
-}
-{
-    data && data.map((field) => (
-        <div key={field._id}>
-            <h3>{field.label}</h3>
-            <input type={field.type} placeholder={field.placeholder} value={values[field.label]} onChange={(e) => setValues({ ...values, [field.name]: e.target.value })} />
-        </div>
-    ))
-}
+            )
+            }
+            {
+                data && data.map((field) => (
+                    <div key={field._id}>
+                        <h3>{field.label}</h3>
+                        <input type={field.type} placeholder={field.placeholder} value={values[field.label]} onChange={(e) => setValues({ ...values, [field.name]: e.target.value })} />
+                    </div>
+                ))
+            }
         </div >
     )
 }
