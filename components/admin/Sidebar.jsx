@@ -152,7 +152,7 @@ const Sidebar = () => {
     const pathname = usePathname();
 
     return (
-        <div className={`bg-white text-slate-700 h-screen transition-all duration-300 flex flex-col border-r border-slate-200 shadow-sm ${toggle ? 'w-64' : 'w-20'}`}>
+        <div className={`bg-white text-slate-700 h-screen transition-all duration-300 flex flex-col border-r border-slate-200 shadow-sm shrink-0 z-40 ${toggle ? 'w-64' : 'w-20'}`}>
             {/* Header Area */}
             <div className="p-4 flex items-center justify-between border-b border-slate-100 min-h-[70px]">
                 {toggle && <span className="font-extrabold text-base text-slate-900 tracking-wider">ADMIN PANEL</span>}

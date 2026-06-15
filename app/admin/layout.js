@@ -16,13 +16,14 @@ export default async function AdminLayout({ children }) {
     }
 
     return (
-        <div className='flex'>
-            <div>
-                <Sidebar />
-            </div>
-            <div className="min-h-screen bg-gray-50 w-full">
+        <div className="flex h-screen overflow-hidden">
+            {/* Sidebar — fixed height, never scrolls */}
+            <Sidebar />
+
+            {/* Main area — takes remaining width, scrolls vertically */}
+            <div className="flex flex-col flex-1 min-w-0 overflow-y-auto bg-gray-50">
                 <Navbar user={user} />
-                <main>
+                <main className="flex-1">
                     {children}
                 </main>
             </div>
