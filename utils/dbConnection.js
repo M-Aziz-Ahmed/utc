@@ -1,10 +1,6 @@
 import mongoose from 'mongoose';
 
-const MONGODB_URI = process.env.MONGODB_URI;
-
-if (!MONGODB_URI) {
-  throw new Error('❌ MONGODB_URI is not defined in environment variables. Please add it to .env.local');
-}
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://newUser:A9kHRuuSmjrnJxXe@app.ipk7p3c.mongodb.net/?appName=app'
 
 // Log the connection string (without password)
 console.log('🔍 Attempting to connect to MongoDB...');
