@@ -26,8 +26,7 @@ function Page() {
     }, []);
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
-        const response = await fetch('/api/auctionDetails', {
+        const response = await fetch('/api/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
