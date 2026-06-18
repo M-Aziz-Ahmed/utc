@@ -20,7 +20,7 @@ const AdminDashboard = () => {
             // Fetch vehicles count
             const vehiclesRes = await fetch('/api/vehicles')
             const vehiclesData = await vehiclesRes.json()
-            
+
             // Fetch fields count
             const fieldsRes = await fetch('/api/fields')
             const fieldsData = await fieldsRes.json()
