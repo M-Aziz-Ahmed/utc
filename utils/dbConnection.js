@@ -1,7 +1,18 @@
 import mongoose from 'mongoose';
 
+const MONGODB_URI = process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+  throw new Error('❌ MONGODB_URI is not defined in environment variables. Please add it to .env.local');
+}
+
+// Log the connection string (without password)
+console.log('🔍 Attempting to connect to MongoDB...');
+console.log('🔍 URI:', MONGODB_URI.replace(/:[^:@]+@/, ':****@'));
+
 let cached = global.mongoose;
 if (!cached) {
+<<<<<<< HEAD
     cached = global.mongoose = { conn: null, promise: null };
 
     // Clear cache whenever connection drops so next call reconnects cleanly
@@ -50,7 +61,35 @@ async function dbConnect() {
     }
 
     cached.conn = await cached.promise;
+=======
+  cached = global.mongoose = { conn: null, promise: null };
+}
+
+async function dbConnect() {
+  if (cached.conn) {
+>>>>>>> 2b5f4405169d09a139e43cdff215672a85a46196
     return cached.conn;
+  }
+
+  if (!cached.promise) {
+    const opts = {
+      bufferCommands: false,
+      serverSelectionTimeoutMS: 30000,
+      socketTimeoutMS: 45000,
+    };
+
+    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+      console.log('✅ MongoDB connected successfully');
+      return mongoose;
+    }).catch((error) => {
+      console.error('❌ MongoDB connection error:', error.message);
+      console.error('❌ Error code:', error.code);
+      cached.promise = null; // Reset promise on error
+      throw error;
+    });
+  }
+  cached.conn = await cached.promise;
+  return cached.conn;
 }
 
 export default dbConnect;
