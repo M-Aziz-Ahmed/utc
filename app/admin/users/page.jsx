@@ -93,24 +93,55 @@ const UsersPage = () => {
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {/* Header */}
-            <div className="mb-8 flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Users Management</h1>
-                    <p className="text-gray-600 mt-2">Manage system users and their permissions</p>
+            <div className="mb-5 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="w-1 h-5 rounded-full" style={{background:'var(--accent)'}}></div>
+                    <h1 className="font-bold" style={{fontSize:'var(--text-2xl)'}}>Users</h1>
+                    <span style={{fontSize:'var(--text-xs)', color:'var(--foreground-muted)'}}>({users.length} total)</span>
                 </div>
-                <Link 
-                    href="/setupUser"
-                    className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
-                >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add New User
+                <Link href="/setupUser"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-white rounded font-semibold transition"
+                    style={{background:'var(--accent)', fontSize:'var(--text-sm)'}}>
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                    Add User
                 </Link>
             </div>
 
             {/* Search and Filters */}
-            <div className="mb-6 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="mb-4 jp-card p-3">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div className="md:col-span-2 relative">
+                        <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <input type="text" placeholder="Search by name, email or company..." value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                            className="w-full pl-8 pr-3 py-1.5 rounded border border-gray-200 focus:ring-1 focus:border-red-400 outline-none"
+                            style={{fontSize:'var(--text-sm)'}} />
+                    </div>
+                    <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}
+                        className="px-3 py-1.5 rounded border border-gray-200 outline-none"
+                        style={{fontSize:'var(--text-sm)'}}>
+                        <option value="all">All Roles</option>
+                        {uniqueRoles.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+                        className="px-3 py-1.5 rounded border border-gray-200 outline-none"
+                        style={{fontSize:'var(--text-sm)'}}>
+                        <option value="all">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="pending">Pending</option>
+                    </select>
+                </div>
+                <div className="mt-2 flex items-center justify-between">
+                    <span style={{fontSize:'var(--text-xs)', color:'var(--foreground-muted)'}}>
+                        Showing {filteredUsers.length} of {users.length}
+                    </span>
+                    {(searchTerm || roleFilter !== 'all' || statusFilter !== 'all') && (
+                        <button onClick={clearFilters} style={{fontSize:'var(--text-xs)', color:'var(--accent)'}}>Clear filters</button>
+                    )}
+                </div>
+            </div>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     {/* Search Bar */}
                     <div className="md:col-span-2">
@@ -156,57 +187,8 @@ const UsersPage = () => {
                     </div>
                 </div>
 
-                {/* Active Filters Display */}
-                {(searchTerm || roleFilter !== 'all' || statusFilter !== 'all') && (
-                    <div className="mt-4 flex items-center gap-2 flex-wrap">
-                        <span className="text-sm text-gray-600">Active filters:</span>
-                        {searchTerm && (
-                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
-                                Search: "{searchTerm}"
-                                <button onClick={() => setSearchTerm('')} className="hover:bg-blue-200 rounded-full p-0.5">
-                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </span>
-                        )}
-                        {roleFilter !== 'all' && (
-                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
-                                Role: {roleFilter}
-                                <button onClick={() => setRoleFilter('all')} className="hover:bg-purple-200 rounded-full p-0.5">
-                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </span>
-                        )}
-                        {statusFilter !== 'all' && (
-                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
-                                Status: {statusFilter}
-                                <button onClick={() => setStatusFilter('all')} className="hover:bg-green-200 rounded-full p-0.5">
-                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </span>
-                        )}
-                        <button
-                            onClick={clearFilters}
-                            className="text-sm text-gray-600 hover:text-gray-900 underline"
-                        >
-                            Clear all
-                        </button>
-                    </div>
-                )}
-
-                {/* Results Count */}
-                <div className="mt-4 text-sm text-gray-600">
-                    Showing {filteredUsers.length} of {users.length} users
-                </div>
-            </div>
-
             {/* Users Table */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="jp-card overflow-hidden">
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-20">
                         <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
@@ -265,56 +247,41 @@ const UsersPage = () => {
                             <tbody className="divide-y divide-gray-200">
                                 {filteredUsers.map((user) => (
                                     <tr key={user._id} className="hover:bg-gray-50 transition">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-semibold">
+                                        <td className="px-4 py-3">
+                                            <div className="flex items-center gap-2.5">
+                                                <div className="w-7 h-7 rounded flex items-center justify-center text-white font-bold shrink-0"
+                                                     style={{background:'var(--accent)', fontSize:'var(--text-xs)'}}>
                                                     {(user.name || user.email).charAt(0).toUpperCase()}
                                                 </div>
                                                 <div>
-                                                    <p className="font-semibold text-gray-900">{user.name || 'N/A'} {user.surname || ''}</p>
-                                                    <p className="text-sm text-gray-500">{user.email}</p>
+                                                    <p className="font-semibold" style={{fontSize:'var(--text-sm)'}}>{user.name || 'N/A'} {user.surname || ''}</p>
+                                                    <p style={{fontSize:'var(--text-xs)', color:'var(--foreground-muted)'}}>{user.email}</p>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
-                                                {user.role || 'User'}
-                                            </span>
+                                        <td className="px-4 py-3">
+                                            <span className="jp-badge jp-badge-blue">{user.role || 'User'}</span>
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                                                user.verified 
-                                                    ? 'bg-green-100 text-green-700' 
-                                                    : 'bg-yellow-100 text-yellow-700'
-                                            }`}>
-                                                <span className={`w-1.5 h-1.5 rounded-full mr-2 ${
-                                                    user.verified ? 'bg-green-500' : 'bg-yellow-500'
-                                                }`}></span>
+                                        <td className="px-4 py-3">
+                                            <span className={`jp-badge ${user.verified ? 'jp-badge-green' : 'jp-badge-gray'}`}>
+                                                <span className={`w-1.5 h-1.5 rounded-full mr-1.5 inline-block ${user.verified ? 'bg-green-500' : 'bg-gray-400'}`}></span>
                                                 {user.verified ? 'Active' : 'Pending'}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-600">
+                                        <td className="px-4 py-3" style={{fontSize:'var(--text-xs)', color:'var(--foreground-muted)'}}>
                                             {new Date(user.createdAt || Date.now()).toLocaleDateString()}
                                         </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <Link
-                                                    href={`/admin/users/edit/${user._id}`}
-                                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                                                    title="Edit user"
-                                                >
-                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                    </svg>
+                                        <td className="px-4 py-3 text-right">
+                                            <div className="flex items-center justify-end gap-1">
+                                                <Link href={`/admin/users/edit/${user._id}`}
+                                                    className="p-1.5 rounded hover:bg-blue-50 transition"
+                                                    style={{color:'#2563eb'}}>
+                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                                 </Link>
-                                                <button
-                                                    onClick={() => setDeleteConfirm(user._id)}
-                                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
-                                                    title="Delete user"
-                                                >
-                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
+                                                <button onClick={() => setDeleteConfirm(user._id)}
+                                                    className="p-1.5 rounded hover:bg-red-50 transition"
+                                                    style={{color:'var(--accent)'}}>
+                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                                 </button>
                                             </div>
                                         </td>

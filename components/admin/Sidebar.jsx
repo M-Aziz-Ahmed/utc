@@ -152,13 +152,14 @@ const Sidebar = () => {
     const pathname = usePathname();
 
     return (
-        <div className={`bg-white text-slate-700 h-screen transition-all duration-300 flex flex-col border-r border-slate-200 shadow-sm shrink-0 z-40 ${toggle ? 'w-64' : 'w-20'}`}>
+        <div className={`text-slate-200 h-screen transition-all duration-300 flex flex-col border-r shrink-0 z-40 ${toggle ? 'w-56' : 'w-14'}`} style={{background: 'var(--ink)', borderColor: 'var(--ink-light)'}}>
             {/* Header Area */}
-            <div className="p-4 flex items-center justify-between border-b border-slate-100 min-h-[70px]">
-                {toggle && <span className="font-extrabold text-base text-slate-900 tracking-wider">ADMIN PANEL</span>}
+            <div className="p-3 flex items-center justify-between border-b min-h-11" style={{borderColor: 'var(--ink-light)'}}>
+                {toggle && <span className="font-black text-xs tracking-widest uppercase" style={{color: 'var(--accent)', letterSpacing: '0.15em'}}>UTC ADMIN</span>}
                 <button
                     onClick={() => setToggle(prev => !prev)}
-                    className="p-2 ml-auto rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors focus:outline-none"
+                    className="p-1.5 ml-auto rounded text-slate-400 hover:text-white transition-colors focus:outline-none"
+                    style={{background: 'rgba(255,255,255,0.08)'}}
                 >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -174,9 +175,9 @@ const Sidebar = () => {
                     const isActive = isCurrentPath || isChildPathActive;
                     const isMenuOpen = openMenus[n.name];
 
-                    // Light Theme Variable Text Styles
-                    const activeClass = "bg-blue-400 shadow-md shadow-blue-600/10 font-medium";
-                    const inactiveClass = "text-slate-600 hover:bg-slate-50 hover:text-slate-900";
+                    // Active / inactive styles for dark sidebar
+                    const activeClass = "font-semibold rounded text-white";
+                    const inactiveClass = "text-slate-200 hover:text-white hover:bg-white/10 rounded";
 
                     const useLinkElement = n.href && !n.subL;
                     const Element = useLinkElement ? Link : "button";
@@ -186,18 +187,19 @@ const Sidebar = () => {
                             <Element
                                 href={useLinkElement ? n.href : undefined}
                                 onClick={() => n.subL && toggleSubMenu(n.name)}
-                                className={`w-full group rounded-xl p-3 flex items-center transition-all duration-150 text-left focus:outline-none ${isActive ? activeClass : inactiveClass}`}
+                                className={`w-full group rounded p-2 flex items-center transition-all duration-150 text-left focus:outline-none ${isActive ? activeClass : inactiveClass}`}
+                                style={isActive ? {background: 'var(--accent)'} : {}}
                             >
-                                <span className={`flex-shrink-0 ${isActive ? 'text-[white!important]' : 'text-slate-500 group-hover:text-slate-800'}`}>
+                                <span className={`shrink-0 ${isActive ? 'text-[white!important]' : 'text-[white!important] group-hover:text-white'}`}>
                                     {n.icon}
                                 </span>
 
                                 {toggle && (
                                     <div className="flex items-center justify-between w-full ml-3 overflow-hidden">
-                                        <span className={`truncate text-sm font-medium tracking-wide ${isActive && 'text-[white!important]'}`}>{n.name}</span>
+                                        <span className={`truncate font-medium tracking-wide ${isActive ? 'text-[white!important]' : 'text-[white!important] group-hover:text-white'}`} style={{fontSize:'var(--text-sm)'}}>{n.name}</span>
                                         {n.subL && (
                                             <svg
-                                                className={`w-4 h-4 transform transition-transform duration-200 ${isActive ? 'text-[white!important]' : 'text-slate-400 group-hover:text-slate-600'} ${isMenuOpen ? 'rotate-180' : ''}`}
+                                                className={`w-3 h-3 transform transition-transform duration-200 ${isActive ? 'text-[white!important]' : 'text-[white!important] group-hover:text-white'} ${isMenuOpen ? 'rotate-180' : ''}`}
                                                 fill="none" viewBox="0 0 24 24" stroke="currentColor"
                                             >
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -207,19 +209,20 @@ const Sidebar = () => {
                                 )}
                             </Element>
 
-                            {/* Submenu Layout matches your UI layout */}
+                            {/* Submenu */}
                             {n.subL && isMenuOpen && toggle && (
-                                <div className="mt-1 ml-3 pl-1 space-y-1 border-l-2 border-gray-600">
+                                <div className="mt-0.5 ml-2 pl-2 space-y-0.5" style={{borderLeft: '2px solid rgba(192,57,43,0.4)'}}>
                                     {n.subL.map((sl, index) => {
                                         const isSubActive = sl.href === pathname;
                                         return (
                                             <Link
                                                 key={`${sl.name}-${index}`}
                                                 href={sl.href}
-                                                className={`w-full text-sm p-1.5 pl-4 flex items-center gap-3 transition-all ${isSubActive ? 'bg-gray-200 rounded-lg border-slate-400 text-white font-medium' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
+                                                className={`w-full p-1.5 pl-3 flex items-center gap-2 transition-all rounded ${isSubActive ? 'text-[white!important] font-semibold' : 'text-[white!important] hover:text-white hover:bg-white/10'}`}
+                                                style={isSubActive ? {background:'var(--accent)', fontSize:'var(--text-sm)'} : {fontSize:'var(--text-sm)'}}
                                             >
-                                                <span className={`flex-shrink-0 ${isSubActive ? '' : 'text-slate-400'}`}>{sl.icon}</span>
-                                                <span className={`truncate ${isSubActive && ''}`}>{sl.name}</span>
+                                                <span className={`shrink-0 ${isSubActive ? 'text-[white!important]' : 'text-[white!important]'}`}>{sl.icon}</span>
+                                                <span className="truncate text-[white!important]">{sl.name}</span>
                                             </Link>
                                         );
                                     })}
