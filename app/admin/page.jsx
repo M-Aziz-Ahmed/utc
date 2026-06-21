@@ -10,23 +10,16 @@ const AdminDashboard = () => {
 
     const fetchDashboardData = async () => {
         try {
-<<<<<<< HEAD
             const [vRes, fRes, uRes] = await Promise.all([
                 fetch('/api/vehicles'), fetch('/api/fields'), fetch('/api/users')
             ])
             const [v, f, u] = await Promise.all([vRes.json(), fRes.json(), uRes.json()])
-=======
-            // Fetch vehicles count
             const vehiclesRes = await fetch('/api/vehicles')
             const vehiclesData = await vehiclesRes.json()
-
-            // Fetch fields count
             const fieldsRes = await fetch('/api/fields')
-            const fieldsData = await fieldsRes.json()
+            const fieldsData = await fieldsRes.json() 
             const usersRes = await fetch('/api/users')
             const usersData = await usersRes.json()
-
->>>>>>> 2b5f4405169d09a139e43cdff215672a85a46196
             setStats({
                 totalVehicles: Array.isArray(v) ? v.length : 0,
                 totalFields:   Array.isArray(f) ? f.length : 0,
