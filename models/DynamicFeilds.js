@@ -1,10 +1,13 @@
 import mongoose from "mongoose";
 
-const DynFeildsSchema= new mongoose.Schema({   
-    label : { type: String},
-    type : { type: String},
-    isRequired  : { type: Boolean},
-    belongsto : { type: String},
-    options: [{ type: String, default: [] }]  // Array of options for dropdown type
+const DynFeildsSchema = new mongoose.Schema({
+    label:      { type: String },
+    type:       { type: String },
+    isRequired: { type: Boolean },
+    belongsto:  { type: String },
+    options:    [{ type: String }],
+    order:      { type: Number, default: 0 },
+    showOnCard: { type: Boolean, default: true },
 });
-export default mongoose.models.DynFeilds || mongoose.model('DynFeilds', DynFeildsSchema)
+
+export default mongoose.models.DynFeilds || mongoose.model('DynFeilds', DynFeildsSchema);

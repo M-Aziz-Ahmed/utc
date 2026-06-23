@@ -18,21 +18,25 @@ export const POST = async (req) => {
             return NextResponse.json({ message: 'A field with this label already exists' }, { status: 400 });
         }
 
-        const fieldData = { 
-            label, 
-            type, 
-            isRequired: isRequired ?? false, 
-            belongsto 
+        // Auto-assign next order value within the same form
+        const lastField = await DynamicFeilds.findOne({ belongsto }).sort({ order: -1 });
+        const nextOrder = lastField ? (lastField.order ?? 0) + 1 : 0;
+
+        const fieldData = {
+            label,
+            type,
+            isRequired: isRequired ?? false,
+            belongsto,
+            order: nextOrder,
+            showOnCard: true,
         };
-        
-        // Add options if provided (for dropdown type)
+
         if (options && Array.isArray(options)) {
             fieldData.options = options;
         }
 
-        await DynamicFeilds.create(fieldData);
-
-        return NextResponse.json({ message: 'Field created successfully' }, { status: 201 });
+        const created = await DynamicFeilds.create(fieldData);
+        return NextResponse.json({ message: 'Field created successfully', field: created }, { status: 201 });
     } catch (error) {
         console.error('newField error:', error);
         return NextResponse.json({ message: 'Error creating field' }, { status: 500 });

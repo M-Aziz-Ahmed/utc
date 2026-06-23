@@ -7,7 +7,19 @@ export const PATCH = async (req, { params }) => {
         await dbConnect();
         const { id } = await params;
         const body = await req.json();
-        const updated = await DynamicFeilds.findByIdAndUpdate(id, { $set: body }, { new: true });
+
+        // Build the $set object explicitly, preserving boolean false values
+        const setObj = {};
+        for (const [key, val] of Object.entries(body)) {
+            setObj[key] = val;  // includes showOnCard: false
+        }
+
+        const updated = await DynamicFeilds.findByIdAndUpdate(
+            id,
+            { $set: setObj },
+            { new: true, strict: false }  // strict:false ensures non-schema fields persist too
+        );
+
         if (!updated) {
             return NextResponse.json({ message: 'Field not found' }, { status: 404 });
         }

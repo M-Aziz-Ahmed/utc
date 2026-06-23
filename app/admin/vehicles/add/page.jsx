@@ -1,9 +1,11 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 
+const LETTERS = ['All', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')]
+
 // ── Reusable search input ──────────────────────────────────────────────────────
 const SearchBar = ({ value, onChange, placeholder = 'Search...' }) => (
-    <div className="relative mb-4">
+    <div className="relative mb-2">
         <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
         </svg>
@@ -19,6 +21,32 @@ const SearchBar = ({ value, onChange, placeholder = 'Search...' }) => (
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
         )}
+    </div>
+)
+
+// ── A–Z letter filter bar ──────────────────────────────────────────────────────
+const AlphaFilter = ({ value, onChange, available }) => (
+    <div className="flex flex-wrap gap-0.5 mb-3">
+        {LETTERS.map(l => {
+            const isAvail = l === 'All' || available.has(l)
+            const isActive = value === l
+            return (
+                <button
+                    key={l}
+                    onClick={() => onChange(isActive ? 'All' : l)}
+                    disabled={!isAvail}
+                    className={`w-7 h-6 rounded text-xs font-bold transition ${
+                        isActive
+                            ? 'bg-blue-600 text-white'
+                            : isAvail
+                            ? 'bg-gray-100 text-gray-700 hover:bg-blue-100 hover:text-blue-700'
+                            : 'bg-gray-50 text-gray-300 cursor-not-allowed'
+                    }`}
+                >
+                    {l}
+                </button>
+            )
+        })}
     </div>
 )
 
@@ -87,16 +115,20 @@ const AddVehiclePage = () => {
     const [auctionGroups, setAuctionGroups] = useState([])
     const [selectedGroup, setSelectedGroup] = useState(null)
     const [groupSearch, setGroupSearch] = useState('')
+    const [groupLetter, setGroupLetter] = useState('All')
 
     const [selectedVenue, setSelectedVenue] = useState(null)
     const [venueSearch, setVenueSearch] = useState('')
+    const [venueLetter, setVenueLetter] = useState('All')
 
     const [manufacturers, setManufacturers] = useState([])
     const [selectedManufacturer, setSelectedManufacturer] = useState(null)
     const [mfgSearch, setMfgSearch] = useState('')
+    const [mfgLetter, setMfgLetter] = useState('All')
 
     const [selectedModel, setSelectedModel] = useState(null)
     const [modelSearch, setModelSearch] = useState('')
+    const [modelLetter, setModelLetter] = useState('All')
 
     const [selectedVariant, setSelectedVariant] = useState('')
     const [variantSearch, setVariantSearch] = useState('')
@@ -232,7 +264,7 @@ const AddVehiclePage = () => {
             auctionGroup: selectedGroup?.name, auctionGroupId: selectedGroup?._id,
             auctionVenue: selectedVenue?.name,
             manufacturer: selectedManufacturer?.name, manufacturerId: selectedManufacturer?._id,
-            model: selectedModel?.name, variant: selectedVariant,
+            model: selectedModel?.name,
         }))
         fields.forEach(f => {
             const v = formData[f._id]
@@ -250,22 +282,46 @@ const AddVehiclePage = () => {
 
     const handleChange = (id, value) => setFormData(prev => ({ ...prev, [id]: value }))
 
-    // ── Filtered lists ──
-    const filteredGroups = useMemo(() =>
-        auctionGroups.filter(g => g.name.toLowerCase().includes(groupSearch.toLowerCase())),
-        [auctionGroups, groupSearch])
+    // ── Filtered + sorted lists ──
+    const sortByName = (a, b) => (a.name || '').localeCompare(b.name || '')
 
-    const filteredVenues = useMemo(() =>
-        (selectedGroup?.options || []).filter(v => v.name?.toLowerCase().includes(venueSearch.toLowerCase())),
-        [selectedGroup, venueSearch])
+    const filteredGroups = useMemo(() => {
+        const available = new Set(auctionGroups.map(g => g.name?.[0]?.toUpperCase()).filter(Boolean))
+        const list = auctionGroups
+            .filter(g => g.name.toLowerCase().includes(groupSearch.toLowerCase()))
+            .filter(g => groupLetter === 'All' || g.name?.[0]?.toUpperCase() === groupLetter)
+            .sort(sortByName)
+        return { list, available }
+    }, [auctionGroups, groupSearch, groupLetter])
 
-    const filteredMfg = useMemo(() =>
-        manufacturers.filter(m => m.name.toLowerCase().includes(mfgSearch.toLowerCase()) || m.country?.toLowerCase().includes(mfgSearch.toLowerCase())),
-        [manufacturers, mfgSearch])
+    const filteredVenues = useMemo(() => {
+        const all = selectedGroup?.options || []
+        const available = new Set(all.map(v => v.name?.[0]?.toUpperCase()).filter(Boolean))
+        const list = all
+            .filter(v => v.name?.toLowerCase().includes(venueSearch.toLowerCase()))
+            .filter(v => venueLetter === 'All' || v.name?.[0]?.toUpperCase() === venueLetter)
+            .sort(sortByName)
+        return { list, available }
+    }, [selectedGroup, venueSearch, venueLetter])
 
-    const filteredModels = useMemo(() =>
-        (selectedManufacturer?.models || []).filter(m => m.name.toLowerCase().includes(modelSearch.toLowerCase())),
-        [selectedManufacturer, modelSearch])
+    const filteredMfg = useMemo(() => {
+        const available = new Set(manufacturers.map(m => m.name?.[0]?.toUpperCase()).filter(Boolean))
+        const list = manufacturers
+            .filter(m => m.name.toLowerCase().includes(mfgSearch.toLowerCase()) || m.country?.toLowerCase().includes(mfgSearch.toLowerCase()))
+            .filter(m => mfgLetter === 'All' || m.name?.[0]?.toUpperCase() === mfgLetter)
+            .sort(sortByName)
+        return { list, available }
+    }, [manufacturers, mfgSearch, mfgLetter])
+
+    const filteredModels = useMemo(() => {
+        const all = selectedManufacturer?.models || []
+        const available = new Set(all.map(m => m.name?.[0]?.toUpperCase()).filter(Boolean))
+        const list = all
+            .filter(m => m.name.toLowerCase().includes(modelSearch.toLowerCase()))
+            .filter(m => modelLetter === 'All' || m.name?.[0]?.toUpperCase() === modelLetter)
+            .sort(sortByName)
+        return { list, available }
+    }, [selectedManufacturer, modelSearch, modelLetter])
 
     const filteredVariants = useMemo(() =>
         (selectedModel?.variants || []).filter(v => v.toLowerCase().includes(variantSearch.toLowerCase())),
@@ -383,12 +439,28 @@ const AddVehiclePage = () => {
         { num: 2, label: 'Venue' },
         { num: 3, label: 'Maker' },
         { num: 4, label: 'Model' },
-        { num: 5, label: 'Variant' },
-        { num: 6, label: 'Details' },
+        { num: 5, label: 'Details' },
     ]
 
+    // which steps have been reached (for click navigation)
+    const maxReached = Math.max(currentStep,
+        selectedGroup ? 2 : 1,
+        selectedVenue ? 3 : 1,
+        selectedManufacturer ? 4 : 1,
+        selectedModel ? 5 : 1,
+    )
+
+    const canGoToStep = (num) => {
+        if (num === 1) return true
+        if (num === 2) return !!selectedGroup
+        if (num === 3) return !!selectedVenue
+        if (num === 4) return !!selectedManufacturer
+        if (num === 5) return !!selectedModel
+        return false
+    }
+
     // breadcrumb summary
-    const crumbs = [selectedGroup?.name, selectedVenue?.name, selectedManufacturer?.name, selectedModel?.name, selectedVariant].filter(Boolean)
+    const crumbs = [selectedGroup?.name, selectedVenue?.name, selectedManufacturer?.name, selectedModel?.name].filter(Boolean)
 
     return (
         <div className="min-h-screen bg-gray-50 py-6 px-4">
@@ -409,23 +481,29 @@ const AddVehiclePage = () => {
                     )}
                 </div>
 
-                {/* Step indicator — compact pill strip */}
+                {/* Step indicator — clickable pills */}
                 <div className="flex items-center gap-1 mb-5 overflow-x-auto pb-1">
                     {steps.map((step, idx) => (
                         <div key={step.num} className="flex items-center gap-1 shrink-0">
-                            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                                currentStep === step.num
-                                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
-                                    : currentStep > step.num
-                                    ? 'bg-green-100 text-green-700'
-                                    : 'bg-gray-100 text-gray-400'
-                            }`}>
+                            <button
+                                onClick={() => canGoToStep(step.num) && setCurrentStep(step.num)}
+                                disabled={!canGoToStep(step.num)}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                                    currentStep === step.num
+                                        ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
+                                        : currentStep > step.num
+                                        ? 'bg-green-100 text-green-700 cursor-pointer hover:bg-green-200'
+                                        : canGoToStep(step.num)
+                                        ? 'bg-gray-100 text-gray-500 cursor-pointer hover:bg-gray-200'
+                                        : 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                                }`}
+                            >
                                 {currentStep > step.num
                                     ? <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                                     : <span>{step.num}</span>
                                 }
                                 {step.label}
-                            </div>
+                            </button>
                             {idx < steps.length - 1 && <div className={`w-4 h-px ${currentStep > step.num ? 'bg-green-300' : 'bg-gray-200'}`} />}
                         </div>
                     ))}
@@ -438,9 +516,10 @@ const AddVehiclePage = () => {
                     {currentStep === 1 && (
                         <div>
                             <h2 className="text-base font-bold text-gray-800 mb-3">Select Auction Group</h2>
-                            <SearchBar value={groupSearch} onChange={setGroupSearch} placeholder="Search groups..." />
+                            <SearchBar value={groupSearch} onChange={v => { setGroupSearch(v); setGroupLetter('All') }} placeholder="Search groups..." />
+                            <AlphaFilter value={groupLetter} onChange={setGroupLetter} available={filteredGroups.available} />
                             <PillGrid
-                                items={filteredGroups}
+                                items={filteredGroups.list}
                                 selected={selectedGroup}
                                 onSelect={(g) => { setSelectedGroup(g); setSelectedVenue(null) }}
                                 getLabel={g => g.name}
@@ -457,9 +536,10 @@ const AddVehiclePage = () => {
                         <div>
                             <h2 className="text-base font-bold text-gray-800 mb-1">Select Venue</h2>
                             <p className="text-xs text-gray-400 mb-3">Group: <span className="font-semibold text-gray-600">{selectedGroup?.name}</span></p>
-                            <SearchBar value={venueSearch} onChange={setVenueSearch} placeholder="Search venues..." />
+                            <SearchBar value={venueSearch} onChange={v => { setVenueSearch(v); setVenueLetter('All') }} placeholder="Search venues..." />
+                            <AlphaFilter value={venueLetter} onChange={setVenueLetter} available={filteredVenues.available} />
                             <PillGrid
-                                items={filteredVenues}
+                                items={filteredVenues.list}
                                 selected={selectedVenue}
                                 onSelect={setSelectedVenue}
                                 getLabel={v => v.name}
@@ -481,9 +561,10 @@ const AddVehiclePage = () => {
                                     New
                                 </button>
                             </div>
-                            <SearchBar value={mfgSearch} onChange={setMfgSearch} placeholder="Search manufacturers..." />
+                            <SearchBar value={mfgSearch} onChange={v => { setMfgSearch(v); setMfgLetter('All') }} placeholder="Search manufacturers..." />
+                            <AlphaFilter value={mfgLetter} onChange={setMfgLetter} available={filteredMfg.available} />
                             <PillGrid
-                                items={filteredMfg}
+                                items={filteredMfg.list}
                                 selected={selectedManufacturer}
                                 onSelect={(m) => { setSelectedManufacturer(m); setSelectedModel(null) }}
                                 getLabel={m => m.name}
@@ -507,47 +588,22 @@ const AddVehiclePage = () => {
                                     New
                                 </button>
                             </div>
-                            <SearchBar value={modelSearch} onChange={setModelSearch} placeholder="Search models..." />
+                            <SearchBar value={modelSearch} onChange={v => { setModelSearch(v); setModelLetter('All') }} placeholder="Search models..." />
+                            <AlphaFilter value={modelLetter} onChange={setModelLetter} available={filteredModels.available} />
                             <PillGrid
-                                items={filteredModels}
+                                items={filteredModels.list}
                                 selected={selectedModel}
                                 onSelect={(m) => { setSelectedModel(m); setSelectedVariant('') }}
                                 getLabel={m => m.name}
                                 getSub={m => `${m.variants?.length || 0} variant${m.variants?.length !== 1 ? 's' : ''}`}
                                 emptyMsg="No models yet"
                             />
-                            <StepNav onBack={() => setCurrentStep(3)} onNext={() => setCurrentStep(5)} nextLabel="Select Variant" nextDisabled={!selectedModel} />
+                            <StepNav onBack={() => setCurrentStep(3)} onNext={() => setCurrentStep(5)} nextLabel="Vehicle Details" nextDisabled={!selectedModel} />
                         </div>
                     )}
 
-                    {/* ── Step 5: Variant ── */}
+                    {/* ── Step 5: Vehicle Details ── */}
                     {currentStep === 5 && (
-                        <div>
-                            <div className="flex items-center justify-between mb-3">
-                                <div>
-                                    <h2 className="text-base font-bold text-gray-800">Select Variant / Trim</h2>
-                                    <p className="text-xs text-gray-400"><span className="font-semibold text-gray-600">{selectedManufacturer?.name}</span> · <span className="font-semibold text-gray-600">{selectedModel?.name}</span></p>
-                                </div>
-                                <button onClick={() => setShowAddVariant(true)} className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 border border-blue-200 hover:border-blue-400 px-2.5 py-1.5 rounded-lg transition">
-                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                                    New
-                                </button>
-                            </div>
-                            <SearchBar value={variantSearch} onChange={setVariantSearch} placeholder="Search variants..." />
-                            <PillGrid
-                                items={filteredVariants.map(v => ({ name: v }))}
-                                selected={{ name: selectedVariant }}
-                                onSelect={(v) => setSelectedVariant(v.name)}
-                                getLabel={v => v.name}
-                                getSub={null}
-                                emptyMsg="No variants yet — add one"
-                            />
-                            <StepNav onBack={() => setCurrentStep(4)} onNext={() => setCurrentStep(6)} nextLabel="Vehicle Details" nextDisabled={!selectedVariant} />
-                        </div>
-                    )}
-
-                    {/* ── Step 6: Vehicle Details ── */}
-                    {currentStep === 6 && (
                         <div>
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="text-base font-bold text-gray-800">Vehicle Details</h2>
@@ -589,7 +645,7 @@ const AddVehiclePage = () => {
                                 {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>}
                                 {success && <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">Vehicle added successfully! Redirecting...</div>}
                                 <div className="flex justify-between pt-4 border-t border-gray-100">
-                                    <button type="button" onClick={() => setCurrentStep(5)} className="flex items-center gap-1.5 px-5 py-2 text-sm font-semibold text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                                    <button type="button" onClick={() => setCurrentStep(4)} className="flex items-center gap-1.5 px-5 py-2 text-sm font-semibold text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
                                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                                         Back
                                     </button>
