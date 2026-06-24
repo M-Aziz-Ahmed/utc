@@ -107,8 +107,8 @@ const EditVehiclePage = () => {
                         fd.append(`dynamic_${label}_${idx}`, file)
                     })
                 })
-                // Use POST with FormData for image uploads
-                const res = await fetch('/api/vehicles', { method: 'POST', body: fd })
+                // Use PUT (not POST) so the API updates the existing vehicle
+                const res = await fetch('/api/vehicles', { method: 'PUT', body: fd })
                 if (!res.ok) throw new Error('Failed to update vehicle')
             } else {
                 // Plain JSON PATCH for text-only updates

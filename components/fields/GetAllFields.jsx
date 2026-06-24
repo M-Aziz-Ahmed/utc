@@ -235,7 +235,7 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                     {sortedForms.map(formName => (
                         <div key={formName}>
                             <div className="flex items-center gap-2 py-1.5 px-3 rounded-lg bg-linear-to-br from-gray-50 to-gray-100 border border-gray-200 mb-2">
-                                <span className="text-xs font-bold text-gray-700">{formName}</span>
+                                <span className="text-xs font-bold text-gray-700 capitalize">{formName}</span>
                                 <span className="ml-auto text-xs text-gray-400 bg-white px-2 py-0.5 rounded-full">{groupedFields[formName].length}</span>
                             </div>
                             <div className="space-y-1.5">

@@ -51,7 +51,7 @@ const AlphaFilter = ({ value, onChange, available }) => (
 )
 
 // ── Compact pill/chip selector ─────────────────────────────────────────────────
-const PillGrid = ({ items, selected, onSelect, getLabel, getSub, emptyMsg, emptyAction }) => {
+const PillGrid = ({ items, selected, onSelect, getLabel, getSub, emptyMsg, emptyAction, onEdit }) => {
     if (items.length === 0) return (
         <div className="text-center py-10 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
             <p className="text-sm text-gray-500 mb-1">{emptyMsg}</p>
@@ -63,24 +63,37 @@ const PillGrid = ({ items, selected, onSelect, getLabel, getSub, emptyMsg, empty
             {items.map((item, idx) => {
                 const isSelected = selected === item || selected?._id === item?._id || selected?.name === item?.name
                 return (
-                    <button
-                        key={item._id || idx}
-                        onClick={() => onSelect(item)}
-                        className={`group flex flex-col items-start px-4 py-2.5 rounded-xl border-2 text-left transition-all ${
-                            isSelected
-                                ? 'border-blue-500 bg-blue-50 shadow-sm'
-                                : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/40'
-                        }`}
-                    >
-                        <span className={`text-sm font-semibold leading-tight ${isSelected ? 'text-blue-700' : 'text-gray-800'}`}>
-                            {getLabel(item)}
-                        </span>
-                        {getSub && (
-                            <span className={`text-xs mt-0.5 ${isSelected ? 'text-blue-500' : 'text-gray-400'}`}>
-                                {getSub(item)}
+                    <div key={item._id || idx} className="relative group">
+                        <button
+                            onClick={() => onSelect(item)}
+                            className={`group flex flex-col items-start px-4 py-2.5 rounded-xl border-2 text-left transition-all ${
+                                isSelected
+                                    ? 'border-blue-500 bg-blue-50 shadow-sm'
+                                    : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/40'
+                            }`}
+                            style={onEdit ? { paddingRight: '2rem' } : {}}
+                        >
+                            <span className={`text-sm font-semibold leading-tight ${isSelected ? 'text-blue-700' : 'text-gray-800'}`}>
+                                {getLabel(item)}
                             </span>
+                            {getSub && (
+                                <span className={`text-xs mt-0.5 ${isSelected ? 'text-blue-500' : 'text-gray-400'}`}>
+                                    {getSub(item)}
+                                </span>
+                            )}
+                        </button>
+                        {onEdit && (
+                            <button
+                                onClick={e => { e.stopPropagation(); onEdit(item, idx) }}
+                                className="absolute top-1.5 right-1.5 w-5 h-5 rounded flex items-center justify-center bg-gray-100 hover:bg-blue-100 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition"
+                                title="Edit"
+                            >
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 11l6-6 3 3-6 6H9v-3z" />
+                                </svg>
+                            </button>
                         )}
-                    </button>
+                    </div>
                 )
             })}
         </div>
@@ -153,6 +166,10 @@ const AddVehiclePage = () => {
     const [newModel, setNewModel] = useState({ name: '', description: '' })
     const [newVariant, setNewVariant] = useState('')
     const [saving, setSaving] = useState(false)
+
+    // ── Edit maker / model state ──
+    const [editingMaker, setEditingMaker] = useState(null) // { _id, name, country }
+    const [editingModel, setEditingModel] = useState(null) // { manufacturerId, modelIndex, name, description }
 
     useEffect(() => { fetchAuctionGroups(); fetchManufacturers(); fetchFields() }, [])
 
@@ -255,8 +272,51 @@ const AddVehiclePage = () => {
         }
     }
 
-    const handleSubmit = async (e) => {
-        e.preventDefault()
+    const handleSaveMakerEdit = async () => {
+        if (!editingMaker?.name?.trim()) return
+        setSaving(true)
+        try {
+            const res = await fetch(`/api/manufacturer/${editingMaker._id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: editingMaker.name.trim(), country: editingMaker.country }),
+            })
+            if (!res.ok) throw new Error('Failed to update')
+            const updated = await res.json()
+            setManufacturers(prev => prev.map(m => m._id === updated._id ? updated : m))
+            if (selectedManufacturer?._id === updated._id) setSelectedManufacturer(updated)
+            setEditingMaker(null)
+        } catch (e) { alert(e.message) }
+        finally { setSaving(false) }
+    }
+
+    const handleSaveModelEdit = async () => {
+        if (!editingModel?.name?.trim() || !selectedManufacturer) return
+        setSaving(true)
+        try {
+            const updatedModels = selectedManufacturer.models.map((m, i) =>
+                i === editingModel.modelIndex
+                    ? { ...m, name: editingModel.name.trim(), description: editingModel.description }
+                    : m
+            )
+            const res = await fetch(`/api/manufacturer/${selectedManufacturer._id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ models: updatedModels }),
+            })
+            if (!res.ok) throw new Error('Failed to update')
+            const updated = await res.json()
+            setManufacturers(prev => prev.map(m => m._id === updated._id ? updated : m))
+            setSelectedManufacturer(updated)
+            if (selectedModel && selectedModel.name === selectedManufacturer.models[editingModel.modelIndex]?.name) {
+                setSelectedModel(updated.models[editingModel.modelIndex])
+            }
+            setEditingModel(null)
+        } catch (e) { alert(e.message) }
+        finally { setSaving(false) }
+    }
+
+    const handleSubmit = async (e) => {        e.preventDefault()
         setSubmitting(true); setError(null)
         const fd = new FormData()
         fd.append('vehicleData', JSON.stringify({
@@ -570,6 +630,7 @@ const AddVehiclePage = () => {
                                 getLabel={m => m.name}
                                 getSub={m => [m.country, `${m.models?.length || 0} models`].filter(Boolean).join(' · ')}
                                 emptyMsg="No manufacturers found"
+                                onEdit={(m) => setEditingMaker({ _id: m._id, name: m.name, country: m.country || '' })}
                             />
                             <StepNav onBack={() => setCurrentStep(2)} onNext={() => setCurrentStep(4)} nextLabel="Select Model" nextDisabled={!selectedManufacturer} />
                         </div>
@@ -597,6 +658,10 @@ const AddVehiclePage = () => {
                                 getLabel={m => m.name}
                                 getSub={m => `${m.variants?.length || 0} variant${m.variants?.length !== 1 ? 's' : ''}`}
                                 emptyMsg="No models yet"
+                                onEdit={(m) => {
+                                    const idx = selectedManufacturer.models.findIndex(mo => mo.name === m.name)
+                                    setEditingModel({ manufacturerId: selectedManufacturer._id, modelIndex: idx, name: m.name, description: m.description || '' })
+                                }}
                             />
                             <StepNav onBack={() => setCurrentStep(3)} onNext={() => setCurrentStep(5)} nextLabel="Vehicle Details" nextDisabled={!selectedModel} />
                         </div>
@@ -725,9 +790,82 @@ const AddVehiclePage = () => {
                 </div>
             )}
 
+            {/* ── Edit Maker Modal ── */}
+            {editingMaker && (
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setEditingMaker(null)}>
+                    <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-base font-bold mb-4">Edit Manufacturer</h3>
+                        <div className="space-y-3">
+                            <div>
+                                <label className="text-xs font-semibold text-gray-600 mb-1 block">Name *</label>
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    value={editingMaker.name}
+                                    onChange={e => setEditingMaker(prev => ({ ...prev, name: e.target.value }))}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-semibold text-gray-600 mb-1 block">Country</label>
+                                <input
+                                    type="text"
+                                    value={editingMaker.country}
+                                    onChange={e => setEditingMaker(prev => ({ ...prev, country: e.target.value }))}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+                                />
+                            </div>
+                            <div className="flex gap-2 pt-1">
+                                <button onClick={() => setEditingMaker(null)} className="flex-1 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Cancel</button>
+                                <button onClick={handleSaveMakerEdit} disabled={!editingMaker.name.trim() || saving} className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm disabled:opacity-50">
+                                    {saving ? 'Saving…' : 'Save'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Edit Model Modal ── */}
+            {editingModel && (
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setEditingModel(null)}>
+                    <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-base font-bold mb-1">Edit Model</h3>
+                        <p className="text-xs text-gray-500 mb-4">{selectedManufacturer?.name}</p>
+                        <div className="space-y-3">
+                            <div>
+                                <label className="text-xs font-semibold text-gray-600 mb-1 block">Model Name *</label>
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    value={editingModel.name}
+                                    onChange={e => setEditingModel(prev => ({ ...prev, name: e.target.value }))}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-semibold text-gray-600 mb-1 block">Description</label>
+                                <input
+                                    type="text"
+                                    value={editingModel.description}
+                                    onChange={e => setEditingModel(prev => ({ ...prev, description: e.target.value }))}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+                                    placeholder="e.g., Sedan"
+                                />
+                            </div>
+                            <div className="flex gap-2 pt-1">
+                                <button onClick={() => setEditingModel(null)} className="flex-1 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Cancel</button>
+                                <button onClick={handleSaveModelEdit} disabled={!editingModel.name.trim() || saving} className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm disabled:opacity-50">
+                                    {saving ? 'Saving…' : 'Save'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ── Add Field Modal ── */}
-            {showAddField && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowAddField(false)}>
+            {showAddField && (                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowAddField(false)}>
                     <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-base font-bold">Add New Field</h3>

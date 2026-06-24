@@ -168,3 +168,68 @@ export const PATCH = async (req) => {
         }, { status: 500 });
     }
 }
+
+// PUT — update existing vehicle (with optional new file uploads)
+export const PUT = async (req) => {
+    try {
+        const formData = await req.formData();
+        const vehicleDataString = formData.get('vehicleData');
+        const body = JSON.parse(vehicleDataString);
+        const { vehicleId, ...updateFields } = body;
+
+        if (!vehicleId) {
+            return NextResponse.json({ message: 'Vehicle ID is required' }, { status: 400 });
+        }
+
+        await dbConnect();
+
+        // Process any new file uploads
+        const dynamicFieldFiles = {};
+        for (const [key, value] of formData.entries()) {
+            if (value instanceof File) {
+                const bytes = await value.arrayBuffer();
+                const buffer = Buffer.from(bytes);
+                const cloudinaryResult = await uploadToCloudinary(buffer, 'utc/vehicles');
+                const fileInfo = {
+                    name: value.name,
+                    path: cloudinaryResult.secure_url,
+                    publicId: cloudinaryResult.public_id,
+                    size: value.size,
+                    type: value.type,
+                    width: cloudinaryResult.width,
+                    height: cloudinaryResult.height
+                };
+                if (key.startsWith('dynamic_')) {
+                    const parts = key.split('_');
+                    const fieldLabel = parts.slice(1, -1).join('_');
+                    if (!dynamicFieldFiles[fieldLabel]) dynamicFieldFiles[fieldLabel] = [];
+                    dynamicFieldFiles[fieldLabel].push(fileInfo);
+                }
+            }
+        }
+
+        // Merge new image arrays into updateFields (append to existing)
+        if (Object.keys(dynamicFieldFiles).length > 0) {
+            const existing = await Vehicle.findById(vehicleId).lean();
+            Object.entries(dynamicFieldFiles).forEach(([label, newFiles]) => {
+                const existingFiles = Array.isArray(existing?.[label]) ? existing[label] : [];
+                updateFields[label] = [...existingFiles, ...newFiles];
+            });
+        }
+
+        const updatedVehicle = await Vehicle.findByIdAndUpdate(
+            vehicleId,
+            { $set: updateFields },
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedVehicle) {
+            return NextResponse.json({ message: 'Vehicle not found' }, { status: 404 });
+        }
+
+        return NextResponse.json(updatedVehicle, { status: 200 });
+    } catch (error) {
+        console.error('updateVehicle (PUT) error:', error);
+        return NextResponse.json({ message: 'Error updating vehicle', error: error.message }, { status: 500 });
+    }
+}
