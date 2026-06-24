@@ -16,8 +16,57 @@ const getVehicleImages = (vehicle) => {
 }
 
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—'
-const SKIP = new Set(['_id','__v','files','createdAt','updatedAt','createdBy','manufacturer','manufacturerId','auctionGroup','auctionGroupId','auctionVenue','allocationStatus','rikusoStatus','consignee','rikusoCompany','allocation'])
-const isId = (k) => /^[a-f0-9]{24}$/i.test(k)
+
+// ── Status dot legend ──────────────────────────────────────────────────────────
+// allocation: 'export' | 'khitai' | 'resale-to-auction' | ''
+// rikusoStatus: bool
+// allocationStatus: bool  (pre-sold)
+const StatusDots = ({ vehicle }) => {
+    const alloc = (vehicle.allocation || '').toLowerCase()
+    const rikuso = !!vehicle.rikusoStatus
+
+    const left = [
+        { label: 'Export',  active: alloc === 'export',             color: '#e74c3c' },
+        { label: 'Khitai',  active: alloc === 'khitai',             color: '#e74c3c' },
+        { label: 'Resale',  active: alloc === 'resale-to-auction',  color: '#e74c3c' },
+        { label: 'Rikso',   active: rikuso,                         color: '#e74c3c' },
+    ]
+    const right = [
+        { label: 'Docs', active: false, color: '#3498db' },
+        { label: 'EC',   active: false, color: '#3498db' },
+        { label: 'TBS',  active: false, color: '#3498db' },
+        { label: 'BL',   active: false, color: '#3498db' },
+    ]
+
+    return (
+        <div className="px-2 pb-1.5 pt-1" style={{borderTop:'1px solid #eee'}}>
+            <div className="flex gap-x-4">
+                <div className="flex flex-col gap-0.5">
+                    {left.map(s => (
+                        <div key={s.label} className="flex items-center gap-1">
+                            <span style={{
+                                width:'8px', height:'8px', borderRadius:'50%', flexShrink:0, display:'inline-block',
+                                background: s.active ? s.color : '#ccc'
+                            }} />
+                            <span style={{fontSize:'9px', color: s.active ? '#111' : '#999', fontWeight: s.active ? 700 : 400}}>{s.label}</span>
+                        </div>
+                    ))}
+                </div>
+                <div className="flex flex-col gap-0.5">
+                    {right.map(s => (
+                        <div key={s.label} className="flex items-center gap-1">
+                            <span style={{
+                                width:'8px', height:'8px', borderRadius:'50%', flexShrink:0, display:'inline-block',
+                                background: s.active ? s.color : '#ccc'
+                            }} />
+                            <span style={{fontSize:'9px', color: s.active ? '#111' : '#999', fontWeight: s.active ? 700 : 400}}>{s.label}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    )
+}
 
 // ── Vehicle card — Japanese auction sheet style ────────────────────────────────
 const VehicleCard = ({ vehicle, fields, onView }) => {
@@ -38,17 +87,24 @@ const VehicleCard = ({ vehicle, fields, onView }) => {
 
     const lotField = fields.find(f => f.label?.toLowerCase().includes('lot'))
     const lotVal = lotField ? (vehicle[lotField._id] || vehicle[lotField.label]) : null
-    const groupLine = [vehicle.auctionGroup, vehicle.auctionVenue, lotVal ? `NO. ${lotVal}` : null].filter(Boolean).join(' ')
+
+    // Header crumb: GROUP / VENUE / LOT
+    const headerParts = [vehicle.auctionGroup, vehicle.auctionVenue, lotVal || null].filter(Boolean)
+    const headerLine = headerParts.join(' / ')
+
     const nameLine = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ').toUpperCase()
+    const isPreSold = vehicle.allocationStatus || !!vehicle.allocation
 
     return (
         <div className="overflow-hidden cursor-pointer hover:shadow-xl transition-shadow"
              style={{background:'#fff', border:'1px solid #bbb', borderRadius:'3px', fontFamily:'Arial,sans-serif', minWidth:'180px'}}
              onClick={() => onView(vehicle)}>
 
-            {/* Header — auction/group/lot */}
+            {/* Header — GROUP / VENUE / LOT */}
             <div className="px-2 py-1" style={{background:'#e8e8e8', borderBottom:'1px solid #bbb'}}>
-                <p style={{fontSize:'10px', fontWeight:'bold', color:'#333', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{groupLine || '—'}</p>
+                <p style={{fontSize:'10px', fontWeight:'bold', color:'#333', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                    {headerLine || '—'}
+                </p>
             </div>
 
             {/* Image */}
@@ -65,11 +121,31 @@ const VehicleCard = ({ vehicle, fields, onView }) => {
                                 <div className="absolute bottom-1 left-1 rounded px-1" style={{background:'rgba(0,0,0,0.65)', fontSize:'9px', color:'#fff'}}>{imgIdx+1}/{imgs.length}</div>
                             </>
                         )}
-                        {(vehicle.allocationStatus || vehicle.allocation) && (
-                            <div className="absolute top-0 right-0 text-white font-black"
-                                 style={{background:'#1a3a8f', fontSize:'9px', padding:'4px 8px 4px 14px',
-                                 clipPath:'polygon(20% 0%,100% 0%,100% 100%,0% 100%)', letterSpacing:'0.05em'}}>
-                                PRE-SOLD
+
+                        {/* PRE-SOLD ribbon — diagonal top-right, exactly like reference */}
+                        {isPreSold && (
+                            <div style={{
+                                position:'absolute', top:0, right:0, overflow:'hidden',
+                                width:'72px', height:'72px', pointerEvents:'none'
+                            }}>
+                                <div style={{
+                                    position:'absolute',
+                                    top:'14px', right:'-20px',
+                                    width:'90px',
+                                    background:'#1a3060',
+                                    color:'#fff',
+                                    fontSize:'9px',
+                                    fontWeight:900,
+                                    fontStyle:'italic',
+                                    letterSpacing:'0.08em',
+                                    textAlign:'center',
+                                    padding:'3px 0',
+                                    transform:'rotate(45deg)',
+                                    transformOrigin:'center',
+                                    boxShadow:'0 1px 3px rgba(0,0,0,0.4)'
+                                }}>
+                                    PRE-SOLD
+                                </div>
                             </div>
                         )}
                     </>
@@ -93,6 +169,9 @@ const VehicleCard = ({ vehicle, fields, onView }) => {
                     ))}
                 </div>
             </div>
+
+            {/* Status dots */}
+            <StatusDots vehicle={vehicle} />
 
             {/* Footer */}
             <div className="px-2 pb-1.5 flex items-center justify-between" style={{borderTop:'1px solid #eee', paddingTop:'4px'}}>
