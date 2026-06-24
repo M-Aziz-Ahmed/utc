@@ -325,6 +325,8 @@ const AddVehiclePage = () => {
             auctionVenue: selectedVenue?.name,
             manufacturer: selectedManufacturer?.name, manufacturerId: selectedManufacturer?._id,
             model: selectedModel?.name,
+            modelDescription: selectedModel?.description || '',
+            variant: selectedVariant || '',
         }))
         fields.forEach(f => {
             const v = formData[f._id]

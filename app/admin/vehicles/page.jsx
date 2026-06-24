@@ -17,59 +17,8 @@ const getVehicleImages = (vehicle) => {
 
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—'
 
-// ── Status dot legend ──────────────────────────────────────────────────────────
-// allocation: 'export' | 'khitai' | 'resale-to-auction' | ''
-// rikusoStatus: bool
-// allocationStatus: bool  (pre-sold)
-const StatusDots = ({ vehicle }) => {
-    const alloc = (vehicle.allocation || '').toLowerCase()
-    const rikuso = !!vehicle.rikusoStatus
-
-    const left = [
-        { label: 'Export',  active: alloc === 'export',             color: '#e74c3c' },
-        { label: 'Khitai',  active: alloc === 'khitai',             color: '#e74c3c' },
-        { label: 'Resale',  active: alloc === 'resale-to-auction',  color: '#e74c3c' },
-        { label: 'Rikso',   active: rikuso,                         color: '#e74c3c' },
-    ]
-    const right = [
-        { label: 'Docs', active: false, color: '#3498db' },
-        { label: 'EC',   active: false, color: '#3498db' },
-        { label: 'TBS',  active: false, color: '#3498db' },
-        { label: 'BL',   active: false, color: '#3498db' },
-    ]
-
-    return (
-        <div className="px-2 pb-1.5 pt-1" style={{borderTop:'1px solid #eee'}}>
-            <div className="flex gap-x-4">
-                <div className="flex flex-col gap-0.5">
-                    {left.map(s => (
-                        <div key={s.label} className="flex items-center gap-1">
-                            <span style={{
-                                width:'8px', height:'8px', borderRadius:'50%', flexShrink:0, display:'inline-block',
-                                background: s.active ? s.color : '#ccc'
-                            }} />
-                            <span style={{fontSize:'9px', color: s.active ? '#111' : '#999', fontWeight: s.active ? 700 : 400}}>{s.label}</span>
-                        </div>
-                    ))}
-                </div>
-                <div className="flex flex-col gap-0.5">
-                    {right.map(s => (
-                        <div key={s.label} className="flex items-center gap-1">
-                            <span style={{
-                                width:'8px', height:'8px', borderRadius:'50%', flexShrink:0, display:'inline-block',
-                                background: s.active ? s.color : '#ccc'
-                            }} />
-                            <span style={{fontSize:'9px', color: s.active ? '#111' : '#999', fontWeight: s.active ? 700 : 400}}>{s.label}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </div>
-    )
-}
-
-// ── Vehicle card — Japanese auction sheet style ────────────────────────────────
-const VehicleCard = ({ vehicle, fields, onView }) => {
+// ── Vehicle card ───────────────────────────────────────────────────────────────
+const VehicleCard = ({ vehicle, fields, onView, onDelete }) => {
     const [imgIdx, setImgIdx] = useState(0)
     const imgs = getVehicleImages(vehicle)
 
@@ -86,109 +35,185 @@ const VehicleCard = ({ vehicle, fields, onView }) => {
     }).filter(Boolean)
 
     const lotField = fields.find(f => f.label?.toLowerCase().includes('lot'))
-    const lotVal = lotField ? (vehicle[lotField._id] || vehicle[lotField.label]) : null
+    const lotVal   = lotField ? (vehicle[lotField._id] || vehicle[lotField.label]) : null
+    const headerLine = [vehicle.auctionGroup, vehicle.auctionVenue, lotVal || null].filter(Boolean).join(' / ')
+    const nameLine   = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ').toUpperCase()
+    const descLine   = vehicle.modelDescription || vehicle.variant || ''
+    const isPreSold  = vehicle.allocationStatus === true
 
-    // Header crumb: GROUP / VENUE / LOT
-    const headerParts = [vehicle.auctionGroup, vehicle.auctionVenue, lotVal || null].filter(Boolean)
-    const headerLine = headerParts.join(' / ')
+    const purchaseDateField = fields.find(f =>
+        f.label?.toLowerCase().includes('purchase') && f.label?.toLowerCase().includes('date'))
+    const purchaseDateVal = purchaseDateField
+        ? (vehicle[purchaseDateField._id] || vehicle[purchaseDateField.label]) : null
+    const footerDate = purchaseDateVal ? fmtDate(purchaseDateVal) : fmtDate(vehicle.createdAt)
 
-    const nameLine = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ').toUpperCase()
-    const isPreSold = vehicle.allocationStatus || !!vehicle.allocation
+    const alloc  = (vehicle.allocation || '').toLowerCase()
+    const rikuso = !!vehicle.rikusoStatus
+    const statusLeft  = [
+        { label:'Export', active: alloc === 'export' },
+        { label:'Khitai', active: alloc === 'khitai' },
+        { label:'Resale', active: alloc === 'resale-to-auction' },
+        { label:'Rikso',  active: rikuso },
+    ]
+    const statusRight = [
+        { label:'Docs' }, { label:'EC' }, { label:'TBS' }, { label:'BL' },
+    ]
 
     return (
-        <div className="overflow-hidden cursor-pointer hover:shadow-xl transition-shadow"
-             style={{background:'#fff', border:'1px solid #bbb', borderRadius:'3px', fontFamily:'Arial,sans-serif', minWidth:'180px'}}
-             onClick={() => onView(vehicle)}>
-
-            {/* Header — GROUP / VENUE / LOT */}
-            <div className="px-2 py-1" style={{background:'#e8e8e8', borderBottom:'1px solid #bbb'}}>
-                <p style={{fontSize:'10px', fontWeight:'bold', color:'#333', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
-                    {headerLine || '—'}
-                </p>
+        <div
+            onClick={() => onView(vehicle)}
+            style={{
+                background:'#fff',
+                border:'1px solid #d0d0d0',
+                borderRadius:'4px',
+                fontFamily:'"Segoe UI",Arial,sans-serif',
+                overflow:'hidden',
+                cursor:'pointer',
+                boxShadow:'0 1px 3px rgba(0,0,0,0.08)',
+                transition:'box-shadow 0.15s',
+                display:'flex',
+                flexDirection:'column',
+            }}
+            onMouseEnter={e => e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.14)'}
+            onMouseLeave={e => e.currentTarget.style.boxShadow='0 1px 3px rgba(0,0,0,0.08)'}
+        >
+            {/* ── Header bar ── */}
+            <div style={{background:'#ebebeb', borderBottom:'1px solid #ccc', padding:'4px 10px'}}>
+                <p style={{
+                    fontSize:'11px', fontWeight:700, color:'#333',
+                    whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', margin:0
+                }}>{headerLine || '—'}</p>
             </div>
 
-            {/* Image */}
-            <div className="relative overflow-hidden" style={{height:'145px', background:'#ccc'}}>
+            {/* ── Image ── */}
+            <div style={{position:'relative', height:'170px', background:'#ddd', flexShrink:0}}>
                 {imgs.length > 0 ? (
                     <>
-                        <img src={imgs[imgIdx]} alt="" className="w-full h-full object-cover" />
+                        <img src={imgs[imgIdx]} alt="" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}} />
                         {imgs.length > 1 && (
                             <>
                                 <button onClick={e=>{e.stopPropagation();setImgIdx((imgIdx-1+imgs.length)%imgs.length)}}
-                                    className="absolute left-0.5 top-1/2 -translate-y-1/2 bg-black/60 text-white rounded-full w-5 h-5 flex items-center justify-center font-bold" style={{fontSize:'12px'}}>‹</button>
+                                    style={{position:'absolute',left:'4px',top:'50%',transform:'translateY(-50%)',background:'rgba(0,0,0,0.55)',border:'none',color:'#fff',borderRadius:'50%',width:'22px',height:'22px',fontSize:'15px',cursor:'pointer',lineHeight:'22px',textAlign:'center',padding:0}}>‹</button>
                                 <button onClick={e=>{e.stopPropagation();setImgIdx((imgIdx+1)%imgs.length)}}
-                                    className="absolute right-0.5 top-1/2 -translate-y-1/2 bg-black/60 text-white rounded-full w-5 h-5 flex items-center justify-center font-bold" style={{fontSize:'12px'}}>›</button>
-                                <div className="absolute bottom-1 left-1 rounded px-1" style={{background:'rgba(0,0,0,0.65)', fontSize:'9px', color:'#fff'}}>{imgIdx+1}/{imgs.length}</div>
+                                    style={{position:'absolute',right:'4px',top:'50%',transform:'translateY(-50%)',background:'rgba(0,0,0,0.55)',border:'none',color:'#fff',borderRadius:'50%',width:'22px',height:'22px',fontSize:'15px',cursor:'pointer',lineHeight:'22px',textAlign:'center',padding:0}}>›</button>
+                                <div style={{position:'absolute',bottom:'5px',left:'6px',background:'rgba(0,0,0,0.6)',color:'#fff',fontSize:'9px',padding:'1px 5px',borderRadius:'3px'}}>{imgIdx+1}/{imgs.length}</div>
                             </>
                         )}
-
-                        {/* PRE-SOLD ribbon — diagonal top-right, exactly like reference */}
                         {isPreSold && (
-                            <div style={{
-                                position:'absolute', top:0, right:0, overflow:'hidden',
-                                width:'72px', height:'72px', pointerEvents:'none'
-                            }}>
+                            <div style={{position:'absolute',top:0,right:0,overflow:'hidden',width:'80px',height:'80px',pointerEvents:'none'}}>
                                 <div style={{
-                                    position:'absolute',
-                                    top:'14px', right:'-20px',
-                                    width:'90px',
-                                    background:'#1a3060',
-                                    color:'#fff',
-                                    fontSize:'9px',
-                                    fontWeight:900,
-                                    fontStyle:'italic',
-                                    letterSpacing:'0.08em',
-                                    textAlign:'center',
-                                    padding:'3px 0',
-                                    transform:'rotate(45deg)',
-                                    transformOrigin:'center',
-                                    boxShadow:'0 1px 3px rgba(0,0,0,0.4)'
-                                }}>
-                                    PRE-SOLD
-                                </div>
+                                    position:'absolute', top:'16px', right:'-22px', width:'96px',
+                                    background:'#1a3060', color:'#fff', fontSize:'10px',
+                                    fontWeight:900, fontStyle:'italic', letterSpacing:'0.06em',
+                                    textAlign:'center', padding:'4px 0',
+                                    transform:'rotate(45deg)', transformOrigin:'center',
+                                    boxShadow:'0 2px 4px rgba(0,0,0,0.35)'
+                                }}>PRE-SOLD</div>
                             </div>
                         )}
                     </>
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center" style={{color:'#999', fontSize:'11px'}}>No Image</div>
+                    <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'#aaa',fontSize:'12px'}}>No Image</div>
                 )}
             </div>
 
-            {/* Manufacturer + Model */}
-            <div className="px-2 pt-1 pb-0.5" style={{borderBottom:'1px solid #ddd', background:'#fafafa'}}>
-                <p style={{fontSize:'11px', fontWeight:'bold', color:'#111', lineHeight:'1.3'}}>{nameLine || '—'}</p>
+            {/* ── Name + description ── */}
+            <div style={{padding:'6px 10px 5px', borderBottom:'1px solid #e8e8e8', background:'#f8f8f8'}}>
+                <p style={{margin:0, fontSize:'12px', fontWeight:700, color:'#111', lineHeight:1.3, letterSpacing:'0.01em'}}>{nameLine || '—'}</p>
+                {descLine && <p style={{margin:'1px 0 0', fontSize:'10px', color:'#777', lineHeight:1.3}}>{descLine}</p>}
             </div>
 
-            {/* Field pairs */}
-            <div className="px-2 py-1.5">
-                <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
-                    {entries.slice(0, 8).map((e, i) => (
-                        <p key={i} style={{fontSize:'10px', color:'#111', lineHeight:'1.5', margin:0}}>
-                            <span style={{fontWeight:'700'}}>{e.label}:</span>{' '}{e.value}
-                        </p>
-                    ))}
+            {/* ── Fields ── */}
+            <div style={{padding:'7px 10px 5px', flex:1}}>
+                {entries.slice(0, 10).map((e, i) => {
+                    // Pair up entries: even index = left col, odd = right col
+                    if (i % 2 !== 0) return null
+                    const right = entries[i + 1]
+                    return (
+                        <div key={i} style={{display:'flex', gap:'8px', marginBottom:'3px', alignItems:'baseline'}}>
+                            <div style={{flex:1, minWidth:0}}>
+                                <span style={{fontSize:'11px', fontWeight:700, color:'#222'}}>{e.label}: </span>
+                                <span style={{fontSize:'11px', color:'#444'}}>{e.value}</span>
+                            </div>
+                            {right && (
+                                <div style={{flex:1, minWidth:0}}>
+                                    <span style={{fontSize:'11px', fontWeight:700, color:'#222'}}>{right.label}: </span>
+                                    <span style={{fontSize:'11px', color:'#444'}}>{right.value}</span>
+                                </div>
+                            )}
+                        </div>
+                    )
+                })}
+            </div>
+
+            {/* ── Status dots ── */}
+            <div style={{padding:'5px 10px', borderTop:'1px solid #eee', borderBottom:'1px solid #eee', background:'#fafafa'}}>
+                <div style={{display:'flex', gap:'12px'}}>
+                    {/* Left col */}
+                    <div style={{display:'flex', flexDirection:'column', gap:'2px'}}>
+                        {statusLeft.map(s => (
+                            <div key={s.label} style={{display:'flex', alignItems:'center', gap:'5px'}}>
+                                <span style={{
+                                    width:'9px', height:'9px', borderRadius:'50%', flexShrink:0,
+                                    background: s.active ? '#e74c3c' : '#d1d5db',
+                                    boxShadow: s.active ? '0 0 4px rgba(231,76,60,0.5)' : 'none'
+                                }}/>
+                                <span style={{fontSize:'11px', fontWeight: s.active ? 700 : 400, color: s.active ? '#111' : '#999'}}>{s.label}</span>
+                            </div>
+                        ))}
+                    </div>
+                    {/* Right col */}
+                    <div style={{display:'flex', flexDirection:'column', gap:'2px'}}>
+                        {statusRight.map(s => (
+                            <div key={s.label} style={{display:'flex', alignItems:'center', gap:'5px'}}>
+                                <span style={{width:'9px', height:'9px', borderRadius:'50%', flexShrink:0, background:'#d1d5db'}}/>
+                                <span style={{fontSize:'11px', color:'#bbb'}}>{s.label}</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
 
-            {/* Status dots */}
-            <StatusDots vehicle={vehicle} />
-
-            {/* Footer */}
-            <div className="px-2 pb-1.5 flex items-center justify-between" style={{borderTop:'1px solid #eee', paddingTop:'4px'}}>
-                <span style={{fontSize:'9px', color:'#888'}}>{fmtDate(vehicle.createdAt)}</span>
-                <Link href={`/admin/vehicles/edit/${vehicle._id}`}
-                    onClick={e=>e.stopPropagation()}
-                    className="text-white font-bold px-2 py-0.5"
-                    style={{background:'#c0392b', fontSize:'9px', borderRadius:'2px', letterSpacing:'0.04em'}}>
-                    EDIT
-                </Link>
+            {/* ── Footer ── */}
+            <div style={{padding:'6px 10px', display:'flex', alignItems:'center', justifyContent:'space-between', background:'#fff'}}>
+                <span style={{fontSize:'10px', color:'#999', fontWeight:500}}>{footerDate}</span>
+                <div style={{display:'flex', gap:'5px'}}>
+                    <button
+                        onClick={e => { e.stopPropagation(); onDelete(vehicle._id) }}
+                        title="Delete"
+                        style={{
+                            width:'26px', height:'26px', borderRadius:'5px', border:'none',
+                            background:'#7f1d1d', cursor:'pointer', color:'#fff',
+                            display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0
+                        }}
+                    >
+                        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
+                    <Link
+                        href={`/admin/vehicles/edit/${vehicle._id}`}
+                        onClick={e => e.stopPropagation()}
+                        title="Edit"
+                        style={{
+                            width:'26px', height:'26px', borderRadius:'5px',
+                            background:'#c0392b', cursor:'pointer', color:'#fff',
+                            display:'flex', alignItems:'center', justifyContent:'center',
+                            flexShrink:0, textDecoration:'none'
+                        }}
+                    >
+                        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 11l6-6 3 3-6 6H9v-3z" />
+                        </svg>
+                    </Link>
+                </div>
             </div>
         </div>
     )
 }
 
 // ── Detail modal ───────────────────────────────────────────────────────────────
-const DetailModal = ({ vehicle, fields, onClose }) => {
+const DetailModal = ({ vehicle, fields, onClose, onDelete }) => {
     const [imgIdx, setImgIdx] = useState(0)
     const [zoom, setZoom] = useState(1)          // 1 = 100%, max 3
     const [zoomOpen, setZoomOpen] = useState(false) // fullscreen zoom lightbox
@@ -247,6 +272,17 @@ const DetailModal = ({ vehicle, fields, onClose }) => {
                         >
                             Edit
                         </Link>
+                        <button
+                            onClick={() => onDelete(vehicle._id)}
+                            className="px-3 py-1 rounded font-bold text-white text-xs flex items-center gap-1"
+                            style={{background:'#7f1d1d'}}
+                            title="Delete vehicle"
+                        >
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete
+                        </button>
                         <button onClick={onClose} className="text-white/60 hover:text-white p-1 rounded transition">
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -489,6 +525,22 @@ const Page = () => {
         .finally(() => setLoading(false))
     }, [])
 
+    const handleDelete = async (vehicleId) => {
+        if (!confirm('Delete this vehicle? This cannot be undone.')) return
+        try {
+            const res = await fetch('/api/vehicles', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ vehicleId }),
+            })
+            if (!res.ok) throw new Error('Failed to delete')
+            setVehicles(prev => prev.filter(v => v._id !== vehicleId))
+            if (selected?._id === vehicleId) setSelected(null)
+        } catch (err) {
+            alert('Failed to delete vehicle: ' + err.message)
+        }
+    }
+
     const filtered = vehicles.filter(v => {
         if (!search) return true
         return JSON.stringify(v).toLowerCase().includes(search.toLowerCase())
@@ -533,14 +585,14 @@ const Page = () => {
                     )}
                 </div>
             ) : (
-                <div className="grid gap-3" style={{gridTemplateColumns:'repeat(auto-fill, minmax(195px, 1fr))'}}>
+                <div className="grid gap-4" style={{gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))'}}>
                     {filtered.map(v => (
-                        <VehicleCard key={v._id} vehicle={v} fields={fields} onView={setSelected} />
+                        <VehicleCard key={v._id} vehicle={v} fields={fields} onView={setSelected} onDelete={handleDelete} />
                     ))}
                 </div>
             )}
 
-            {selected && <DetailModal vehicle={selected} fields={fields} onClose={() => setSelected(null)} />}
+            {selected && <DetailModal vehicle={selected} fields={fields} onClose={() => setSelected(null)} onDelete={handleDelete} />}
         </div>
     )
 }

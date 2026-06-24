@@ -115,16 +115,15 @@ const RikusoManagementPage = () => {
                 body: JSON.stringify({ 
                     vehicleId, 
                     allocation,
-                    allocationStatus: allocation !== ''
+                    // allocationStatus is ONLY controlled by the Presold button, not by allocation type
                 })
             })
             
             if (res.ok) {
                 setAllocations(prev => ({ ...prev, [vehicleId]: allocation }))
-                // Update vehicle in state
                 setVehicles(prev => prev.map(v => 
                     v._id === vehicleId 
-                        ? { ...v, allocation, allocationStatus: allocation !== '' }
+                        ? { ...v, allocation }
                         : v
                 ))
             }
@@ -138,7 +137,7 @@ const RikusoManagementPage = () => {
         e.preventDefault()
         
         try {
-            // Create consignee
+            // Create or reuse consignee
             const res = await fetch('/api/consignee', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -151,22 +150,22 @@ const RikusoManagementPage = () => {
             if (!res.ok) throw new Error('Failed to create consignee')
             const newConsignee = await res.json()
             
-            // Update vehicle with consignee
+            // Update vehicle — set allocationStatus: true HERE (presold confirmed)
             const updateRes = await fetch('/api/vehicles', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     vehicleId: selectedVehicle._id,
-                    consignee: newConsignee._id
+                    consignee: newConsignee._id,
+                    allocationStatus: true
                 })
             })
             
             if (!updateRes.ok) throw new Error('Failed to update vehicle')
             
-            // Update vehicle in state
             setVehicles(prev => prev.map(v => 
                 v._id === selectedVehicle._id 
-                    ? { ...v, consignee: newConsignee._id }
+                    ? { ...v, consignee: newConsignee._id, allocationStatus: true }
                     : v
             ))
             
@@ -177,6 +176,27 @@ const RikusoManagementPage = () => {
         } catch (err) {
             console.error('Error saving presold:', err)
             alert('Failed to save presold label')
+        }
+    }
+
+    const handleRemovePresold = async (vehicle) => {
+        if (!confirm('Remove presold status from this vehicle?')) return
+        try {
+            const res = await fetch('/api/vehicles', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    vehicleId: vehicle._id,
+                    consignee: null,
+                    allocationStatus: false
+                })
+            })
+            if (!res.ok) throw new Error('Failed')
+            setVehicles(prev => prev.map(v =>
+                v._id === vehicle._id ? { ...v, consignee: null, allocationStatus: false } : v
+            ))
+        } catch (err) {
+            alert('Failed to remove presold: ' + err.message)
         }
     }
 
@@ -368,6 +388,15 @@ const RikusoManagementPage = () => {
                                             >
                                                 {vehicle.consignee ? 'Update Presold' : 'Add Presold'}
                                             </button>
+                                            {vehicle.allocationStatus && (
+                                                <button
+                                                    onClick={() => handleRemovePresold(vehicle)}
+                                                    className="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 text-sm font-semibold rounded-lg transition"
+                                                    title="Remove Presold"
+                                                >
+                                                    ✕
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

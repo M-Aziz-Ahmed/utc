@@ -108,7 +108,13 @@ export const POST = async (req) => {
             vehicleData.createdBy = userId;
         }
 
-        const newVehicle = await Vehicle.create(vehicleData);
+        // Strip dots from all keys — MongoDB rejects field names containing dots
+        const sanitizedData = {}
+        for (const [k, v] of Object.entries(vehicleData)) {
+            sanitizedData[k.replace(/\./g, '')] = v
+        }
+
+        const newVehicle = await Vehicle.create(sanitizedData);
         
         return NextResponse.json(
             { 
@@ -149,10 +155,23 @@ export const PATCH = async (req) => {
             return NextResponse.json({ message: 'Vehicle ID is required' }, { status: 400 });
         }
 
+        // MongoDB $set does not allow field names containing dots (e.g. "LOT No." causes
+        // "empty field name" error because Mongo interprets the dot as a path separator).
+        // Strip ALL dots from keys before updating.
+        const sanitize = (obj) => {
+            const out = {}
+            for (const [k, v] of Object.entries(obj)) {
+                const safeKey = k.replace(/\./g, '')
+                out[safeKey] = v
+            }
+            return out
+        }
+        const safeUpdate = sanitize(updateData)
+
         const updatedVehicle = await Vehicle.findByIdAndUpdate(
             vehicleId,
-            { $set: updateData },
-            { new: true, runValidators: true }
+            { $set: safeUpdate },
+            { new: true }
         );
 
         if (!updatedVehicle) {
@@ -217,10 +236,20 @@ export const PUT = async (req) => {
             });
         }
 
+        // Strip dots from keys — MongoDB rejects field names with dots in $set
+        const sanitize = (obj) => {
+            const out = {}
+            for (const [k, v] of Object.entries(obj)) {
+                out[k.replace(/\./g, '')] = v
+            }
+            return out
+        }
+        const safeFields = sanitize(updateFields)
+
         const updatedVehicle = await Vehicle.findByIdAndUpdate(
             vehicleId,
-            { $set: updateFields },
-            { new: true, runValidators: true }
+            { $set: safeFields },
+            { new: true }
         );
 
         if (!updatedVehicle) {
@@ -231,5 +260,26 @@ export const PUT = async (req) => {
     } catch (error) {
         console.error('updateVehicle (PUT) error:', error);
         return NextResponse.json({ message: 'Error updating vehicle', error: error.message }, { status: 500 });
+    }
+}
+
+export const DELETE = async (req) => {
+    try {
+        await dbConnect();
+        const { vehicleId } = await req.json();
+
+        if (!vehicleId) {
+            return NextResponse.json({ message: 'Vehicle ID is required' }, { status: 400 });
+        }
+
+        const deleted = await Vehicle.findByIdAndDelete(vehicleId);
+        if (!deleted) {
+            return NextResponse.json({ message: 'Vehicle not found' }, { status: 404 });
+        }
+
+        return NextResponse.json({ message: 'Vehicle deleted successfully' }, { status: 200 });
+    } catch (error) {
+        console.error('deleteVehicle error:', error);
+        return NextResponse.json({ message: 'Error deleting vehicle', error: error.message }, { status: 500 });
     }
 }

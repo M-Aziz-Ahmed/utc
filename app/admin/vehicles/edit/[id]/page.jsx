@@ -89,15 +89,14 @@ const EditVehiclePage = () => {
                 if (field.type !== 'file' && field.type !== 'image') {
                     const val = formData[field._id]
                     if (val !== undefined && val !== null && val !== '') {
-                        // Store by both _id and label so view page can find them either way
-                        textData[field._id]    = val
-                        textData[field.label]  = val
+                        textData[field._id]   = val
+                        textData[field.label] = val
                     }
                 }
             })
 
-            // Upload new images via FormData if any were chosen
             const hasNewImages = Object.keys(newImages).length > 0
+
             if (hasNewImages) {
                 fd.append('vehicleData', JSON.stringify({ vehicleId, ...textData }))
                 Object.entries(newImages).forEach(([fieldId, files]) => {
@@ -107,17 +106,21 @@ const EditVehiclePage = () => {
                         fd.append(`dynamic_${label}_${idx}`, file)
                     })
                 })
-                // Use PUT (not POST) so the API updates the existing vehicle
                 const res = await fetch('/api/vehicles', { method: 'PUT', body: fd })
-                if (!res.ok) throw new Error('Failed to update vehicle')
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}))
+                    throw new Error(err.message || err.error || `Server error ${res.status}`)
+                }
             } else {
-                // Plain JSON PATCH for text-only updates
                 const res = await fetch('/api/vehicles', {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ vehicleId, ...textData }),
                 })
-                if (!res.ok) throw new Error('Failed to update vehicle')
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}))
+                    throw new Error(err.message || err.error || `Server error ${res.status}`)
+                }
             }
 
             router.push('/admin/vehicles')
