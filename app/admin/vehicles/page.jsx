@@ -20,6 +20,7 @@ const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day:'2-digi
 // ── Vehicle card ───────────────────────────────────────────────────────────────
 const VehicleCard = ({ vehicle, fields, onView, onDelete }) => {
     const [imgIdx, setImgIdx] = useState(0)
+    const [hov, setHov] = useState(false)
     const imgs = getVehicleImages(vehicle)
 
     const cardFields = fields
@@ -34,176 +35,157 @@ const VehicleCard = ({ vehicle, fields, onView, onDelete }) => {
         return { label: f.label, value: String(val) }
     }).filter(Boolean)
 
-    const lotField = fields.find(f => f.label?.toLowerCase().includes('lot'))
-    const lotVal   = lotField ? (vehicle[lotField._id] || vehicle[lotField.label]) : null
+    const lotField   = fields.find(f => f.label?.toLowerCase().includes('lot'))
+    const lotVal     = lotField ? (vehicle[lotField._id] || vehicle[lotField.label]) : null
     const headerLine = [vehicle.auctionGroup, vehicle.auctionVenue, lotVal || null].filter(Boolean).join(' / ')
     const nameLine   = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ').toUpperCase()
     const descLine   = vehicle.modelDescription || vehicle.variant || ''
     const isPreSold  = vehicle.allocationStatus === true
 
-    const purchaseDateField = fields.find(f =>
-        f.label?.toLowerCase().includes('purchase') && f.label?.toLowerCase().includes('date'))
-    const purchaseDateVal = purchaseDateField
-        ? (vehicle[purchaseDateField._id] || vehicle[purchaseDateField.label]) : null
-    const footerDate = purchaseDateVal ? fmtDate(purchaseDateVal) : fmtDate(vehicle.createdAt)
+    const pDateField = fields.find(f => f.label?.toLowerCase().includes('purchase') && f.label?.toLowerCase().includes('date'))
+    const pDateVal   = pDateField ? (vehicle[pDateField._id] || vehicle[pDateField.label]) : null
+    const footerDate = pDateVal ? fmtDate(pDateVal) : fmtDate(vehicle.createdAt)
 
     const alloc  = (vehicle.allocation || '').toLowerCase()
     const rikuso = !!vehicle.rikusoStatus
-    const statusLeft  = [
-        { label:'Export', active: alloc === 'export' },
-        { label:'Khitai', active: alloc === 'khitai' },
-        { label:'Resale', active: alloc === 'resale-to-auction' },
-        { label:'Rikso',  active: rikuso },
-    ]
-    const statusRight = [
-        { label:'Docs' }, { label:'EC' }, { label:'TBS' }, { label:'BL' },
-    ]
+
+    const btnBase = { width:'28px',height:'28px',borderRadius:'6px',cursor:'pointer',
+        display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'all 0.15s' }
 
     return (
-        <div
-            onClick={() => onView(vehicle)}
+        <div onClick={() => onView(vehicle)} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
             style={{
-                background:'#fff',
-                border:'1px solid #d0d0d0',
-                borderRadius:'4px',
-                fontFamily:'"Segoe UI",Arial,sans-serif',
-                overflow:'hidden',
-                cursor:'pointer',
-                boxShadow:'0 1px 3px rgba(0,0,0,0.08)',
-                transition:'box-shadow 0.15s',
-                display:'flex',
-                flexDirection:'column',
-            }}
-            onMouseEnter={e => e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.14)'}
-            onMouseLeave={e => e.currentTarget.style.boxShadow='0 1px 3px rgba(0,0,0,0.08)'}
-        >
-            {/* ── Header bar ── */}
-            <div style={{background:'#ebebeb', borderBottom:'1px solid #ccc', padding:'4px 10px'}}>
-                <p style={{
-                    fontSize:'11px', fontWeight:700, color:'#333',
-                    whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', margin:0
-                }}>{headerLine || '—'}</p>
+                background:'#fff', borderRadius:'8px', overflow:'hidden', cursor:'pointer',
+                border: hov ? '1px solid #c0392b' : '1px solid #e2e8f0',
+                boxShadow: hov ? '0 8px 24px rgba(192,57,43,0.13)' : '0 2px 8px rgba(0,0,0,0.07)',
+                transition:'all 0.18s', display:'flex', flexDirection:'column',
+                fontFamily:'"Inter","Segoe UI",Arial,sans-serif',
+            }}>
+
+            {/* header */}
+            <div style={{background: hov ? '#c0392b' : '#1e293b', padding:'6px 12px', transition:'background 0.18s'}}>
+                <p style={{margin:0, fontSize:'11px', fontWeight:600, color:'#fff', letterSpacing:'0.04em',
+                    whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', opacity: headerLine ? 1 : 0.5}}>
+                    {headerLine || 'No Group / Venue'}
+                </p>
             </div>
 
-            {/* ── Image ── */}
-            <div style={{position:'relative', height:'170px', background:'#ddd', flexShrink:0}}>
+            {/* image */}
+            <div style={{position:'relative', height:'175px', background:'#f1f5f9', flexShrink:0}}>
                 {imgs.length > 0 ? (
                     <>
-                        <img src={imgs[imgIdx]} alt="" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}} />
-                        {imgs.length > 1 && (
-                            <>
-                                <button onClick={e=>{e.stopPropagation();setImgIdx((imgIdx-1+imgs.length)%imgs.length)}}
-                                    style={{position:'absolute',left:'4px',top:'50%',transform:'translateY(-50%)',background:'rgba(0,0,0,0.55)',border:'none',color:'#fff',borderRadius:'50%',width:'22px',height:'22px',fontSize:'15px',cursor:'pointer',lineHeight:'22px',textAlign:'center',padding:0}}>‹</button>
-                                <button onClick={e=>{e.stopPropagation();setImgIdx((imgIdx+1)%imgs.length)}}
-                                    style={{position:'absolute',right:'4px',top:'50%',transform:'translateY(-50%)',background:'rgba(0,0,0,0.55)',border:'none',color:'#fff',borderRadius:'50%',width:'22px',height:'22px',fontSize:'15px',cursor:'pointer',lineHeight:'22px',textAlign:'center',padding:0}}>›</button>
-                                <div style={{position:'absolute',bottom:'5px',left:'6px',background:'rgba(0,0,0,0.6)',color:'#fff',fontSize:'9px',padding:'1px 5px',borderRadius:'3px'}}>{imgIdx+1}/{imgs.length}</div>
-                            </>
-                        )}
+                        <img src={imgs[imgIdx]} alt="" style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} />
+                        {imgs.length > 1 && (<>
+                            <button onClick={e=>{e.stopPropagation();setImgIdx((imgIdx-1+imgs.length)%imgs.length)}}
+                                style={{position:'absolute',left:'6px',top:'50%',transform:'translateY(-50%)',
+                                background:'rgba(0,0,0,0.45)',border:'none',color:'#fff',borderRadius:'50%',
+                                width:'24px',height:'24px',fontSize:'16px',cursor:'pointer',display:'flex',
+                                alignItems:'center',justifyContent:'center',padding:0}}>‹</button>
+                            <button onClick={e=>{e.stopPropagation();setImgIdx((imgIdx+1)%imgs.length)}}
+                                style={{position:'absolute',right:'6px',top:'50%',transform:'translateY(-50%)',
+                                background:'rgba(0,0,0,0.45)',border:'none',color:'#fff',borderRadius:'50%',
+                                width:'24px',height:'24px',fontSize:'16px',cursor:'pointer',display:'flex',
+                                alignItems:'center',justifyContent:'center',padding:0}}>›</button>
+                            <div style={{position:'absolute',bottom:'7px',left:'8px',background:'rgba(0,0,0,0.55)',
+                                color:'#fff',fontSize:'10px',fontWeight:600,padding:'2px 7px',borderRadius:'20px'}}>
+                                {imgIdx+1}/{imgs.length}</div>
+                        </>)}
                         {isPreSold && (
-                            <div style={{position:'absolute',top:0,right:0,overflow:'hidden',width:'80px',height:'80px',pointerEvents:'none'}}>
-                                <div style={{
-                                    position:'absolute', top:'16px', right:'-22px', width:'96px',
-                                    background:'#1a3060', color:'#fff', fontSize:'10px',
-                                    fontWeight:900, fontStyle:'italic', letterSpacing:'0.06em',
-                                    textAlign:'center', padding:'4px 0',
-                                    transform:'rotate(45deg)', transformOrigin:'center',
-                                    boxShadow:'0 2px 4px rgba(0,0,0,0.35)'
-                                }}>PRE-SOLD</div>
+                            <div style={{position:'absolute',top:0,right:0,overflow:'hidden',width:'84px',height:'84px',pointerEvents:'none'}}>
+                                <div style={{position:'absolute',top:'18px',right:'-24px',width:'100px',
+                                    background:'#1a3060',color:'#fff',fontSize:'10px',fontWeight:800,
+                                    fontStyle:'italic',letterSpacing:'0.08em',textAlign:'center',padding:'4px 0',
+                                    transform:'rotate(45deg)',boxShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>PRE-SOLD</div>
                             </div>
                         )}
                     </>
                 ) : (
-                    <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'#aaa',fontSize:'12px'}}>No Image</div>
+                    <div style={{width:'100%',height:'100%',display:'flex',flexDirection:'column',
+                        alignItems:'center',justifyContent:'center',color:'#94a3b8',gap:'6px'}}>
+                        <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span style={{fontSize:'11px'}}>No Image</span>
+                    </div>
                 )}
             </div>
 
-            {/* ── Name + description ── */}
-            <div style={{padding:'6px 10px 5px', borderBottom:'1px solid #e8e8e8', background:'#f8f8f8'}}>
-                <p style={{margin:0, fontSize:'12px', fontWeight:700, color:'#111', lineHeight:1.3, letterSpacing:'0.01em'}}>{nameLine || '—'}</p>
-                {descLine && <p style={{margin:'1px 0 0', fontSize:'10px', color:'#777', lineHeight:1.3}}>{descLine}</p>}
+            {/* title */}
+            <div style={{padding:'9px 12px 7px', borderBottom:'1px solid #f0f4f8'}}>
+                <p style={{margin:0,fontSize:'13px',fontWeight:700,color:'#0f172a',lineHeight:1.25,letterSpacing:'0.02em'}}>{nameLine||'—'}</p>
+                {descLine && <p style={{margin:'3px 0 0',fontSize:'10.5px',color:'#64748b',lineHeight:1.3,fontWeight:500}}>{descLine}</p>}
             </div>
 
-            {/* ── Fields ── */}
-            <div style={{padding:'7px 10px 5px', flex:1}}>
+            {/* specs */}
+            <div style={{padding:'8px 12px 6px', flex:1, borderBottom:'1px solid #f0f4f8'}}>
                 {entries.slice(0, 10).map((e, i) => {
-                    // Pair up entries: even index = left col, odd = right col
                     if (i % 2 !== 0) return null
-                    const right = entries[i + 1]
+                    const r = entries[i + 1]
                     return (
-                        <div key={i} style={{display:'flex', gap:'8px', marginBottom:'3px', alignItems:'baseline'}}>
-                            <div style={{flex:1, minWidth:0}}>
-                                <span style={{fontSize:'11px', fontWeight:700, color:'#222'}}>{e.label}: </span>
-                                <span style={{fontSize:'11px', color:'#444'}}>{e.value}</span>
+                        <div key={i} style={{display:'flex', gap:'8px', marginBottom:'4px'}}>
+                            <div style={{flex:1, minWidth:0, lineHeight:1.5}}>
+                                <span style={{fontSize:'11px', fontWeight:700, color:'#374151'}}>{e.label}: </span>
+                                <span style={{fontSize:'11px', color:'#6b7280'}}>{e.value}</span>
                             </div>
-                            {right && (
-                                <div style={{flex:1, minWidth:0}}>
-                                    <span style={{fontSize:'11px', fontWeight:700, color:'#222'}}>{right.label}: </span>
-                                    <span style={{fontSize:'11px', color:'#444'}}>{right.value}</span>
+                            {r ? (
+                                <div style={{flex:1, minWidth:0, lineHeight:1.5}}>
+                                    <span style={{fontSize:'11px', fontWeight:700, color:'#374151'}}>{r.label}: </span>
+                                    <span style={{fontSize:'11px', color:'#6b7280'}}>{r.value}</span>
                                 </div>
-                            )}
+                            ) : <div style={{flex:1}}/>}
                         </div>
                     )
                 })}
+                {entries.length === 0 && <p style={{fontSize:'11px',color:'#cbd5e1',margin:0,fontStyle:'italic'}}>No details</p>}
             </div>
 
-            {/* ── Status dots ── */}
-            <div style={{padding:'5px 10px', borderTop:'1px solid #eee', borderBottom:'1px solid #eee', background:'#fafafa'}}>
-                <div style={{display:'flex', gap:'12px'}}>
-                    {/* Left col */}
-                    <div style={{display:'flex', flexDirection:'column', gap:'2px'}}>
-                        {statusLeft.map(s => (
-                            <div key={s.label} style={{display:'flex', alignItems:'center', gap:'5px'}}>
-                                <span style={{
-                                    width:'9px', height:'9px', borderRadius:'50%', flexShrink:0,
-                                    background: s.active ? '#e74c3c' : '#d1d5db',
-                                    boxShadow: s.active ? '0 0 4px rgba(231,76,60,0.5)' : 'none'
-                                }}/>
-                                <span style={{fontSize:'11px', fontWeight: s.active ? 700 : 400, color: s.active ? '#111' : '#999'}}>{s.label}</span>
+            {/* status dots */}
+            <div style={{padding:'7px 12px', background:'#f8fafc', borderBottom:'1px solid #f0f4f8'}}>
+                <div style={{display:'flex', justifyContent:'space-between'}}>
+                    <div style={{display:'flex', flexDirection:'column', gap:'3px'}}>
+                        {[
+                            {label:'Export', active: alloc==='export'},
+                            {label:'Khitai', active: alloc==='khitai'},
+                            {label:'Resale', active: alloc==='resale-to-auction'},
+                            {label:'Rikso',  active: rikuso},
+                        ].map(s => (
+                            <div key={s.label} style={{display:'flex',alignItems:'center',gap:'6px'}}>
+                                <span style={{width:'8px',height:'8px',borderRadius:'50%',flexShrink:0,
+                                    background: s.active?'#ef4444':'#e2e8f0',
+                                    boxShadow: s.active?'0 0 5px rgba(239,68,68,0.4)':'none'}}/>
+                                <span style={{fontSize:'11px',fontWeight:s.active?700:400,color:s.active?'#dc2626':'#94a3b8'}}>{s.label}</span>
                             </div>
                         ))}
                     </div>
-                    {/* Right col */}
-                    <div style={{display:'flex', flexDirection:'column', gap:'2px'}}>
-                        {statusRight.map(s => (
-                            <div key={s.label} style={{display:'flex', alignItems:'center', gap:'5px'}}>
-                                <span style={{width:'9px', height:'9px', borderRadius:'50%', flexShrink:0, background:'#d1d5db'}}/>
-                                <span style={{fontSize:'11px', color:'#bbb'}}>{s.label}</span>
+                    <div style={{display:'flex', flexDirection:'column', gap:'3px'}}>
+                        {['Docs','EC','TBS','BL'].map(l => (
+                            <div key={l} style={{display:'flex',alignItems:'center',gap:'6px'}}>
+                                <span style={{width:'8px',height:'8px',borderRadius:'50%',flexShrink:0,background:'#e2e8f0'}}/>
+                                <span style={{fontSize:'11px',color:'#cbd5e1'}}>{l}</span>
                             </div>
                         ))}
                     </div>
                 </div>
             </div>
 
-            {/* ── Footer ── */}
-            <div style={{padding:'6px 10px', display:'flex', alignItems:'center', justifyContent:'space-between', background:'#fff'}}>
-                <span style={{fontSize:'10px', color:'#999', fontWeight:500}}>{footerDate}</span>
-                <div style={{display:'flex', gap:'5px'}}>
-                    <button
-                        onClick={e => { e.stopPropagation(); onDelete(vehicle._id) }}
-                        title="Delete"
-                        style={{
-                            width:'26px', height:'26px', borderRadius:'5px', border:'none',
-                            background:'#7f1d1d', cursor:'pointer', color:'#fff',
-                            display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0
-                        }}
-                    >
-                        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            {/* footer */}
+            <div style={{padding:'7px 12px',display:'flex',alignItems:'center',justifyContent:'space-between',background:'#fff'}}>
+                <span style={{fontSize:'11px',color:'#94a3b8',fontWeight:500}}>{footerDate}</span>
+                <div style={{display:'flex',gap:'6px'}}>
+                    <button onClick={e=>{e.stopPropagation();onDelete(vehicle._id)}} title="Delete"
+                        style={{...btnBase,border:'1px solid #fecaca',background:'#fff5f5',color:'#dc2626'}}
+                        onMouseEnter={e=>{e.currentTarget.style.background='#dc2626';e.currentTarget.style.color='#fff';e.currentTarget.style.borderColor='#dc2626'}}
+                        onMouseLeave={e=>{e.currentTarget.style.background='#fff5f5';e.currentTarget.style.color='#dc2626';e.currentTarget.style.borderColor='#fecaca'}}>
+                        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                         </svg>
                     </button>
-                    <Link
-                        href={`/admin/vehicles/edit/${vehicle._id}`}
-                        onClick={e => e.stopPropagation()}
-                        title="Edit"
-                        style={{
-                            width:'26px', height:'26px', borderRadius:'5px',
-                            background:'#c0392b', cursor:'pointer', color:'#fff',
-                            display:'flex', alignItems:'center', justifyContent:'center',
-                            flexShrink:0, textDecoration:'none'
-                        }}
-                    >
-                        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 11l6-6 3 3-6 6H9v-3z" />
+                    <Link href={`/admin/vehicles/edit/${vehicle._id}`} onClick={e=>e.stopPropagation()} title="Edit"
+                        style={{...btnBase,border:'1px solid #bfdbfe',background:'#eff6ff',color:'#2563eb',textDecoration:'none'}}
+                        onMouseEnter={e=>{e.currentTarget.style.background='#2563eb';e.currentTarget.style.color='#fff';e.currentTarget.style.borderColor='#2563eb'}}
+                        onMouseLeave={e=>{e.currentTarget.style.background='#eff6ff';e.currentTarget.style.color='#2563eb';e.currentTarget.style.borderColor='#bfdbfe'}}>
+                        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                         </svg>
                     </Link>
                 </div>
