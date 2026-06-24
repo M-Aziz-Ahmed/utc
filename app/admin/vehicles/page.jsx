@@ -91,7 +91,7 @@ const VehicleCard = ({ vehicle, fields, onView, onDelete }) => {
                                 {imgIdx+1}/{imgs.length}</div>
                         </>)}
                         {isPreSold && (
-                            <div style={{position:'absolute',top:0,right:0,overflow:'hidden',width:'84px',height:'84px',pointerEvents:'none'}}>
+                            <div className='shadow-lg' style={{position:'absolute',top:-1,right:0,overflow:'hidden',width:'84px',height:'84px',pointerEvents:'none'}}>
                                 <div style={{position:'absolute',top:'18px',right:'-24px',width:'100px',
                                     background:'#1a3060',color:'#fff',fontSize:'10px',fontWeight:800,
                                     fontStyle:'italic',letterSpacing:'0.08em',textAlign:'center',padding:'4px 0',
