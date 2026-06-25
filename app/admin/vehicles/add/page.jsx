@@ -325,9 +325,13 @@ const AddVehiclePage = () => {
             auctionVenue: selectedVenue?.name,
             manufacturer: selectedManufacturer?.name, manufacturerId: selectedManufacturer?._id,
             model: selectedModel?.name,
-            modelDescription: selectedModel?.description || '',
+            // modelDescription: prefer the dynamic "Description" field value, then model's own description
+            modelDescription: (() => {
+                const descField = fields.find(f => f.label?.toLowerCase().trim() === 'description')
+                return (descField && formData[descField._id]) || selectedModel?.description || ''
+            })(),
             variant: selectedVariant || '',
-            mainImageUrl: addMainImageUrl || '',
+            mainImageIndex: addMainImageUrl || '',
         }))
         fields.forEach(f => {
             const v = formData[f._id]
@@ -394,7 +398,7 @@ const AddVehiclePage = () => {
     const [inlineAddOption, setInlineAddOption] = useState(null) // fieldId
     const [inlineOptionValue, setInlineOptionValue] = useState('')
     const [inlineAdding, setInlineAdding] = useState(false)
-    const [addMainImageUrl, setAddMainImageUrl] = useState('') // main/cover image for new vehicle
+    const [addMainImageUrl, setAddMainImageUrl] = useState('') // stores "FieldLabel:index" or ''
 
     const handleInlineAddOption = async (field) => {
         const val = inlineOptionValue.trim()
@@ -494,19 +498,20 @@ const AddVehiclePage = () => {
                     {files.length > 0 && (
                         <div className="flex flex-wrap gap-1.5">
                             {files.map((f, idx) => {
-                                const isMain = addMainImageUrl && addMainImageUrl === f.preview
+                                const key = `${field.label}:${idx}`
+                                const isMain = addMainImageUrl === key
                                 return (
                                     <div key={f.id} className="relative shrink-0 rounded-lg overflow-hidden border-2 transition"
                                         style={{width:'72px', height:'56px',
                                             borderColor: isMain ? '#f59e0b' : '#e5e7eb'}}>
                                         {f.preview
-                                            ? <img src={f.preview} alt={f.name} className="w-full h-full object-cover" />
+                                            ? <img src={f.preview} alt={f.name} className="w-full h-full object-contain bg-gray-100" />
                                             : <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 text-xs">{f.name?.split('.').pop()}</div>
                                         }
                                         {/* Star — set as main */}
                                         {f.preview && (
                                             <button type="button"
-                                                onClick={() => setAddMainImageUrl(isMain ? '' : f.preview)}
+                                                onClick={() => setAddMainImageUrl(isMain ? '' : key)}
                                                 title={isMain ? 'Remove as main' : 'Set as main image'}
                                                 className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs leading-none"
                                                 style={{background: isMain ? '#f59e0b' : 'rgba(0,0,0,0.45)'}}>★</button>
@@ -516,7 +521,16 @@ const AddVehiclePage = () => {
                                             onClick={() => {
                                                 const updated = files.filter((_, i) => i !== idx)
                                                 handleChange(field._id, updated)
-                                                if (isMain) setAddMainImageUrl('')
+                                                // Update main image index if needed
+                                                if (isMain) {
+                                                    setAddMainImageUrl('')
+                                                } else if (addMainImageUrl) {
+                                                    // Re-index: if removed item was before the main, shift index
+                                                    const [ml, mi] = addMainImageUrl.split(':')
+                                                    if (ml === field.label && parseInt(mi) > idx) {
+                                                        setAddMainImageUrl(`${ml}:${parseInt(mi) - 1}`)
+                                                    }
+                                                }
                                             }}
                                             title="Remove"
                                             className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs leading-none"
@@ -538,9 +552,8 @@ const AddVehiclePage = () => {
                                 preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
                                 name: file.name
                             }))
-                            // Append to existing selection instead of replacing
                             handleChange(field._id, [...files, ...newFiles])
-                            e.target.value = '' // allow re-selecting same file
+                            e.target.value = ''
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition"
                     />
@@ -742,7 +755,7 @@ const AddVehiclePage = () => {
                             </div>
                             <form onSubmit={handleSubmit}>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-                                    {fields.filter(f => f.type !== 'file' && f.type !== 'image').map(field => (
+                                    {fields.filter(f => f.type !== 'file' && f.type !== 'image' && f.label?.toLowerCase().trim() !== 'description').map(field => (
                                         <div key={field._id} className={field.type === 'boolean' ? 'lg:col-span-2' : ''}>
                                             <label className="block text-xs font-bold text-gray-600 mb-1.5">
                                                 {field.label}{field.isRequired && <span className="text-red-500 ml-0.5">*</span>}

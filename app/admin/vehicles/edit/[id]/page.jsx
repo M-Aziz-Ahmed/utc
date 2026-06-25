@@ -70,7 +70,11 @@ const EditVehiclePage = () => {
             setMeta({
                 manufacturer:     vehicleData.manufacturer     || '',
                 model:            vehicleData.model            || '',
-                modelDescription: vehicleData.modelDescription || '',
+                // Fall back to the dynamic Description field value if modelDescription not set
+                modelDescription: vehicleData.modelDescription
+                    || vehicleData['Description']
+                    || vehicleData['description']
+                    || '',
                 auctionGroup:     vehicleData.auctionGroup     || '',
                 auctionVenue:     vehicleData.auctionVenue     || '',
             })
@@ -290,18 +294,23 @@ const EditVehiclePage = () => {
                                             placeholder="e.g. Aqua" />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Description / Variant</label>
+                                        <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Subtitle / Variant <span className="text-gray-400 normal-case font-normal">(shown below title on card)</span></label>
                                         <input type="text" value={meta.modelDescription}
                                             onChange={e => setMeta(p => ({...p, modelDescription: e.target.value}))}
                                             className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-400 outline-none transition"
-                                            placeholder="e.g. Hybrid, 4WD 2.0" />
+                                            placeholder="e.g. Hybrid, 4WD 2.0, Gli" />
                                     </div>
                                 </div>
                             </div>
 
                             {/* ── Dynamic fields ── */}
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                                {fields.map((field) => {
+                                {fields.filter(field => {
+                                    // Skip the Description field — it's already handled by the
+                                    // "Subtitle / Variant" field in Vehicle Identity above
+                                    const lbl = field.label?.toLowerCase().trim()
+                                    return lbl !== 'description'
+                                }).map((field) => {
                                     const currentValue = formData[field._id]
                                     const existingImages = getExistingImages(field)
 

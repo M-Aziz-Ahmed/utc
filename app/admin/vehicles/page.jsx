@@ -49,7 +49,7 @@ const VehicleCard = ({ vehicle, fields, onView, onDelete }) => {
     const lotVal     = lotField ? (vehicle[lotField._id] || vehicle[lotField.label]) : null
     const headerLine = [vehicle.auctionGroup, vehicle.auctionVenue, lotVal || null].filter(Boolean).join(' / ')
     const nameLine   = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ').toUpperCase()
-    const descLine   = vehicle.modelDescription || vehicle.variant || ''
+    const descLine = vehicle.modelDescription || vehicle.variant || vehicle['Description'] || vehicle['description'] || ''
     const isPreSold  = vehicle.allocationStatus === true
 
     const pDateField = fields.find(f => f.label?.toLowerCase().includes('purchase') && f.label?.toLowerCase().includes('date'))
@@ -99,7 +99,7 @@ const VehicleCard = ({ vehicle, fields, onView, onDelete }) => {
             >
                 {imgs.length > 0 ? (
                     <>
-                        <img src={imgs[imgIdx]} alt="" style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} />
+                        <img src={imgs[imgIdx]} alt="" style={{width:'100%',height:'100%',objectFit:'contain',display:'block',background:'#f1f5f9'}} />
                         {imgs.length > 1 && (<>
                             <button onClick={e=>{e.stopPropagation();setImgIdx((imgIdx-1+imgs.length)%imgs.length)}}
                                 style={{position:'absolute',left:'6px',top:'50%',transform:'translateY(-50%)',
@@ -573,7 +573,7 @@ const VehicleRow = ({ vehicle, fields, onView, onDelete }) => {
             <td style={{padding:'5px 8px', width:'48px'}}>
                 <div style={{width:'42px', height:'32px', borderRadius:'4px', overflow:'hidden', background:'#f1f5f9', flexShrink:0, position:'relative'}}>
                     {imgs.length > 0
-                        ? <img src={imgs[0]} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}} />
+                        ? <img src={imgs[0]} alt="" style={{width:'100%',height:'100%',objectFit:'contain',background:'#f1f5f9'}} />
                         : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'#cbd5e1',fontSize:'9px'}}>—</div>
                     }
                     {isPreSold && (
@@ -588,20 +588,29 @@ const VehicleRow = ({ vehicle, fields, onView, onDelete }) => {
             {/* Name */}
             <td style={{padding:'5px 8px', minWidth:'120px'}}>
                 <div style={{fontSize:'12px', fontWeight:700, color:'#0f172a', whiteSpace:'nowrap'}}>{nameLine || '—'}</div>
-                {vehicle.modelDescription && <div style={{fontSize:'10px', color:'#94a3b8'}}>{vehicle.modelDescription}</div>}
+                {(vehicle.modelDescription || vehicle['Description'] || vehicle['description']) && (
+                    <div style={{fontSize:'10px', color:'#94a3b8'}}>
+                        {vehicle.modelDescription || vehicle['Description'] || vehicle['description']}
+                    </div>
+                )}
             </td>
-            {/* Dynamic fields — show first 5 */}
-            {entries.slice(0, 5).map((e, i) => (
-                <td key={i} style={{padding:'5px 8px', minWidth:'70px'}}>
-                    <div style={{fontSize:'9px', color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.04em', lineHeight:1}}>{e.label}</div>
-                    <div style={{fontSize:'11px', fontWeight:600, color:'#1e293b', whiteSpace:'nowrap'}}>{e.value}</div>
-                </td>
-            ))}
+            {/* Dynamic fields — all fields with showOnCard enabled */}
+            {entries.map((e, i) => {
+                // Only normalize case if the value is all-caps text (not a code/number)
+                const isAllCaps = e.value === e.value.toUpperCase() && /[A-Z]{2,}/.test(e.value)
+                const display = isAllCaps
+                    ? e.value.charAt(0).toUpperCase() + e.value.slice(1).toLowerCase()
+                    : e.value
+                return (
+                    <td key={i} style={{padding:'5px 8px', minWidth:'70px'}}>
+                        <div style={{fontSize:'11px', fontWeight:600, color:'#1e293b', whiteSpace:'nowrap'}}>{display}</div>
+                    </td>
+                )
+            })}
             {/* Pad missing cells */}
             {entries.length < 5 && Array.from({length: 5 - entries.length}).map((_, i) => (
                 <td key={`pad-${i}`} style={{padding:'5px 8px'}} />
-            ))}
-            {/* Status */}
+            ))}            {/* Status */}
             <td style={{padding:'5px 8px', width:'72px'}}>
                 <div style={{display:'flex', flexDirection:'column', gap:'1px'}}>
                     {activeAlloc && <span style={{fontSize:'9px', fontWeight:700, color:'#dc2626', background:'#fff1f1', padding:'1px 5px', borderRadius:'999px', display:'inline-block'}}>{activeAlloc}</span>}
@@ -776,13 +785,13 @@ const Page = () => {
                             <thead>
                                 <tr style={{borderBottom:'2px solid #f0f4f8', background:'#f8fafc'}}>
                                     <th style={{padding:'7px 8px', width:'48px'}}></th>
-                                    <th style={{padding:'7px 8px', textAlign:'left', fontSize:'10px', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em'}}>Group / Venue</th>
-                                    <th style={{padding:'7px 8px', textAlign:'left', fontSize:'10px', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em'}}>Vehicle</th>
-                                    {fields.filter(f => f.showOnCard !== false && f.belongsto === 'add-vehicles').sort((a,b)=>(a.order??0)-(b.order??0)).slice(0,5).map(f => (
-                                        <th key={f._id} style={{padding:'7px 8px', textAlign:'left', fontSize:'10px', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', whiteSpace:'nowrap'}}>{f.label}</th>
+                                    <th style={{padding:'7px 8px', textAlign:'left', fontSize:'11px', fontWeight:600, color:'#64748b'}}>Group / Venue</th>
+                                    <th style={{padding:'7px 8px', textAlign:'left', fontSize:'11px', fontWeight:600, color:'#64748b'}}>Vehicle</th>
+                                    {fields.filter(f => f.showOnCard !== false && f.belongsto === 'add-vehicles').sort((a,b)=>(a.order??0)-(b.order??0)).map(f => (
+                                        <th key={f._id} style={{padding:'7px 8px', textAlign:'left', fontSize:'11px', fontWeight:600, color:'#64748b', whiteSpace:'nowrap'}}>{f.label}</th>
                                     ))}
-                                    <th style={{padding:'7px 8px', textAlign:'left', fontSize:'10px', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em'}}>Status</th>
-                                    <th style={{padding:'7px 8px', textAlign:'left', fontSize:'10px', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em'}}>Date</th>
+                                    <th style={{padding:'7px 8px', textAlign:'left', fontSize:'11px', fontWeight:600, color:'#64748b'}}>Status</th>
+                                    <th style={{padding:'7px 8px', textAlign:'left', fontSize:'11px', fontWeight:600, color:'#64748b'}}>Date</th>
                                     <th style={{padding:'7px 8px', width:'60px'}}></th>
                                 </tr>
                             </thead>

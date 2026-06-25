@@ -103,6 +103,18 @@ export const POST = async (req) => {
             });
         }
 
+        // Resolve mainImageUrl from mainImageIndex if provided
+        // Format: "FieldLabel:index" e.g. "Vehicle Images:1"
+        if (vehicleData.mainImageIndex && typeof vehicleData.mainImageIndex === 'string') {
+            const [labelPart, idxPart] = vehicleData.mainImageIndex.split(':')
+            const idx = parseInt(idxPart, 10)
+            const fieldFiles = dynamicFieldFiles[labelPart]
+            if (fieldFiles && !isNaN(idx) && fieldFiles[idx]) {
+                vehicleData.mainImageUrl = fieldFiles[idx].path
+            }
+            delete vehicleData.mainImageIndex
+        }
+
         // Add user reference if available
         if (userId) {
             vehicleData.createdBy = userId;
