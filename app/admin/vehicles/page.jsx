@@ -589,7 +589,7 @@ const VehicleRow = ({ vehicle, fields, onView, onDelete }) => {
             </td>
             {/* Name */}
             <td style={{padding:'5px 8px', minWidth:'120px'}}>
-                <div style={{fontSize:'12px', fontWeight:700, color:'#0f172a', whiteSpace:'nowrap'}}>{nameLine || '—'}</div>
+                <div style={{fontSize:'12px', fontWeight:700, color:'#0f172a', whiteSpace:'nowrap'}} className='uppercase'>{nameLine || '—'}</div>
                 {(vehicle.modelDescription || vehicle['Description'] || vehicle['description']) && (
                     <div style={{fontSize:'10px', color:'#94a3b8'}}>
                         {vehicle.modelDescription || vehicle['Description'] || vehicle['description']}
@@ -605,7 +605,7 @@ const VehicleRow = ({ vehicle, fields, onView, onDelete }) => {
                     : e.value
                 return (
                     <td key={i} style={{padding:'5px 8px', minWidth:'70px'}}>
-                        <div style={{fontSize:'11px', fontWeight:600, color:'#1e293b', whiteSpace:'nowrap'}}>{display}</div>
+                        <div style={{fontSize:'11px', fontWeight:600, color:'#1e293b', whiteSpace:'nowrap'}} className='uppercase'>{display}</div>
                     </td>
                 )
             })}
