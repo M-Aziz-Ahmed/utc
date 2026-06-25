@@ -77,14 +77,14 @@ const VehicleCard = ({ vehicle, fields, onView, onDelete }) => {
         <div onClick={() => onView(vehicle)} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
             style={{
                 background:'#fff', borderRadius:'8px', overflow:'hidden', cursor:'pointer',
-                border: hov ? '1px solid #c0392b' : '1px solid #e2e8f0',
-                boxShadow: hov ? '0 8px 24px rgba(192,57,43,0.13)' : '0 2px 8px rgba(0,0,0,0.07)',
+                border: hov ? '1px solid #1a73e8' : '1px solid #e2e8f0',
+                boxShadow: hov ? '0 4px 16px rgba(26,115,232,0.12)' : '0 1px 4px rgba(0,0,0,0.06)',
                 transition:'all 0.18s', display:'flex', flexDirection:'column',
                 fontFamily:'"Inter","Segoe UI",Arial,sans-serif',
             }}>
 
             {/* header */}
-            <div style={{background: hov ? '#c0392b' : '#1e293b', padding:'6px 12px', transition:'background 0.18s'}}>
+            <div style={{background: hov ? '#1a73e8' : '#1e293b', padding:'6px 12px', transition:'background 0.18s'}}>
                 <p style={{margin:0, fontSize:'11px', fontWeight:600, color:'#fff', letterSpacing:'0.04em',
                     whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', opacity: headerLine ? 1 : 0.5}}>
                     {headerLine || 'No Group / Venue'}
@@ -292,7 +292,7 @@ const DetailModal = ({ vehicle, fields, onClose, onDelete }) => {
                         <button
                             onClick={() => onDelete(vehicle._id)}
                             className="px-3 py-1 rounded font-bold text-white text-xs flex items-center gap-1"
-                            style={{background:'#7f1d1d'}}
+                            style={{background:'#c5221f'}}
                             title="Delete vehicle"
                         >
                             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -717,29 +717,42 @@ const Page = () => {
     })
 
     return (
-        <div className="px-4 py-4">
+        <div className="px-5 py-5">
             {/* Toolbar */}
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-1 h-5 rounded-full" style={{background:'var(--accent)'}}></div>
-                    <h1 className="font-bold" style={{fontSize:'var(--text-2xl)'}}>Vehicle Management</h1>
-                    <span style={{fontSize:'var(--text-xs)', color:'var(--foreground-muted)'}}>{loading ? '…' : `${filtered.length} vehicles`}</span>
+                    <h1 className="font-medium" style={{fontSize:'var(--text-2xl)', color:'#202124'}}>Vehicle Management</h1>
+                    <span style={{fontSize:'var(--text-xs)', color:'#5f6368'}}>
+                        {loading ? '…' : `${filtered.length} vehicles`}
+                    </span>
                 </div>
                 <div className="flex items-center gap-2">
                     {/* View toggle */}
-                    <div style={{display:'flex', gap:'4px', padding:'3px', background:'#f1f3f4', borderRadius:'8px'}}>
-                        <button onClick={() => switchView('grid')} style={btnStyle(viewMode==='grid')} title="Grid view">
+                    <div style={{display:'flex', gap:'2px', padding:'2px', background:'#f1f3f4', borderRadius:'8px'}}>
+                        <button onClick={() => switchView('grid')} title="Grid view"
+                            style={{width:'30px', height:'30px', borderRadius:'6px', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s',
+                                background: viewMode==='grid' ? '#fff' : 'transparent',
+                                color: viewMode==='grid' ? '#1a73e8' : '#5f6368',
+                                boxShadow: viewMode==='grid' ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
+                            }}>
                             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
                             </svg>
                         </button>
-                        <button onClick={() => switchView('list')} style={btnStyle(viewMode==='list')} title="List view">
+                        <button onClick={() => switchView('list')} title="List view"
+                            style={{width:'30px', height:'30px', borderRadius:'6px', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s',
+                                background: viewMode==='list' ? '#fff' : 'transparent',
+                                color: viewMode==='list' ? '#1a73e8' : '#5f6368',
+                                boxShadow: viewMode==='list' ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
+                            }}>
                             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
                             </svg>
                         </button>
                     </div>
-                    <Link href="/admin/vehicles/add" className="flex items-center gap-1.5 px-3 py-1.5 rounded font-bold text-white transition" style={{background:'var(--accent)', fontSize:'var(--text-sm)'}}>
+                    <Link href="/admin/vehicles/add"
+                        className="flex items-center gap-1.5"
+                        style={{padding:'8px 16px', borderRadius:'20px', background:'var(--accent)', color:'#fff', fontSize:'var(--text-sm)', fontWeight:500, textDecoration:'none'}}>
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                         Add Vehicle
                     </Link>
@@ -748,10 +761,11 @@ const Page = () => {
 
             {/* Search */}
             <div className="relative mb-4 max-w-xs">
-                <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{color:'#9aa0a6'}}>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
                 <input type="text" placeholder="Search vehicles..." value={search} onChange={e => setSearch(e.target.value)}
-                    className="w-full pl-8 pr-3 py-1.5 rounded border border-gray-200 outline-none"
-                    style={{fontSize:'var(--text-sm)'}} />
+                    style={{paddingLeft:'32px', fontSize:'var(--text-sm)'}} />
             </div>
 
             {loading ? (

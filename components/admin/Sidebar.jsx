@@ -168,14 +168,22 @@ const Sidebar = () => {
     const pathname = usePathname();
 
     return (
-        <div className={`text-slate-200 h-screen transition-all duration-300 flex flex-col border-r shrink-0 z-40 ${toggle ? 'w-70' : 'w-16'}`} style={{background: 'var(--ink)', borderColor: 'var(--ink-light)'}}>
+        <div className={`h-screen transition-all duration-300 flex flex-col shrink-0 z-40 ${toggle ? 'w-64' : 'w-14'}`}
+            style={{background:'#f0f4f9', borderRight:'1px solid #e0e0e0'}}>
             {/* Header Area */}
-            <div className="p-3 flex items-center justify-between border-b min-h-11" style={{borderColor: 'var(--ink-light)'}}>
-                {toggle && <span className="font-black text-xs tracking-widest uppercase" style={{color: 'var(--accent)', letterSpacing: '0.15em'}}>UTC ADMIN</span>}
+            <div className="flex items-center justify-between min-h-[56px] px-3" style={{borderBottom:'1px solid #e0e0e0'}}>
+                {toggle && (
+                    <span className="font-bold tracking-widest uppercase select-none"
+                        style={{fontSize:'11px', color:'#444746', letterSpacing:'0.12em'}}>
+                        UTC ADMIN
+                    </span>
+                )}
                 <button
                     onClick={handleToggle}
-                    className="p-1.5 ml-auto rounded text-slate-400 hover:text-white transition-colors focus:outline-none"
-                    style={{background: 'rgba(255,255,255,0.08)'}}
+                    className="p-1.5 rounded-full transition-colors focus:outline-none ml-auto"
+                    style={{color:'#444746'}}
+                    onMouseEnter={e => e.currentTarget.style.background='#e2e5e9'}
+                    onMouseLeave={e => e.currentTarget.style.background='transparent'}
                 >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -184,16 +192,12 @@ const Sidebar = () => {
             </div>
 
             {/* Navigation Body */}
-            <div className="flex-1 p-3 space-y-1 overflow-y-auto">
+            <div className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
                 {navigation.map((n) => {
                     const isCurrentPath = n.href === pathname;
                     const isChildPathActive = n.subL?.some(sub => sub.href === pathname);
                     const isActive = isCurrentPath || isChildPathActive;
                     const isMenuOpen = openMenus[n.name];
-
-                    // Active / inactive styles for dark sidebar
-                    const activeClass = "font-semibold rounded text-white";
-                    const inactiveClass = "text-slate-200 hover:text-white hover:bg-white/10 rounded";
 
                     const useLinkElement = n.href && !n.subL;
                     const Element = useLinkElement ? Link : "button";
@@ -203,20 +207,35 @@ const Sidebar = () => {
                             <Element
                                 href={useLinkElement ? n.href : undefined}
                                 onClick={() => n.subL && toggleSubMenu(n.name)}
-                                className={`w-full group rounded p-2 flex items-center transition-all duration-150 text-left focus:outline-none ${isActive ? activeClass : inactiveClass}`}
-                                style={isActive ? {background: 'var(--accent)'} : {}}
+                                className="w-full group flex items-center transition-all duration-150 text-left focus:outline-none"
+                                style={{
+                                    padding: toggle ? '6px 10px' : '8px',
+                                    borderRadius: '20px',
+                                    background: isActive ? '#d3e3fd' : 'transparent',
+                                    justifyContent: toggle ? 'flex-start' : 'center',
+                                }}
+                                onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#e2e5e9' }}
+                                onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
                             >
-                                <span className={`shrink-0 ${isActive ? 'text-[white!important]' : 'text-[white!important] group-hover:text-white'}`}>
+                                <span style={{
+                                    color: isActive ? '#0842a0' : '#444746',
+                                    flexShrink: 0,
+                                    display:'flex',
+                                }}>
                                     {n.icon}
                                 </span>
 
                                 {toggle && (
                                     <div className="flex items-center justify-between w-full ml-3 overflow-hidden">
-                                        <span className={`truncate font-medium tracking-wide ${isActive ? 'text-[white!important]' : 'text-[white!important] group-hover:text-white'}`} style={{fontSize:'var(--text-sm)'}}>{n.name}</span>
+                                        <span className="truncate font-medium"
+                                            style={{fontSize:'var(--text-sm)', color: isActive ? '#0842a0' : '#444746'}}>
+                                            {n.name}
+                                        </span>
                                         {n.subL && (
                                             <svg
-                                                className={`w-3 h-3 transform transition-transform duration-200 ${isActive ? 'text-[white!important]' : 'text-[white!important] group-hover:text-white'} ${isMenuOpen ? 'rotate-180' : ''}`}
+                                                className={`w-3 h-3 transform transition-transform duration-200 ${isMenuOpen ? 'rotate-180' : ''}`}
                                                 fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                style={{color: isActive ? '#0842a0' : '#80868b', flexShrink:0}}
                                             >
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                             </svg>
@@ -227,18 +246,25 @@ const Sidebar = () => {
 
                             {/* Submenu */}
                             {n.subL && isMenuOpen && toggle && (
-                                <div className="mt-0.5 ml-2 pl-2 space-y-0.5" style={{borderLeft: '2px solid rgba(192,57,43,0.4)'}}>
+                                <div className="mt-0.5 ml-3 pl-3 space-y-0.5" style={{borderLeft: '2px solid #c4c7c5'}}>
                                     {n.subL.map((sl, index) => {
                                         const isSubActive = sl.href === pathname;
                                         return (
                                             <Link
                                                 key={`${sl.name}-${index}`}
                                                 href={sl.href}
-                                                className={`w-full p-1.5 pl-3 flex items-center gap-2 transition-all rounded ${isSubActive ? 'text-[white!important] font-semibold' : 'text-[white!important] hover:text-white hover:bg-white/10'}`}
-                                                style={isSubActive ? {background:'var(--accent)', fontSize:'var(--text-sm)'} : {fontSize:'var(--text-sm)'}}
+                                                className="w-full flex items-center gap-2 transition-all"
+                                                style={{
+                                                    padding:'5px 10px',
+                                                    borderRadius:'20px',
+                                                    background: isSubActive ? '#d3e3fd' : 'transparent',
+                                                    fontSize:'var(--text-sm)',
+                                                }}
+                                                onMouseEnter={e => { if (!isSubActive) e.currentTarget.style.background = '#e2e5e9' }}
+                                                onMouseLeave={e => { if (!isSubActive) e.currentTarget.style.background = 'transparent' }}
                                             >
-                                                <span className={`shrink-0 ${isSubActive ? 'text-[white!important]' : 'text-[white!important]'}`}>{sl.icon}</span>
-                                                <span className="truncate text-[white!important]">{sl.name}</span>
+                                                <span style={{color: isSubActive ? '#0842a0' : '#444746', flexShrink:0}}>{sl.icon}</span>
+                                                <span className="truncate" style={{color: isSubActive ? '#0842a0' : '#444746', fontWeight: isSubActive ? 600 : 400}}>{sl.name}</span>
                                             </Link>
                                         );
                                     })}

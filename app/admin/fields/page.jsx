@@ -119,48 +119,47 @@ const Page = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4">
+        <div className="min-h-screen py-6 px-6" style={{background:'#f6f8fc'}}>
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                        <svg className="w-8 h-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        Dynamic Fields
-                    </h1>
-                    <p className="text-gray-600 mt-2">Create and manage custom fields for your forms.</p>
+                <div className="mb-6 flex items-center gap-3">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{color:'var(--accent)', flexShrink:0}}>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <div>
+                        <h1 className="font-medium" style={{fontSize:'var(--text-2xl)', color:'#202124'}}>Dynamic Fields</h1>
+                        <p style={{fontSize:'var(--text-sm)', color:'#5f6368', marginTop:'2px'}}>Create and manage custom fields for your forms.</p>
+                    </div>
                 </div>
 
-                <div className="grid gap-8 lg:grid-cols-3">
+                <div className="grid gap-5 lg:grid-cols-3">
                     {/* Create Field Card */}
                     <div className="lg:col-span-1">
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sticky top-8">
-                            <div className="mb-6">
-                                <h2 className="text-xl font-bold text-gray-900">New Field</h2>
-                                <p className="text-sm text-gray-500 mt-1">Fill in the details to add a new dynamic field.</p>
+                        <div className="sticky top-6" style={{background:'#fff', borderRadius:'8px', border:'1px solid #e0e0e0', padding:'20px'}}>
+                            <div className="mb-5">
+                                <h2 className="font-medium" style={{fontSize:'var(--text-lg)', color:'#202124'}}>New Field</h2>
+                                <p style={{fontSize:'var(--text-xs)', color:'#5f6368', marginTop:'2px'}}>Fill in the details to add a new dynamic field.</p>
                             </div>
 
-                            <form onSubmit={handleSubmit} className="space-y-5">
+                            <form onSubmit={handleSubmit} className="space-y-4">
                             {/* Label */}
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1.5 uppercase tracking-wide">
-                                    Label <span className="text-red-400">*</span>
+                                <label style={{display:'block', fontSize:'var(--text-xs)', fontWeight:600, color:'#5f6368', marginBottom:'6px', textTransform:'uppercase', letterSpacing:'0.05em'}}>
+                                    LABEL <span style={{color:'#c5221f'}}>*</span>
                                 </label>
                                 <input
                                     value={label}
                                     onChange={(e) => setLabel(e.target.value)}
                                     type="text"
                                     required
-                                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                                     placeholder="e.g. First Name"
                                 />
                             </div>
 
                             {/* Type */}
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1.5 uppercase tracking-wide">
-                                    Type
+                                <label style={{display:'block', fontSize:'var(--text-xs)', fontWeight:600, color:'#5f6368', marginBottom:'6px', textTransform:'uppercase', letterSpacing:'0.05em'}}>
+                                    TYPE
                                 </label>
                                 <select
                                     value={type}
@@ -172,7 +171,6 @@ const Page = () => {
                                             setNewOption('');
                                         }
                                     }}
-                                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white"
                                 >
                                     {FIELD_TYPES.map((t) => (
                                         <option key={t} value={t}>{t}</option>
@@ -182,8 +180,8 @@ const Page = () => {
 
                             {/* Dropdown Options - Only show if type is dropdown */}
                             {type === 'dropdown' && (
-                                <div className="border-2 border-blue-100 rounded-lg p-4 bg-blue-50/50">
-                                    <label className="block text-xs font-medium text-gray-700 mb-3 uppercase tracking-wide">
+                                <div style={{border:'1px solid #d2e3fc', borderRadius:'8px', padding:'12px', background:'rgba(232,240,254,0.3)'}}>
+                                    <label style={{display:'block', fontSize:'var(--text-xs)', fontWeight:600, color:'#5f6368', marginBottom:'10px', textTransform:'uppercase', letterSpacing:'0.05em'}}>
                                         Dropdown Options
                                     </label>
                                     
@@ -196,13 +194,13 @@ const Page = () => {
                                                     value={option}
                                                     onChange={(e) => updateDropdownOption(index, e.target.value)}
                                                     placeholder={`Option ${index + 1}`}
-                                                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                                                    style={{flex:1}}
                                                 />
                                                 {dropdownOptions.length > 1 && (
                                                     <button
                                                         type="button"
                                                         onClick={() => removeDropdownOption(index)}
-                                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                                        style={{padding:'6px', color:'#c5221f', borderRadius:'6px', background:'transparent', border:'none', cursor:'pointer', flexShrink:0}}
                                                         title="Remove option"
                                                     >
                                                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -215,33 +213,34 @@ const Page = () => {
                                     </div>
 
                                     {/* Add New Option */}
-                                    <div className="flex items-center gap-2 pt-2 border-t border-blue-200">
+                                    <div className="flex items-center gap-2 pt-2" style={{borderTop:'1px solid #d2e3fc'}}>
                                         <input
                                             type="text"
                                             value={newOption}
                                             onChange={(e) => setNewOption(e.target.value)}
-                                            onKeyPress={(e) => {
+                                            onKeyDown={(e) => {
                                                 if (e.key === 'Enter') {
                                                     e.preventDefault();
                                                     addDropdownOption();
                                                 }
                                             }}
                                             placeholder="Type new option..."
-                                            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                                            style={{flex:1}}
                                         />
                                         <button
                                             type="button"
                                             onClick={addDropdownOption}
-                                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition flex items-center gap-1.5"
+                                            className="flex items-center gap-1 shrink-0"
+                                            style={{padding:'6px 12px', background:'var(--accent)', color:'#fff', borderRadius:'6px', fontSize:'var(--text-sm)', fontWeight:600}}
                                         >
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                             </svg>
                                             Add
                                         </button>
                                     </div>
 
-                                    <p className="text-xs text-gray-600 mt-2 italic">
+                                    <p style={{fontSize:'var(--text-xs)', color:'#9aa0a6', marginTop:'6px', fontStyle:'italic'}}>
                                         Press Enter or click Add to add a new option
                                     </p>
                                 </div>
@@ -249,17 +248,21 @@ const Page = () => {
 
                             {/* Is Required */}
                             <div>
-                                <span className="block text-xs font-medium text-gray-600 mb-2 uppercase tracking-wide">
-                                    Required?
+                                <span style={{display:'block', fontSize:'var(--text-xs)', fontWeight:600, color:'#5f6368', marginBottom:'8px', textTransform:'uppercase', letterSpacing:'0.05em'}}>
+                                    REQUIRED?
                                 </span>
-                                <div className="flex gap-4">
+                                <div className="flex gap-3">
                                     {[{ label: 'Yes', value: true }, { label: 'No', value: false }].map(({ label: optLabel, value }) => (
                                         <label
                                             key={String(value)}
-                                            className={`flex items-center gap-2 cursor-pointer px-4 py-2 rounded-lg border text-sm font-medium transition ${isRequired === value
-                                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                                                }`}
+                                            style={{
+                                                display:'flex', alignItems:'center', gap:'6px', cursor:'pointer',
+                                                padding:'6px 14px', borderRadius:'20px', fontSize:'var(--text-sm)', fontWeight:500,
+                                                border: isRequired === value ? '1px solid var(--accent)' : '1px solid #e0e0e0',
+                                                background: isRequired === value ? '#e8f0fe' : '#fff',
+                                                color: isRequired === value ? '#1a73e8' : '#5f6368',
+                                                transition:'all 0.15s',
+                                            }}
                                         >
                                             <input
                                                 type="radio"
@@ -276,26 +279,26 @@ const Page = () => {
 
                             {/* Belongs To Form - Dropdown */}
                             <div>
-                                <div className="flex items-center justify-between mb-2">
-                                    <label className="block text-xs font-medium text-gray-600 uppercase tracking-wide">
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label style={{fontSize:'var(--text-xs)', fontWeight:600, color:'#5f6368', textTransform:'uppercase', letterSpacing:'0.05em'}}>
                                         Belongs to form
-                                        <span className="ml-1 text-gray-400 normal-case font-normal">(optional)</span>
+                                        <span style={{marginLeft:'4px', color:'#9aa0a6', fontWeight:400, textTransform:'none', letterSpacing:'normal'}}>(optional)</span>
                                     </label>
                                     <button
                                         type="button"
                                         onClick={() => setShowNewFormModal(true)}
-                                        className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1"
+                                        className="flex items-center gap-1"
+                                        style={{fontSize:'var(--text-xs)', color:'var(--accent)', fontWeight:600, background:'none', border:'none', cursor:'pointer', padding:0}}
                                     >
                                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                         </svg>
-                                        Add New
+                                        + Add New
                                     </button>
                                 </div>
                                 <select
                                     value={belongsto}
                                     onChange={(e) => setBelongsto(e.target.value)}
-                                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white"
                                 >
                                     <option value="">Select a form...</option>
                                     {forms.map((form) => (
@@ -308,7 +311,12 @@ const Page = () => {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                                className="w-full flex items-center justify-center gap-2"
+                                style={{
+                                    padding:'8px 16px', borderRadius:'20px', fontSize:'var(--text-sm)', fontWeight:600,
+                                    color:'#fff', background: loading ? '#9aa0a6' : 'var(--accent)',
+                                    cursor: loading ? 'not-allowed' : 'pointer', border:'none',
+                                }}
                             >
                                 {loading ? (
                                     <>
@@ -331,10 +339,12 @@ const Page = () => {
 
                         {/* Feedback message */}
                         {message && (
-                            <div className={`mt-4 flex items-start gap-2 rounded-lg px-4 py-3 text-sm ${message.type === 'error'
-                                    ? 'bg-red-50 text-red-700 border border-red-200'
-                                    : 'bg-green-50 text-green-700 border border-green-200'
-                                }`}>
+                            <div className="mt-4 flex items-start gap-2" style={{
+                                borderRadius:'8px', padding:'10px 14px', fontSize:'var(--text-sm)',
+                                background: message.type === 'error' ? '#fce8e6' : '#e6f4ea',
+                                color: message.type === 'error' ? '#c5221f' : '#137333',
+                                border: `1px solid ${message.type === 'error' ? '#f5c6c2' : '#b7dfbe'}`,
+                            }}>
                                 {message.type === 'error' ? (
                                     <svg className="h-4 w-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
@@ -352,10 +362,10 @@ const Page = () => {
 
                     {/* Fields List with Search and Filters */}
                     <div className="lg:col-span-2">
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                            <div className="mb-6">
-                                <h2 className="text-xl font-bold text-gray-900">Existing Fields</h2>
-                                <p className="text-sm text-gray-500 mt-1">All dynamic fields currently in the system.</p>
+                        <div style={{background:'#fff', borderRadius:'8px', border:'1px solid #e0e0e0', padding:'20px'}}>
+                            <div className="mb-5">
+                                <h2 className="font-medium" style={{fontSize:'var(--text-lg)', color:'#202124'}}>Existing Fields</h2>
+                                <p style={{fontSize:'var(--text-xs)', color:'#5f6368', marginTop:'2px'}}>All dynamic fields currently in the system.</p>
                             </div>
                             <GetAllFields refreshKey={refreshKey} forms={forms} />
                         </div>
@@ -365,43 +375,45 @@ const Page = () => {
 
             {/* Add New Form Modal */}
             {showNewFormModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowNewFormModal(false)}>
-                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-xl font-bold text-gray-900">Add New Form</h3>
+                <div className="fixed inset-0 flex items-center justify-center z-50 p-4"
+                    style={{background:'rgba(0,0,0,0.5)'}}
+                    onClick={() => setShowNewFormModal(false)}>
+                    <div style={{background:'#fff', borderRadius:'12px', boxShadow:'0 8px 32px rgba(0,0,0,0.18)', maxWidth:'440px', width:'100%', padding:'24px'}}
+                        onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-5">
+                            <h3 className="font-medium" style={{fontSize:'var(--text-lg)', color:'#202124'}}>Add New Form</h3>
                             <button
                                 onClick={() => setShowNewFormModal(false)}
-                                className="p-2 hover:bg-gray-100 rounded-lg transition"
+                                style={{padding:'6px', color:'#5f6368', background:'transparent', border:'none', cursor:'pointer', borderRadius:'50%'}}
                             >
-                                <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
                         <form onSubmit={handleCreateForm}>
                             <div className="mb-4">
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Form Name</label>
+                                <label style={{display:'block', fontSize:'var(--text-sm)', fontWeight:500, color:'#202124', marginBottom:'6px'}}>Form Name</label>
                                 <input
                                     type="text"
                                     value={newFormName}
                                     onChange={(e) => setNewFormName(e.target.value)}
                                     placeholder="e.g. registration, checkout, add-vehicles"
                                     required
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 />
                             </div>
                             <div className="flex gap-3">
                                 <button
                                     type="button"
                                     onClick={() => setShowNewFormModal(false)}
-                                    className="flex-1 px-4 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl transition"
+                                    style={{flex:1, padding:'8px 16px', background:'#f1f3f4', color:'#444746', fontWeight:600, borderRadius:'20px', border:'none', cursor:'pointer', fontSize:'var(--text-sm)'}}
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={creatingForm}
-                                    className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition disabled:opacity-50"
+                                    style={{flex:1, padding:'8px 16px', background:'var(--accent)', color:'#fff', fontWeight:600, borderRadius:'20px', border:'none', cursor: creatingForm ? 'not-allowed' : 'pointer', fontSize:'var(--text-sm)', opacity: creatingForm ? 0.7 : 1}}
                                 >
                                     {creatingForm ? 'Creating...' : 'Create Form'}
                                 </button>
