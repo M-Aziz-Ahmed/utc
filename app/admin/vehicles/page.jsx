@@ -1,18 +1,28 @@
 'use client'
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 
 const getVehicleImages = (vehicle) => {
-    const imgs = []
-    Object.values(vehicle).forEach(val => {
-        if (Array.isArray(val)) val.forEach(item => {
-            if (item?.path && item?.type?.startsWith('image/')) imgs.push(item.path)
+    const all = []
+    Object.entries(vehicle).forEach(([key, val]) => {
+        if (key === 'files' || key === 'mainImageUrl') return
+        if (Array.isArray(val)) {
+            val.forEach(item => {
+                if (item?.path && item?.type?.startsWith('image/')) all.push(item.path)
+            })
+        }
+    })
+    if (vehicle.files) {
+        vehicle.files.forEach(f => {
+            if (f?.type?.startsWith('image/')) all.push(f.path)
         })
-    })
-    if (vehicle.files) vehicle.files.forEach(f => {
-        if (f?.type?.startsWith('image/')) imgs.push(f.path)
-    })
-    return [...new Set(imgs)]
+    }
+    const unique = [...new Set(all)]
+    // Put mainImageUrl first if set
+    if (vehicle.mainImageUrl && unique.includes(vehicle.mainImageUrl)) {
+        return [vehicle.mainImageUrl, ...unique.filter(u => u !== vehicle.mainImageUrl)]
+    }
+    return unique
 }
 
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—'
@@ -52,6 +62,17 @@ const VehicleCard = ({ vehicle, fields, onView, onDelete }) => {
     const btnBase = { width:'28px',height:'28px',borderRadius:'6px',cursor:'pointer',
         display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'all 0.15s' }
 
+    // ── swipe support ──
+    const touchStartX = React.useRef(null)
+    const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX }
+    const handleTouchEnd   = (e) => {
+        if (touchStartX.current === null || imgs.length < 2) return
+        const diff = touchStartX.current - e.changedTouches[0].clientX
+        if (Math.abs(diff) > 30)
+            setImgIdx(diff > 0 ? (imgIdx+1)%imgs.length : (imgIdx-1+imgs.length)%imgs.length)
+        touchStartX.current = null
+    }
+
     return (
         <div onClick={() => onView(vehicle)} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
             style={{
@@ -71,7 +92,11 @@ const VehicleCard = ({ vehicle, fields, onView, onDelete }) => {
             </div>
 
             {/* image */}
-            <div style={{position:'relative', height:'175px', background:'#f1f5f9', flexShrink:0}}>
+            <div
+                style={{position:'relative', height:'175px', background:'#f1f5f9', flexShrink:0}}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+            >
                 {imgs.length > 0 ? (
                     <>
                         <img src={imgs[imgIdx]} alt="" style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} />
@@ -86,12 +111,29 @@ const VehicleCard = ({ vehicle, fields, onView, onDelete }) => {
                                 background:'rgba(0,0,0,0.45)',border:'none',color:'#fff',borderRadius:'50%',
                                 width:'24px',height:'24px',fontSize:'16px',cursor:'pointer',display:'flex',
                                 alignItems:'center',justifyContent:'center',padding:0}}>›</button>
-                            <div style={{position:'absolute',bottom:'7px',left:'8px',background:'rgba(0,0,0,0.55)',
-                                color:'#fff',fontSize:'10px',fontWeight:600,padding:'2px 7px',borderRadius:'20px'}}>
-                                {imgIdx+1}/{imgs.length}</div>
+                            {/* Dot indicators — clickable */}
+                            <div style={{
+                                position:'absolute',bottom:'8px',left:0,right:0,
+                                display:'flex',justifyContent:'center',gap:'5px'
+                            }}>
+                                {imgs.map((_,i) => (
+                                    <span
+                                        key={i}
+                                        onClick={e=>{e.stopPropagation();setImgIdx(i)}}
+                                        style={{
+                                            width: i===imgIdx?'18px':'7px', height:'7px',
+                                            borderRadius:'4px',
+                                            background: i===imgIdx?'#fff':'rgba(255,255,255,0.5)',
+                                            boxShadow:'0 1px 3px rgba(0,0,0,0.4)',
+                                            transition:'all 0.2s', display:'block',
+                                            cursor:'pointer',
+                                        }}
+                                    />
+                                ))}
+                            </div>
                         </>)}
                         {isPreSold && (
-                            <div className='shadow-lg' style={{position:'absolute',top:-1,right:0,overflow:'hidden',width:'84px',height:'84px',pointerEvents:'none'}}>
+                            <div style={{position:'absolute',top:-1,right:0,overflow:'hidden',width:'84px',height:'84px',pointerEvents:'none'}}>
                                 <div style={{position:'absolute',top:'18px',right:'-24px',width:'100px',
                                     background:'#1a3060',color:'#fff',fontSize:'10px',fontWeight:800,
                                     fontStyle:'italic',letterSpacing:'0.08em',textAlign:'center',padding:'4px 0',
@@ -117,25 +159,18 @@ const VehicleCard = ({ vehicle, fields, onView, onDelete }) => {
             </div>
 
             {/* specs */}
-            <div style={{padding:'8px 12px 6px', flex:1, borderBottom:'1px solid #f0f4f8'}}>
-                {entries.slice(0, 10).map((e, i) => {
-                    if (i % 2 !== 0) return null
-                    const r = entries[i + 1]
-                    return (
-                        <div key={i} style={{display:'flex', gap:'8px', marginBottom:'4px'}}>
-                            <div style={{flex:1, minWidth:0, lineHeight:1.5}}>
-                                <span style={{fontSize:'11px', fontWeight:700, color:'#374151'}}>{e.label}: </span>
-                                <span style={{fontSize:'11px', color:'#6b7280'}}>{e.value}</span>
-                            </div>
-                            {r ? (
-                                <div style={{flex:1, minWidth:0, lineHeight:1.5}}>
-                                    <span style={{fontSize:'11px', fontWeight:700, color:'#374151'}}>{r.label}: </span>
-                                    <span style={{fontSize:'11px', color:'#6b7280'}}>{r.value}</span>
-                                </div>
-                            ) : <div style={{flex:1}}/>}
+            <div style={{padding:'10px 14px 8px', flex:1, borderBottom:'1px solid #f0f4f8'}}>
+                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0px 16px'}}>
+                    {entries.slice(0, 10).map((e, i) => (
+                        <div key={i} style={{
+                            padding:'5px 0',
+                            borderBottom:'1px solid #f4f4f4',
+                        }}>
+                            <div style={{fontSize:'10px', fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.05em', lineHeight:1.2}}>{e.label}</div>
+                            <div style={{fontSize:'12.5px', fontWeight:600, color:'#1e293b', marginTop:'2px', lineHeight:1.3}}>{e.value}</div>
                         </div>
-                    )
-                })}
+                    ))}
+                </div>
                 {entries.length === 0 && <p style={{fontSize:'11px',color:'#cbd5e1',margin:0,fontStyle:'italic'}}>No details</p>}
             </div>
 
@@ -488,6 +523,140 @@ const DetailModal = ({ vehicle, fields, onClose, onDelete }) => {
 }
 
 // ── Main page ──────────────────────────────────────────────────────────────────
+// ── Cookie helpers ─────────────────────────────────────────────────────────────
+const getCookie = (n) => {
+    if (typeof document === 'undefined') return null
+    const m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)'))
+    return m ? decodeURIComponent(m[1]) : null
+}
+const setCookie = (n, v) => {
+    document.cookie = `${n}=${encodeURIComponent(v)};max-age=${365*86400};path=/`
+}
+
+// ── List row ───────────────────────────────────────────────────────────────────
+const VehicleRow = ({ vehicle, fields, onView, onDelete }) => {
+    const imgs   = getVehicleImages(vehicle)
+    const alloc  = (vehicle.allocation || '').toLowerCase()
+    const rikuso = !!vehicle.rikusoStatus
+    const isPreSold = vehicle.allocationStatus === true
+
+    const lotField = fields.find(f => f.label?.toLowerCase().includes('lot'))
+    const lotVal   = lotField ? (vehicle[lotField._id] || vehicle[lotField.label]) : null
+    const headerLine = [vehicle.auctionGroup, vehicle.auctionVenue, lotVal || null].filter(Boolean).join(' / ')
+    const nameLine   = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ').toUpperCase()
+    const descLine   = vehicle.modelDescription || vehicle.variant || ''
+
+    const cardFields = fields
+        .filter(f => f.showOnCard !== false && f.belongsto === 'add-vehicles')
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    const entries = cardFields.map(f => {
+        let val = vehicle[f._id]
+        if (val === undefined || val === '' || val === null) val = vehicle[f.label]
+        if (val === undefined || val === '' || val === null) return null
+        if (Array.isArray(val) || (typeof val === 'object' && val !== null)) return null
+        return { label: f.label, value: String(val) }
+    }).filter(Boolean)
+
+    const pDateField = fields.find(f => f.label?.toLowerCase().includes('purchase') && f.label?.toLowerCase().includes('date'))
+    const pDateVal   = pDateField ? (vehicle[pDateField._id] || vehicle[pDateField.label]) : null
+    const footerDate = pDateVal ? fmtDate(pDateVal) : fmtDate(vehicle.createdAt)
+
+    const [hov, setHov] = React.useState(false)
+
+    return (
+        <div
+            onClick={() => onView(vehicle)}
+            onMouseEnter={() => setHov(true)}
+            onMouseLeave={() => setHov(false)}
+            style={{
+                display:'flex', alignItems:'stretch', background:'#fff', cursor:'pointer',
+                border: hov ? '1px solid var(--accent)' : '1px solid #e2e8f0',
+                borderRadius:'8px', overflow:'hidden', marginBottom:'6px',
+                boxShadow: hov ? '0 4px 16px rgba(26,115,232,0.10)' : '0 1px 3px rgba(0,0,0,0.06)',
+                transition:'all 0.15s',
+            }}
+        >
+            {/* Thumbnail */}
+            <div style={{width:'120px', flexShrink:0, background:'#f1f5f9', position:'relative'}}>
+                {imgs.length > 0
+                    ? <img src={imgs[0]} alt="" style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} />
+                    : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'#cbd5e1',fontSize:'11px'}}>No Image</div>
+                }
+                {isPreSold && (
+                    <div style={{position:'absolute',top:0,right:0,overflow:'hidden',width:'56px',height:'56px',pointerEvents:'none'}}>
+                        <div style={{position:'absolute',top:'10px',right:'-18px',width:'72px',
+                            background:'#1a3060',color:'#fff',fontSize:'8px',fontWeight:800,
+                            fontStyle:'italic',letterSpacing:'0.06em',textAlign:'center',padding:'3px 0',
+                            transform:'rotate(45deg)',boxShadow:'0 1px 4px rgba(0,0,0,0.3)'}}>PRE-SOLD</div>
+                    </div>
+                )}
+            </div>
+
+            {/* Main content */}
+            <div style={{flex:1, padding:'10px 14px', minWidth:0, display:'flex', flexDirection:'column', justifyContent:'space-between'}}>
+                <div>
+                    {/* Header crumb */}
+                    <p style={{margin:'0 0 2px', fontSize:'10px', fontWeight:600, color:'var(--foreground-muted)', letterSpacing:'0.03em'}}>{headerLine || '—'}</p>
+                    {/* Name */}
+                    <p style={{margin:0, fontSize:'14px', fontWeight:700, color:'#0f172a', lineHeight:1.2}}>{nameLine || '—'}</p>
+                    {descLine && <p style={{margin:'2px 0 0', fontSize:'11px', color:'#64748b'}}>{descLine}</p>}
+                </div>
+                {/* Fields — horizontal wrap */}
+                <div style={{display:'flex', flexWrap:'wrap', gap:'6px 20px', marginTop:'8px'}}>
+                    {entries.slice(0, 8).map((e, i) => (
+                        <div key={i} style={{minWidth:'80px'}}>
+                            <div style={{fontSize:'9px', fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.05em'}}>{e.label}</div>
+                            <div style={{fontSize:'12px', fontWeight:600, color:'#1e293b'}}>{e.value}</div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Status + actions column */}
+            <div style={{width:'130px', flexShrink:0, borderLeft:'1px solid #f0f4f8', padding:'10px 12px', display:'flex', flexDirection:'column', justifyContent:'space-between'}}>
+                {/* Status dots */}
+                <div style={{display:'flex', gap:'10px'}}>
+                    <div style={{display:'flex', flexDirection:'column', gap:'2px'}}>
+                        {[{l:'Export',a:alloc==='export'},{l:'Khitai',a:alloc==='khitai'},{l:'Resale',a:alloc==='resale-to-auction'},{l:'Rikso',a:rikuso}].map(s=>(
+                            <div key={s.l} style={{display:'flex',alignItems:'center',gap:'4px'}}>
+                                <span style={{width:'7px',height:'7px',borderRadius:'50%',flexShrink:0,background:s.a?'#ef4444':'#e2e8f0'}}/>
+                                <span style={{fontSize:'10px',fontWeight:s.a?700:400,color:s.a?'#dc2626':'#94a3b8'}}>{s.l}</span>
+                            </div>
+                        ))}
+                    </div>
+                    <div style={{display:'flex', flexDirection:'column', gap:'2px'}}>
+                        {['Docs','EC','TBS','BL'].map(l=>(
+                            <div key={l} style={{display:'flex',alignItems:'center',gap:'4px'}}>
+                                <span style={{width:'7px',height:'7px',borderRadius:'50%',flexShrink:0,background:'#e2e8f0'}}/>
+                                <span style={{fontSize:'10px',color:'#cbd5e1'}}>{l}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                {/* Footer */}
+                <div>
+                    <p style={{margin:'0 0 6px', fontSize:'10px', color:'#94a3b8'}}>{footerDate}</p>
+                    <div style={{display:'flex', gap:'5px'}}>
+                        <button onClick={e=>{e.stopPropagation();onDelete(vehicle._id)}} title="Delete"
+                            style={{flex:1,height:'26px',borderRadius:'5px',border:'1px solid #fecaca',background:'#fff5f5',color:'#dc2626',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.15s'}}
+                            onMouseEnter={e=>{e.currentTarget.style.background='#dc2626';e.currentTarget.style.color='#fff'}}
+                            onMouseLeave={e=>{e.currentTarget.style.background='#fff5f5';e.currentTarget.style.color='#dc2626'}}>
+                            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </button>
+                        <Link href={`/admin/vehicles/edit/${vehicle._id}`} onClick={e=>e.stopPropagation()} title="Edit"
+                            style={{flex:1,height:'26px',borderRadius:'5px',border:'1px solid #bfdbfe',background:'#eff6ff',color:'#2563eb',textDecoration:'none',display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.15s'}}
+                            onMouseEnter={e=>{e.currentTarget.style.background='#2563eb';e.currentTarget.style.color='#fff'}}
+                            onMouseLeave={e=>{e.currentTarget.style.background='#eff6ff';e.currentTarget.style.color='#2563eb'}}>
+                            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                        </Link>
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+// ── Main page ──────────────────────────────────────────────────────────────────
 const Page = () => {
     const [vehicles, setVehicles] = useState([])
     const [fields, setFields] = useState([])
@@ -495,6 +664,18 @@ const Page = () => {
     const [error, setError] = useState(null)
     const [search, setSearch] = useState('')
     const [selected, setSelected] = useState(null)
+    const [viewMode, setViewMode] = useState('grid') // 'grid' | 'list'
+
+    // Restore view mode from cookie
+    useEffect(() => {
+        const saved = getCookie('vehicles_view')
+        if (saved === 'list' || saved === 'grid') setViewMode(saved)
+    }, [])
+
+    const switchView = (mode) => {
+        setViewMode(mode)
+        setCookie('vehicles_view', mode)
+    }
 
     useEffect(() => {
         Promise.all([
@@ -523,35 +704,57 @@ const Page = () => {
         }
     }
 
-    const filtered = vehicles.filter(v => {
-        if (!search) return true
-        return JSON.stringify(v).toLowerCase().includes(search.toLowerCase())
+    const filtered = vehicles.filter(v =>
+        !search || JSON.stringify(v).toLowerCase().includes(search.toLowerCase())
+    )
+
+    const btnStyle = (active) => ({
+        width:'32px', height:'32px', borderRadius:'6px', border: active ? '1px solid var(--accent)' : '1px solid #e2e8f0',
+        background: active ? 'var(--accent-light)' : '#fff', color: active ? 'var(--accent)' : '#6b7280',
+        cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s'
     })
 
     return (
         <div className="px-4 py-4">
+            {/* Toolbar */}
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                     <div className="w-1 h-5 rounded-full" style={{background:'var(--accent)'}}></div>
                     <h1 className="font-bold" style={{fontSize:'var(--text-2xl)'}}>Vehicle Management</h1>
                     <span style={{fontSize:'var(--text-xs)', color:'var(--foreground-muted)'}}>{loading ? '…' : `${filtered.length} vehicles`}</span>
                 </div>
-                <Link href="/admin/vehicles/add" className="flex items-center gap-1.5 px-3 py-1.5 rounded font-bold text-white transition" style={{background:'var(--accent)', fontSize:'var(--text-sm)'}}>
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                    Add Vehicle
-                </Link>
+                <div className="flex items-center gap-2">
+                    {/* View toggle */}
+                    <div style={{display:'flex', gap:'4px', padding:'3px', background:'#f1f3f4', borderRadius:'8px'}}>
+                        <button onClick={() => switchView('grid')} style={btnStyle(viewMode==='grid')} title="Grid view">
+                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                            </svg>
+                        </button>
+                        <button onClick={() => switchView('list')} style={btnStyle(viewMode==='list')} title="List view">
+                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <Link href="/admin/vehicles/add" className="flex items-center gap-1.5 px-3 py-1.5 rounded font-bold text-white transition" style={{background:'var(--accent)', fontSize:'var(--text-sm)'}}>
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                        Add Vehicle
+                    </Link>
+                </div>
             </div>
 
+            {/* Search */}
             <div className="relative mb-4 max-w-xs">
                 <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                 <input type="text" placeholder="Search vehicles..." value={search} onChange={e => setSearch(e.target.value)}
-                    className="w-full pl-8 pr-3 py-1.5 rounded border border-gray-200 outline-none focus:border-red-400"
+                    className="w-full pl-8 pr-3 py-1.5 rounded border border-gray-200 outline-none"
                     style={{fontSize:'var(--text-sm)'}} />
             </div>
 
             {loading ? (
                 <div className="flex items-center justify-center py-20">
-                    <div className="w-8 h-8 rounded-full border-2 border-red-200 border-t-red-600 animate-spin"></div>
+                    <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{borderColor:'#e8f0fe', borderTopColor:'var(--accent)'}}></div>
                 </div>
             ) : error ? (
                 <div className="p-4 rounded border text-center" style={{background:'#fef2f2', borderColor:'#fecaca', color:'var(--accent)', fontSize:'var(--text-sm)'}}>{error}</div>
@@ -566,10 +769,16 @@ const Page = () => {
                         </Link>
                     )}
                 </div>
-            ) : (
-                <div className="grid gap-4" style={{gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))'}}>
+            ) : viewMode === 'grid' ? (
+                <div className="grid gap-4" style={{gridTemplateColumns:'repeat(auto-fill, minmax(300px, 1fr))'}}>
                     {filtered.map(v => (
                         <VehicleCard key={v._id} vehicle={v} fields={fields} onView={setSelected} onDelete={handleDelete} />
+                    ))}
+                </div>
+            ) : (
+                <div>
+                    {filtered.map(v => (
+                        <VehicleRow key={v._id} vehicle={v} fields={fields} onView={setSelected} onDelete={handleDelete} />
                     ))}
                 </div>
             )}

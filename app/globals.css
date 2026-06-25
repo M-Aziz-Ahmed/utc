@@ -1,33 +1,33 @@
 @import "tailwindcss";
 
-/* ── Japanese-inspired design system ──────────────────────────────────────── */
+/* ── Gmail-inspired design system ─────────────────────────────────────────── */
 :root {
-  /* Core palette — clean white with deep charcoal and accent red */
-  --background:        #f5f5f5;
+  /* Core palette — clean white, light greys */
+  --background:        #f6f8fc;
   --surface:           #ffffff;
-  --surface-muted:     #f0f0f0;
+  --surface-muted:     #f1f3f4;
   --border:            #e0e0e0;
-  --border-strong:     #c8c8c8;
+  --border-strong:     #c4c7c5;
 
-  --foreground:        #1a1a1a;
-  --foreground-muted:  #555555;
-  --foreground-faint:  #888888;
+  --foreground:        #202124;
+  --foreground-muted:  #5f6368;
+  --foreground-faint:  #9aa0a6;
 
-  /* Japanese accent — deep crimson red */
-  --accent:            #c0392b;
-  --accent-hover:      #a93226;
-  --accent-light:      #fdf0ef;
+  /* Primary blue accent — Gmail blue */
+  --accent:            #1a73e8;
+  --accent-hover:      #1557b0;
+  --accent-light:      #e8f0fe;
 
-  /* Secondary accent — ink navy */
-  --ink:               #1c2b3a;
-  --ink-light:         #2c3e50;
+  /* Sidebar ink — dark slate */
+  --ink:               #1f2937;
+  --ink-light:         #374151;
 
   /* Typography scale (px) */
   --text-xs:    10px;
-  --text-sm:    11px;   /* normal text */
-  --text-base:  12px;
-  --text-md:    13px;   /* headings */
-  --text-lg:    14px;
+  --text-sm:    12px;
+  --text-base:  13px;
+  --text-md:    14px;
+  --text-lg:    15px;
   --text-xl:    16px;
   --text-2xl:   18px;
   --text-3xl:   22px;
@@ -106,7 +106,7 @@ input, select, textarea {
 
 input:focus, select:focus, textarea:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.12);
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.15);
 }
 
 input::placeholder, textarea::placeholder {

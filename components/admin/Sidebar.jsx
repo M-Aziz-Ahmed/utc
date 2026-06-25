@@ -1,19 +1,36 @@
 'use client'
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+// ── tiny cookie helpers ────────────────────────────────────────────────────────
+const getCookie = (name) => {
+    if (typeof document === 'undefined') return null
+    const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'))
+    return match ? decodeURIComponent(match[1]) : null
+}
+const setCookie = (name, value, days = 365) => {
+    const expires = new Date(Date.now() + days * 864e5).toUTCString()
+    document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires};path=/`
+}
 
 const Sidebar = () => {
     const [toggle, setToggle] = useState(true);
-    // Track open submenus individually using item names as keys
-    const [openMenus, setOpenMenus] = useState({ 'Vehicle Mgm': true }); // Preset open for your current view
+    const [openMenus, setOpenMenus] = useState({ 'Vehicles Management': true });
+    const [mounted, setMounted] = useState(false)
 
-    const toggleSubMenu = (name) => {
-        setOpenMenus(prev => ({
-            ...prev,
-            [name]: !prev[name]
-        }));
-    };
+    // Restore sidebar state from cookie after mount
+    useEffect(() => {
+        const saved = getCookie('sidebar_open')
+        if (saved !== null) setToggle(saved === 'true')
+        setMounted(true)
+    }, [])
+
+    const handleToggle = () => {
+        const next = !toggle
+        setToggle(next)
+        setCookie('sidebar_open', String(next))
+    }
 
     const navigation = [
         {
@@ -141,6 +158,13 @@ const Sidebar = () => {
         },
     ];
 
+    const toggleSubMenu = (name) => {
+        setOpenMenus(prev => ({
+            ...prev,
+            [name]: !prev[name]
+        }));
+    };
+
     const pathname = usePathname();
 
     return (
@@ -149,7 +173,7 @@ const Sidebar = () => {
             <div className="p-3 flex items-center justify-between border-b min-h-11" style={{borderColor: 'var(--ink-light)'}}>
                 {toggle && <span className="font-black text-xs tracking-widest uppercase" style={{color: 'var(--accent)', letterSpacing: '0.15em'}}>UTC ADMIN</span>}
                 <button
-                    onClick={() => setToggle(prev => !prev)}
+                    onClick={handleToggle}
                     className="p-1.5 ml-auto rounded text-slate-400 hover:text-white transition-colors focus:outline-none"
                     style={{background: 'rgba(255,255,255,0.08)'}}
                 >

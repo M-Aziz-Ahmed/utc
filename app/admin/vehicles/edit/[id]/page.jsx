@@ -14,6 +14,10 @@ const EditVehiclePage = () => {
     const [fields, setFields] = useState([])
     const [formData, setFormData] = useState({})
     const [newImages, setNewImages] = useState({})
+    // Track deleted images per field: { [fieldId]: Set<imageIndex> }
+    const [deletedImages, setDeletedImages] = useState({})
+    const [mainImageUrl, setMainImageUrl] = useState('')
+    const [meta, setMeta] = useState({ manufacturer: '', model: '', modelDescription: '', auctionGroup: '', auctionVenue: '' })
     const [error, setError] = useState(null)
 
     useEffect(() => {
@@ -60,6 +64,16 @@ const EditVehiclePage = () => {
                 initialForm[field._id] = val
             })
             setFormData(initialForm)
+            // Init main image from saved value
+            setMainImageUrl(vehicleData.mainImageUrl || '')
+            // Init vehicle identity fields
+            setMeta({
+                manufacturer:     vehicleData.manufacturer     || '',
+                model:            vehicleData.model            || '',
+                modelDescription: vehicleData.modelDescription || '',
+                auctionGroup:     vehicleData.auctionGroup     || '',
+                auctionVenue:     vehicleData.auctionVenue     || '',
+            })
 
         } catch (err) {
             setError(err.message)
@@ -76,6 +90,17 @@ const EditVehiclePage = () => {
         setNewImages(prev => ({ ...prev, [fieldId]: Array.from(files) }))
     }
 
+    const toggleDeleteImage = (fieldId, idx) => {
+        setDeletedImages(prev => {
+            const set = new Set(prev[fieldId] || [])
+            if (set.has(idx)) set.delete(idx)
+            else set.add(idx)
+            return { ...prev, [fieldId]: set }
+        })
+    }
+
+    const isImageDeleted = (fieldId, idx) => !!(deletedImages[fieldId]?.has(idx))
+
     const handleSubmit = async (e) => {
         e.preventDefault()
         setSubmitting(true)
@@ -91,6 +116,25 @@ const EditVehiclePage = () => {
                     if (val !== undefined && val !== null && val !== '') {
                         textData[field._id]   = val
                         textData[field.label] = val
+                    }
+                }
+            })
+
+            // Include main image selection
+            textData.mainImageUrl = mainImageUrl || ''
+            // Include vehicle identity fields
+            Object.assign(textData, meta)
+
+            // For image fields: build surviving images array (existing minus deleted)
+            fields.forEach(field => {
+                if (field.type === 'file' || field.type === 'image') {
+                    const existing = getExistingImages(field)
+                    if (existing.length > 0) {
+                        const deleted = deletedImages[field._id] || new Set()
+                        const surviving = existing.filter((_, i) => !deleted.has(i))
+                        // Store under label (dot-stripped) so PATCH saves it correctly
+                        const safeLabel = field.label.replace(/\./g, '')
+                        textData[safeLabel] = surviving
                     }
                 }
             })
@@ -135,10 +179,30 @@ const EditVehiclePage = () => {
     // ── rendering helpers ──────────────────────────────────────────────────────
 
     const getExistingImages = (field) => {
-        const byId    = vehicle?.[field._id]
-        const byLabel = vehicle?.[field.label]
-        const raw = Array.isArray(byId) ? byId : Array.isArray(byLabel) ? byLabel : null
-        return raw?.filter(f => f?.path) ?? []
+        // Try all possible key variants the vehicle data might use
+        const keys = [
+            field._id,
+            field.label,
+            field.label?.replace(/\./g, ''),   // dot-stripped label (how POST/PATCH saves it)
+            field.label?.replace(/\s+/g, '_'),  // underscore variant
+        ].filter(Boolean)
+
+        for (const key of keys) {
+            const val = vehicle?.[key]
+            if (Array.isArray(val) && val.length > 0 && val[0]?.path) {
+                return val.filter(f => f?.path)
+            }
+        }
+
+        // Also scan all vehicle keys for arrays of image objects matching this field's label
+        for (const [k, v] of Object.entries(vehicle || {})) {
+            if (Array.isArray(v) && v.length > 0 && v[0]?.path && v[0]?.type?.startsWith('image/')) {
+                const normKey   = k.toLowerCase().replace(/[\s._-]/g, '')
+                const normLabel = field.label?.toLowerCase().replace(/[\s._-]/g, '')
+                if (normLabel && normKey === normLabel) return v.filter(f => f?.path)
+            }
+        }
+        return []
     }
 
     if (loading) {
@@ -193,6 +257,49 @@ const EditVehiclePage = () => {
                         </div>
                     ) : (
                         <>
+                            {/* ── Vehicle Identity ── */}
+                            <div className="mb-6 pb-6 border-b border-gray-100">
+                                <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Vehicle Identity</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Auction Group</label>
+                                        <input type="text" value={meta.auctionGroup}
+                                            onChange={e => setMeta(p => ({...p, auctionGroup: e.target.value}))}
+                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-400 outline-none transition"
+                                            placeholder="e.g. USS" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Auction Venue</label>
+                                        <input type="text" value={meta.auctionVenue}
+                                            onChange={e => setMeta(p => ({...p, auctionVenue: e.target.value}))}
+                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-400 outline-none transition"
+                                            placeholder="e.g. Tokyo" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Manufacturer</label>
+                                        <input type="text" value={meta.manufacturer}
+                                            onChange={e => setMeta(p => ({...p, manufacturer: e.target.value}))}
+                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-400 outline-none transition"
+                                            placeholder="e.g. Toyota" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Model</label>
+                                        <input type="text" value={meta.model}
+                                            onChange={e => setMeta(p => ({...p, model: e.target.value}))}
+                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-400 outline-none transition"
+                                            placeholder="e.g. Aqua" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Description / Variant</label>
+                                        <input type="text" value={meta.modelDescription}
+                                            onChange={e => setMeta(p => ({...p, modelDescription: e.target.value}))}
+                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-400 outline-none transition"
+                                            placeholder="e.g. Hybrid, 4WD 2.0" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* ── Dynamic fields ── */}
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                                 {fields.map((field) => {
                                     const currentValue = formData[field._id]
@@ -275,15 +382,56 @@ const EditVehiclePage = () => {
                                                 <div className="space-y-2">
                                                     {/* Existing images */}
                                                     {existingImages.length > 0 && (
-                                                        <div className="grid grid-cols-4 gap-1.5">
-                                                            {existingImages.map((f, idx) => (
-                                                                <div key={idx} className="relative group rounded-lg overflow-hidden border border-gray-200" style={{height:'60px'}}>
-                                                                    <img src={f.path} alt={f.name} className="w-full h-full object-cover" />
-                                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                                                                        <span className="text-white text-[9px] font-bold">Existing</span>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
+                                                        <div>
+                                                            <p className="text-[10px] text-gray-500 font-semibold mb-1">
+                                                                {existingImages.length - (deletedImages[field._id]?.size || 0)} of {existingImages.length} image{existingImages.length !== 1 ? 's' : ''} kept
+                                                                {(deletedImages[field._id]?.size || 0) > 0 && (
+                                                                    <span className="ml-1 text-red-500">· {deletedImages[field._id].size} marked for deletion</span>
+                                                                )}
+                                                            </p>
+                                                            <div className="flex gap-1.5 flex-wrap">
+                                                                {existingImages.map((f, idx) => {
+                                                                    const deleted = isImageDeleted(field._id, idx)
+                                                                    const isMain  = mainImageUrl === f.path
+                                                                    return (
+                                                                        <div key={idx} className="relative shrink-0 rounded-lg overflow-hidden border-2 transition"
+                                                                            style={{
+                                                                                width:'72px', height:'56px',
+                                                                                borderColor: isMain ? '#f59e0b' : deleted ? '#ef4444' : '#e5e7eb',
+                                                                                opacity: deleted ? 0.4 : 1,
+                                                                            }}>
+                                                                            <img src={f.path} alt={f.name || `img-${idx}`} className="w-full h-full object-cover" />
+
+                                                                            {/* Main image star */}
+                                                                            {!deleted && (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => setMainImageUrl(isMain ? '' : f.path)}
+                                                                                    title={isMain ? 'Remove as main image' : 'Set as main image'}
+                                                                                    className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full flex items-center justify-center transition text-xs leading-none"
+                                                                                    style={{
+                                                                                        background: isMain ? '#f59e0b' : 'rgba(0,0,0,0.45)',
+                                                                                        color: '#fff',
+                                                                                        fontSize: '11px',
+                                                                                    }}
+                                                                                >★</button>
+                                                                            )}
+
+                                                                            {/* Delete toggle */}
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => toggleDeleteImage(field._id, idx)}
+                                                                                title={deleted ? 'Undo delete' : 'Delete image'}
+                                                                                className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full flex items-center justify-center transition text-xs leading-none"
+                                                                                style={{
+                                                                                    background: deleted ? '#16a34a' : '#ef4444',
+                                                                                    color: '#fff',
+                                                                                }}
+                                                                            >{deleted ? '↺' : '×'}</button>
+                                                                        </div>
+                                                                    )
+                                                                })}
+                                                            </div>
                                                         </div>
                                                     )}
                                                     <input
@@ -293,7 +441,7 @@ const EditVehiclePage = () => {
                                                         onChange={e => handleFileChange(field._id, e.target.files)}
                                                         className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100 transition"
                                                     />
-                                                    <p className="text-[10px] text-gray-400">Upload new images (optional). Existing images will be kept.</p>
+                                                    <p className="text-[10px] text-gray-400">Upload new images (optional). ★ = set as main image · × = remove image.</p>
                                                 </div>
                                             )}
                                         </div>

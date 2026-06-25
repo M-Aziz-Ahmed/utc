@@ -209,13 +209,20 @@ const RikusoManagementPage = () => {
     }
 
     const getVehicleImage = (vehicle) => {
+        // Prefer thumbnail field, then fall back to first image found
         const keys = Object.keys(vehicle)
+        const thumbKey = keys.find(k =>
+            k.toLowerCase().replace(/[\s_]/g, '').includes('thumbnail') &&
+            Array.isArray(vehicle[k]) && vehicle[k][0]?.path && vehicle[k][0]?.type?.startsWith('image/')
+        )
+        if (thumbKey) return vehicle[thumbKey][0].path
+
         for (const key of keys) {
             const value = vehicle[key]
             if (Array.isArray(value) && value.length > 0) {
-                const firstItem = value[0]
-                if (firstItem && typeof firstItem === 'object' && firstItem.path && firstItem.type?.startsWith('image/')) {
-                    return firstItem.path
+                const first = value[0]
+                if (first && typeof first === 'object' && first.path && first.type?.startsWith('image/')) {
+                    return first.path
                 }
             }
         }
