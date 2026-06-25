@@ -168,7 +168,7 @@ const Sidebar = () => {
     const pathname = usePathname();
 
     return (
-        <div className={`text-slate-200 h-screen transition-all duration-300 flex flex-col border-r shrink-0 z-40 ${toggle ? 'w-56' : 'w-14'}`} style={{background: 'var(--ink)', borderColor: 'var(--ink-light)'}}>
+        <div className={`text-slate-200 h-screen transition-all duration-300 flex flex-col border-r shrink-0 z-40 ${toggle ? 'w-70' : 'w-16'}`} style={{background: 'var(--ink)', borderColor: 'var(--ink-light)'}}>
             {/* Header Area */}
             <div className="p-3 flex items-center justify-between border-b min-h-11" style={{borderColor: 'var(--ink-light)'}}>
                 {toggle && <span className="font-black text-xs tracking-widest uppercase" style={{color: 'var(--accent)', letterSpacing: '0.15em'}}>UTC ADMIN</span>}

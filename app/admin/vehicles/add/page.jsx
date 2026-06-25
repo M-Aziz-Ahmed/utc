@@ -327,6 +327,7 @@ const AddVehiclePage = () => {
             model: selectedModel?.name,
             modelDescription: selectedModel?.description || '',
             variant: selectedVariant || '',
+            mainImageUrl: addMainImageUrl || '',
         }))
         fields.forEach(f => {
             const v = formData[f._id]
@@ -393,6 +394,7 @@ const AddVehiclePage = () => {
     const [inlineAddOption, setInlineAddOption] = useState(null) // fieldId
     const [inlineOptionValue, setInlineOptionValue] = useState('')
     const [inlineAdding, setInlineAdding] = useState(false)
+    const [addMainImageUrl, setAddMainImageUrl] = useState('') // main/cover image for new vehicle
 
     const handleInlineAddOption = async (field) => {
         const val = inlineOptionValue.trim()
@@ -484,12 +486,67 @@ const AddVehiclePage = () => {
                 ))}
             </div>
         )
-        if (field.type === 'file' || field.type === 'image') return (
-            <input type="file" multiple accept={field.type === 'image' ? 'image/*' : '*'} onChange={e => {
-                const files = Array.from(e.target.files).map(file => ({ file, id: Math.random().toString(36).substring(2), preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : null, name: file.name }))
-                handleChange(field._id, files)
-            }} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-        )
+        if (field.type === 'file' || field.type === 'image') {
+            const files = Array.isArray(formData[field._id]) ? formData[field._id] : []
+            return (
+                <div className="space-y-2">
+                    {/* Preview grid */}
+                    {files.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                            {files.map((f, idx) => {
+                                const isMain = addMainImageUrl && addMainImageUrl === f.preview
+                                return (
+                                    <div key={f.id} className="relative shrink-0 rounded-lg overflow-hidden border-2 transition"
+                                        style={{width:'72px', height:'56px',
+                                            borderColor: isMain ? '#f59e0b' : '#e5e7eb'}}>
+                                        {f.preview
+                                            ? <img src={f.preview} alt={f.name} className="w-full h-full object-cover" />
+                                            : <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 text-xs">{f.name?.split('.').pop()}</div>
+                                        }
+                                        {/* Star — set as main */}
+                                        {f.preview && (
+                                            <button type="button"
+                                                onClick={() => setAddMainImageUrl(isMain ? '' : f.preview)}
+                                                title={isMain ? 'Remove as main' : 'Set as main image'}
+                                                className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs leading-none"
+                                                style={{background: isMain ? '#f59e0b' : 'rgba(0,0,0,0.45)'}}>★</button>
+                                        )}
+                                        {/* Remove */}
+                                        <button type="button"
+                                            onClick={() => {
+                                                const updated = files.filter((_, i) => i !== idx)
+                                                handleChange(field._id, updated)
+                                                if (isMain) setAddMainImageUrl('')
+                                            }}
+                                            title="Remove"
+                                            className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs leading-none"
+                                            style={{background:'#ef4444'}}>×</button>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )}
+                    {files.length > 0 && (
+                        <p className="text-[10px] text-gray-400">★ = set as cover image · × = remove</p>
+                    )}
+                    {/* File picker */}
+                    <input type="file" multiple accept={field.type === 'image' ? 'image/*' : '*'}
+                        onChange={e => {
+                            const newFiles = Array.from(e.target.files).map(file => ({
+                                file,
+                                id: Math.random().toString(36).substring(2),
+                                preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
+                                name: file.name
+                            }))
+                            // Append to existing selection instead of replacing
+                            handleChange(field._id, [...files, ...newFiles])
+                            e.target.value = '' // allow re-selecting same file
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition"
+                    />
+                </div>
+            )
+        }
         return (
             <input type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'} required={field.isRequired} value={value} onChange={e => handleChange(field._id, e.target.value)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder={`Enter ${field.label.toLowerCase()}`} />

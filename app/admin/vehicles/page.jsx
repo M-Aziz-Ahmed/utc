@@ -533,18 +533,17 @@ const setCookie = (n, v) => {
     document.cookie = `${n}=${encodeURIComponent(v)};max-age=${365*86400};path=/`
 }
 
-// ── List row ───────────────────────────────────────────────────────────────────
+// ── Compact list row (table-style) ────────────────────────────────────────────
 const VehicleRow = ({ vehicle, fields, onView, onDelete }) => {
-    const imgs   = getVehicleImages(vehicle)
-    const alloc  = (vehicle.allocation || '').toLowerCase()
-    const rikuso = !!vehicle.rikusoStatus
+    const imgs    = getVehicleImages(vehicle)
+    const alloc   = (vehicle.allocation || '').toLowerCase()
+    const rikuso  = !!vehicle.rikusoStatus
     const isPreSold = vehicle.allocationStatus === true
 
     const lotField = fields.find(f => f.label?.toLowerCase().includes('lot'))
     const lotVal   = lotField ? (vehicle[lotField._id] || vehicle[lotField.label]) : null
     const headerLine = [vehicle.auctionGroup, vehicle.auctionVenue, lotVal || null].filter(Boolean).join(' / ')
-    const nameLine   = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ').toUpperCase()
-    const descLine   = vehicle.modelDescription || vehicle.variant || ''
+    const nameLine   = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ')
 
     const cardFields = fields
         .filter(f => f.showOnCard !== false && f.belongsto === 'add-vehicles')
@@ -561,98 +560,84 @@ const VehicleRow = ({ vehicle, fields, onView, onDelete }) => {
     const pDateVal   = pDateField ? (vehicle[pDateField._id] || vehicle[pDateField.label]) : null
     const footerDate = pDateVal ? fmtDate(pDateVal) : fmtDate(vehicle.createdAt)
 
-    const [hov, setHov] = React.useState(false)
+    const activeAlloc = alloc === 'export' ? 'Export' : alloc === 'khitai' ? 'Khitai' : alloc === 'resale-to-auction' ? 'Resale' : null
 
     return (
-        <div
+        <tr
             onClick={() => onView(vehicle)}
-            onMouseEnter={() => setHov(true)}
-            onMouseLeave={() => setHov(false)}
-            style={{
-                display:'flex', alignItems:'stretch', background:'#fff', cursor:'pointer',
-                border: hov ? '1px solid var(--accent)' : '1px solid #e2e8f0',
-                borderRadius:'8px', overflow:'hidden', marginBottom:'6px',
-                boxShadow: hov ? '0 4px 16px rgba(26,115,232,0.10)' : '0 1px 3px rgba(0,0,0,0.06)',
-                transition:'all 0.15s',
-            }}
+            style={{cursor:'pointer', borderBottom:'1px solid #f0f4f8', transition:'background 0.1s'}}
+            onMouseEnter={e => e.currentTarget.style.background='#f8faff'}
+            onMouseLeave={e => e.currentTarget.style.background=''}
         >
-            {/* Thumbnail */}
-            <div style={{width:'120px', flexShrink:0, background:'#f1f5f9', position:'relative'}}>
-                {imgs.length > 0
-                    ? <img src={imgs[0]} alt="" style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} />
-                    : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'#cbd5e1',fontSize:'11px'}}>No Image</div>
-                }
-                {isPreSold && (
-                    <div style={{position:'absolute',top:0,right:0,overflow:'hidden',width:'56px',height:'56px',pointerEvents:'none'}}>
-                        <div style={{position:'absolute',top:'10px',right:'-18px',width:'72px',
-                            background:'#1a3060',color:'#fff',fontSize:'8px',fontWeight:800,
-                            fontStyle:'italic',letterSpacing:'0.06em',textAlign:'center',padding:'3px 0',
-                            transform:'rotate(45deg)',boxShadow:'0 1px 4px rgba(0,0,0,0.3)'}}>PRE-SOLD</div>
-                    </div>
-                )}
-            </div>
-
-            {/* Main content */}
-            <div style={{flex:1, padding:'10px 14px', minWidth:0, display:'flex', flexDirection:'column', justifyContent:'space-between'}}>
-                <div>
-                    {/* Header crumb */}
-                    <p style={{margin:'0 0 2px', fontSize:'10px', fontWeight:600, color:'var(--foreground-muted)', letterSpacing:'0.03em'}}>{headerLine || '—'}</p>
-                    {/* Name */}
-                    <p style={{margin:0, fontSize:'14px', fontWeight:700, color:'#0f172a', lineHeight:1.2}}>{nameLine || '—'}</p>
-                    {descLine && <p style={{margin:'2px 0 0', fontSize:'11px', color:'#64748b'}}>{descLine}</p>}
+            {/* Thumb */}
+            <td style={{padding:'5px 8px', width:'48px'}}>
+                <div style={{width:'42px', height:'32px', borderRadius:'4px', overflow:'hidden', background:'#f1f5f9', flexShrink:0, position:'relative'}}>
+                    {imgs.length > 0
+                        ? <img src={imgs[0]} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}} />
+                        : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'#cbd5e1',fontSize:'9px'}}>—</div>
+                    }
+                    {isPreSold && (
+                        <div style={{position:'absolute',top:0,right:0,background:'#1a3060',color:'#fff',fontSize:'6px',fontWeight:800,padding:'1px 3px',borderRadius:'0 4px 0 3px',letterSpacing:'0.04em'}}>PRE</div>
+                    )}
                 </div>
-                {/* Fields — horizontal wrap */}
-                <div style={{display:'flex', flexWrap:'wrap', gap:'6px 20px', marginTop:'8px'}}>
-                    {entries.slice(0, 8).map((e, i) => (
-                        <div key={i} style={{minWidth:'80px'}}>
-                            <div style={{fontSize:'9px', fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.05em'}}>{e.label}</div>
-                            <div style={{fontSize:'12px', fontWeight:600, color:'#1e293b'}}>{e.value}</div>
-                        </div>
-                    ))}
+            </td>
+            {/* Group / Venue */}
+            <td style={{padding:'5px 8px', minWidth:'100px', maxWidth:'130px'}}>
+                <div style={{fontSize:'10px', color:'#64748b', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{headerLine || '—'}</div>
+            </td>
+            {/* Name */}
+            <td style={{padding:'5px 8px', minWidth:'120px'}}>
+                <div style={{fontSize:'12px', fontWeight:700, color:'#0f172a', whiteSpace:'nowrap'}}>{nameLine || '—'}</div>
+                {vehicle.modelDescription && <div style={{fontSize:'10px', color:'#94a3b8'}}>{vehicle.modelDescription}</div>}
+            </td>
+            {/* Dynamic fields — show first 5 */}
+            {entries.slice(0, 5).map((e, i) => (
+                <td key={i} style={{padding:'5px 8px', minWidth:'70px'}}>
+                    <div style={{fontSize:'9px', color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.04em', lineHeight:1}}>{e.label}</div>
+                    <div style={{fontSize:'11px', fontWeight:600, color:'#1e293b', whiteSpace:'nowrap'}}>{e.value}</div>
+                </td>
+            ))}
+            {/* Pad missing cells */}
+            {entries.length < 5 && Array.from({length: 5 - entries.length}).map((_, i) => (
+                <td key={`pad-${i}`} style={{padding:'5px 8px'}} />
+            ))}
+            {/* Status */}
+            <td style={{padding:'5px 8px', width:'72px'}}>
+                <div style={{display:'flex', flexDirection:'column', gap:'1px'}}>
+                    {activeAlloc && <span style={{fontSize:'9px', fontWeight:700, color:'#dc2626', background:'#fff1f1', padding:'1px 5px', borderRadius:'999px', display:'inline-block'}}>{activeAlloc}</span>}
+                    {rikuso && <span style={{fontSize:'9px', fontWeight:700, color:'#dc2626', background:'#fff1f1', padding:'1px 5px', borderRadius:'999px', display:'inline-block'}}>Rikso</span>}
+                    {!activeAlloc && !rikuso && <span style={{fontSize:'9px', color:'#cbd5e1'}}>—</span>}
                 </div>
-            </div>
-
-            {/* Status + actions column */}
-            <div style={{width:'130px', flexShrink:0, borderLeft:'1px solid #f0f4f8', padding:'10px 12px', display:'flex', flexDirection:'column', justifyContent:'space-between'}}>
-                {/* Status dots */}
-                <div style={{display:'flex', gap:'10px'}}>
-                    <div style={{display:'flex', flexDirection:'column', gap:'2px'}}>
-                        {[{l:'Export',a:alloc==='export'},{l:'Khitai',a:alloc==='khitai'},{l:'Resale',a:alloc==='resale-to-auction'},{l:'Rikso',a:rikuso}].map(s=>(
-                            <div key={s.l} style={{display:'flex',alignItems:'center',gap:'4px'}}>
-                                <span style={{width:'7px',height:'7px',borderRadius:'50%',flexShrink:0,background:s.a?'#ef4444':'#e2e8f0'}}/>
-                                <span style={{fontSize:'10px',fontWeight:s.a?700:400,color:s.a?'#dc2626':'#94a3b8'}}>{s.l}</span>
-                            </div>
-                        ))}
-                    </div>
-                    <div style={{display:'flex', flexDirection:'column', gap:'2px'}}>
-                        {['Docs','EC','TBS','BL'].map(l=>(
-                            <div key={l} style={{display:'flex',alignItems:'center',gap:'4px'}}>
-                                <span style={{width:'7px',height:'7px',borderRadius:'50%',flexShrink:0,background:'#e2e8f0'}}/>
-                                <span style={{fontSize:'10px',color:'#cbd5e1'}}>{l}</span>
-                            </div>
-                        ))}
-                    </div>
+            </td>
+            {/* Date */}
+            <td style={{padding:'5px 8px', width:'72px', whiteSpace:'nowrap'}}>
+                <div style={{fontSize:'10px', color:'#94a3b8'}}>{footerDate}</div>
+            </td>
+            {/* Actions */}
+            <td style={{padding:'5px 8px', width:'60px'}} onClick={e => e.stopPropagation()}>
+                <div style={{display:'flex', gap:'4px'}}>
+                    <button
+                        onClick={e => { e.stopPropagation(); onDelete(vehicle._id) }}
+                        title="Delete"
+                        style={{width:'24px',height:'24px',borderRadius:'5px',border:'1px solid #fecaca',background:'#fff5f5',color:'#dc2626',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',padding:0,transition:'all 0.12s'}}
+                        onMouseEnter={e=>{e.currentTarget.style.background='#dc2626';e.currentTarget.style.color='#fff'}}
+                        onMouseLeave={e=>{e.currentTarget.style.background='#fff5f5';e.currentTarget.style.color='#dc2626'}}
+                    >
+                        <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    </button>
+                    <Link
+                        href={`/admin/vehicles/edit/${vehicle._id}`}
+                        onClick={e => e.stopPropagation()}
+                        title="Edit"
+                        style={{width:'24px',height:'24px',borderRadius:'5px',border:'1px solid #bfdbfe',background:'#eff6ff',color:'#2563eb',textDecoration:'none',display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.12s'}}
+                        onMouseEnter={e=>{e.currentTarget.style.background='#2563eb';e.currentTarget.style.color='#fff'}}
+                        onMouseLeave={e=>{e.currentTarget.style.background='#eff6ff';e.currentTarget.style.color='#2563eb'}}
+                    >
+                        <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    </Link>
                 </div>
-                {/* Footer */}
-                <div>
-                    <p style={{margin:'0 0 6px', fontSize:'10px', color:'#94a3b8'}}>{footerDate}</p>
-                    <div style={{display:'flex', gap:'5px'}}>
-                        <button onClick={e=>{e.stopPropagation();onDelete(vehicle._id)}} title="Delete"
-                            style={{flex:1,height:'26px',borderRadius:'5px',border:'1px solid #fecaca',background:'#fff5f5',color:'#dc2626',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.15s'}}
-                            onMouseEnter={e=>{e.currentTarget.style.background='#dc2626';e.currentTarget.style.color='#fff'}}
-                            onMouseLeave={e=>{e.currentTarget.style.background='#fff5f5';e.currentTarget.style.color='#dc2626'}}>
-                            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                        </button>
-                        <Link href={`/admin/vehicles/edit/${vehicle._id}`} onClick={e=>e.stopPropagation()} title="Edit"
-                            style={{flex:1,height:'26px',borderRadius:'5px',border:'1px solid #bfdbfe',background:'#eff6ff',color:'#2563eb',textDecoration:'none',display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.15s'}}
-                            onMouseEnter={e=>{e.currentTarget.style.background='#2563eb';e.currentTarget.style.color='#fff'}}
-                            onMouseLeave={e=>{e.currentTarget.style.background='#eff6ff';e.currentTarget.style.color='#2563eb'}}>
-                            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                        </Link>
-                    </div>
-                </div>
-            </div>
-        </div>
+            </td>
+        </tr>
     )
 }
 
@@ -665,6 +650,8 @@ const Page = () => {
     const [search, setSearch] = useState('')
     const [selected, setSelected] = useState(null)
     const [viewMode, setViewMode] = useState('grid') // 'grid' | 'list'
+    const [page, setPage] = useState(1)
+    const PAGE_SIZE = 25
 
     // Restore view mode from cookie
     useEffect(() => {
@@ -707,6 +694,12 @@ const Page = () => {
     const filtered = vehicles.filter(v =>
         !search || JSON.stringify(v).toLowerCase().includes(search.toLowerCase())
     )
+
+    // Reset to page 1 when search or view changes
+    React.useEffect(() => { setPage(1) }, [search, viewMode])
+
+    const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+    const paginated  = filtered.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE)
 
     const btnStyle = (active) => ({
         width:'32px', height:'32px', borderRadius:'6px', border: active ? '1px solid var(--accent)' : '1px solid #e2e8f0',
@@ -776,11 +769,68 @@ const Page = () => {
                     ))}
                 </div>
             ) : (
-                <div>
-                    {filtered.map(v => (
-                        <VehicleRow key={v._id} vehicle={v} fields={fields} onView={setSelected} onDelete={handleDelete} />
-                    ))}
-                </div>
+                <>
+                    {/* Table */}
+                    <div style={{background:'#fff', borderRadius:'8px', border:'1px solid #e2e8f0', overflow:'hidden', boxShadow:'0 1px 3px rgba(0,0,0,0.06)'}}>
+                        <table style={{width:'100%', borderCollapse:'collapse', tableLayout:'auto'}}>
+                            <thead>
+                                <tr style={{borderBottom:'2px solid #f0f4f8', background:'#f8fafc'}}>
+                                    <th style={{padding:'7px 8px', width:'48px'}}></th>
+                                    <th style={{padding:'7px 8px', textAlign:'left', fontSize:'10px', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em'}}>Group / Venue</th>
+                                    <th style={{padding:'7px 8px', textAlign:'left', fontSize:'10px', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em'}}>Vehicle</th>
+                                    {fields.filter(f => f.showOnCard !== false && f.belongsto === 'add-vehicles').sort((a,b)=>(a.order??0)-(b.order??0)).slice(0,5).map(f => (
+                                        <th key={f._id} style={{padding:'7px 8px', textAlign:'left', fontSize:'10px', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', whiteSpace:'nowrap'}}>{f.label}</th>
+                                    ))}
+                                    <th style={{padding:'7px 8px', textAlign:'left', fontSize:'10px', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em'}}>Status</th>
+                                    <th style={{padding:'7px 8px', textAlign:'left', fontSize:'10px', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em'}}>Date</th>
+                                    <th style={{padding:'7px 8px', width:'60px'}}></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {paginated.map(v => (
+                                    <VehicleRow key={v._id} vehicle={v} fields={fields} onView={setSelected} onDelete={handleDelete} />
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 4px', marginTop:'8px'}}>
+                            <span style={{fontSize:'12px', color:'#64748b'}}>
+                                Showing {(page-1)*PAGE_SIZE+1}–{Math.min(page*PAGE_SIZE, filtered.length)} of {filtered.length}
+                            </span>
+                            <div style={{display:'flex', gap:'3px'}}>
+                                <button
+                                    onClick={() => setPage(p => Math.max(1, p-1))}
+                                    disabled={page === 1}
+                                    style={{padding:'4px 10px', borderRadius:'5px', border:'1px solid #e2e8f0', background: page===1?'#f8fafc':'#fff', color: page===1?'#cbd5e1':'#374151', cursor: page===1?'not-allowed':'pointer', fontSize:'12px', fontWeight:600}}
+                                >‹ Prev</button>
+                                {Array.from({length: totalPages}, (_, i) => i+1)
+                                    .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+                                    .reduce((acc, p, i, arr) => {
+                                        if (i > 0 && p - arr[i-1] > 1) acc.push('...')
+                                        acc.push(p)
+                                        return acc
+                                    }, [])
+                                    .map((p, i) => p === '...'
+                                        ? <span key={`e${i}`} style={{padding:'4px 6px', color:'#94a3b8', fontSize:'12px'}}>…</span>
+                                        : <button key={p} onClick={() => setPage(p)}
+                                            style={{padding:'4px 9px', borderRadius:'5px', border:'1px solid', fontSize:'12px', fontWeight:600, cursor:'pointer',
+                                                borderColor: p===page?'var(--accent)':'#e2e8f0',
+                                                background: p===page?'var(--accent-light)':'#fff',
+                                                color: p===page?'var(--accent)':'#374151'}}
+                                          >{p}</button>
+                                    )
+                                }
+                                <button
+                                    onClick={() => setPage(p => Math.min(totalPages, p+1))}
+                                    disabled={page === totalPages}
+                                    style={{padding:'4px 10px', borderRadius:'5px', border:'1px solid #e2e8f0', background: page===totalPages?'#f8fafc':'#fff', color: page===totalPages?'#cbd5e1':'#374151', cursor: page===totalPages?'not-allowed':'pointer', fontSize:'12px', fontWeight:600}}
+                                >Next ›</button>
+                            </div>
+                        </div>
+                    )}
+                </>
             )}
 
             {selected && <DetailModal vehicle={selected} fields={fields} onClose={() => setSelected(null)} onDelete={handleDelete} />}
