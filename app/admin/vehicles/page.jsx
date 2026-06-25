@@ -84,7 +84,9 @@ const VehicleCard = ({ vehicle, fields, onView, onDelete }) => {
             }}>
 
             {/* header */}
-            <div style={{background: hov ? '#1a73e8' : '#1e293b', padding:'6px 12px', transition:'background 0.18s'}}>
+            <div 
+            className=''
+            style={{background: hov ? '#45556c' : '#62748e', padding:'6px 12px', transition:'background 0.18s'}}>
                 <p style={{margin:0, fontSize:'11px', fontWeight:600, color:'#fff', letterSpacing:'0.04em',
                     whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', opacity: headerLine ? 1 : 0.5}}>
                     {headerLine || 'No Group / Venue'}
