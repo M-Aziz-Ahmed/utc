@@ -1,7 +1,93 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
+
+// ── Searchable dropdown component ─────────────────────────────────────────────
+const SearchableSelect = ({ value, onChange, options, placeholder = 'Select...', displayKey = 'name' }) => {
+    const [open, setOpen] = useState(false)
+    const [search, setSearch] = useState('')
+    const ref = useRef(null)
+
+    useEffect(() => {
+        const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+        document.addEventListener('mousedown', handler)
+        return () => document.removeEventListener('mousedown', handler)
+    }, [])
+
+    const filtered = options.filter(o => {
+        const label = typeof o === 'string' ? o : o[displayKey] || ''
+        return label.toLowerCase().includes(search.toLowerCase())
+    })
+
+    const getLabel = (o) => typeof o === 'string' ? o : o[displayKey] || ''
+    const displayValue = value || ''
+
+    return (
+        <div ref={ref} style={{position:'relative'}}>
+            <div
+                onClick={() => { setOpen(v => !v); setSearch('') }}
+                style={{
+                    display:'flex', alignItems:'center', justifyContent:'space-between',
+                    padding:'6px 12px', border:'1px solid #c4c7c5', borderRadius:'4px',
+                    background:'#fff', cursor:'pointer', fontSize:'13px', color: displayValue ? '#202124' : '#9aa0a6',
+                    minHeight:'36px',
+                }}
+            >
+                <span>{displayValue || placeholder}</span>
+                <svg style={{width:'14px',height:'14px',color:'#5f6368',flexShrink:0,transform:open?'rotate(180deg)':'none',transition:'transform 0.15s'}} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+            </div>
+            {open && (
+                <div style={{
+                    position:'absolute', top:'100%', left:0, right:0, zIndex:50, marginTop:'2px',
+                    background:'#fff', border:'1px solid #e0e0e0', borderRadius:'4px',
+                    boxShadow:'0 4px 12px rgba(0,0,0,0.12)', overflow:'hidden',
+                }}>
+                    {/* Search */}
+                    <div style={{padding:'8px', borderBottom:'1px solid #f1f3f4'}}>
+                        <input
+                            autoFocus
+                            type="text"
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            placeholder="Search..."
+                            style={{width:'100%', padding:'5px 10px', border:'1px solid #e0e0e0', borderRadius:'4px', fontSize:'12px', outline:'none'}}
+                            onClick={e => e.stopPropagation()}
+                        />
+                    </div>
+                    {/* Options */}
+                    <div style={{maxHeight:'200px', overflowY:'auto'}}>
+                        {filtered.length === 0
+                            ? <div style={{padding:'10px 12px', fontSize:'12px', color:'#9aa0a6', textAlign:'center'}}>No results</div>
+                            : filtered.map((o, i) => {
+                                const label = getLabel(o)
+                                const isSelected = label === displayValue
+                                return (
+                                    <div
+                                        key={i}
+                                        onClick={() => { onChange(label); setOpen(false); setSearch('') }}
+                                        style={{
+                                            padding:'8px 12px', fontSize:'13px', cursor:'pointer',
+                                            background: isSelected ? '#e8f0fe' : 'transparent',
+                                            color: isSelected ? '#1a73e8' : '#202124',
+                                            fontWeight: isSelected ? 600 : 400,
+                                        }}
+                                        onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background='#f1f3f4' }}
+                                        onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background='transparent' }}
+                                    >
+                                        {label}
+                                    </div>
+                                )
+                            })
+                        }
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
 
 const EditVehiclePage = () => {
     const router = useRouter()
@@ -14,15 +100,37 @@ const EditVehiclePage = () => {
     const [fields, setFields] = useState([])
     const [formData, setFormData] = useState({})
     const [newImages, setNewImages] = useState({})
-    // Track deleted images per field: { [fieldId]: Set<imageIndex> }
     const [deletedImages, setDeletedImages] = useState({})
     const [mainImageUrl, setMainImageUrl] = useState('')
     const [meta, setMeta] = useState({ manufacturer: '', model: '', modelDescription: '', auctionGroup: '', auctionVenue: '' })
     const [error, setError] = useState(null)
 
+    // For searchable dropdowns
+    const [auctionGroups, setAuctionGroups] = useState([])
+    const [manufacturers, setManufacturers] = useState([])
+
     useEffect(() => {
         fetchVehicleAndFields()
+        fetchAuctionGroups()
+        fetchManufacturers()
     }, [vehicleId])
+
+    const fetchAuctionGroups = async () => {
+        try {
+            const res = await fetch('/api/auctionGroup')
+            if (res.ok) setAuctionGroups((await res.json()) || [])
+        } catch (e) { console.error(e) }
+    }
+
+    const fetchManufacturers = async () => {
+        try {
+            const res = await fetch('/api/manufacturer')
+            if (res.ok) {
+                const data = await res.json()
+                setManufacturers(data.filter(m => !m.isRikusoCompany) || [])
+            }
+        } catch (e) { console.error(e) }
+    }
 
     const fetchVehicleAndFields = async () => {
         try {
@@ -267,37 +375,45 @@ const EditVehiclePage = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                                     <div>
                                         <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Auction Group</label>
-                                        <input type="text" value={meta.auctionGroup}
-                                            onChange={e => setMeta(p => ({...p, auctionGroup: e.target.value}))}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-400 outline-none transition"
-                                            placeholder="e.g. USS" />
+                                        <SearchableSelect
+                                            value={meta.auctionGroup}
+                                            onChange={v => setMeta(p => ({...p, auctionGroup: v, auctionVenue: ''}))}
+                                            options={auctionGroups}
+                                            placeholder="Select auction group..."
+                                        />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Auction Venue</label>
-                                        <input type="text" value={meta.auctionVenue}
-                                            onChange={e => setMeta(p => ({...p, auctionVenue: e.target.value}))}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-400 outline-none transition"
-                                            placeholder="e.g. Tokyo" />
+                                        <SearchableSelect
+                                            value={meta.auctionVenue}
+                                            onChange={v => setMeta(p => ({...p, auctionVenue: v}))}
+                                            options={auctionGroups.find(g => g.name === meta.auctionGroup)?.options || []}
+                                            placeholder={meta.auctionGroup ? 'Select venue...' : 'Select group first...'}
+                                        />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Manufacturer</label>
-                                        <input type="text" value={meta.manufacturer}
-                                            onChange={e => setMeta(p => ({...p, manufacturer: e.target.value}))}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-400 outline-none transition"
-                                            placeholder="e.g. Toyota" />
+                                        <SearchableSelect
+                                            value={meta.manufacturer}
+                                            onChange={v => setMeta(p => ({...p, manufacturer: v, model: ''}))}
+                                            options={manufacturers}
+                                            placeholder="Select manufacturer..."
+                                        />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Model</label>
-                                        <input type="text" value={meta.model}
-                                            onChange={e => setMeta(p => ({...p, model: e.target.value}))}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-400 outline-none transition"
-                                            placeholder="e.g. Aqua" />
+                                        <SearchableSelect
+                                            value={meta.model}
+                                            onChange={v => setMeta(p => ({...p, model: v}))}
+                                            options={manufacturers.find(m => m.name === meta.manufacturer)?.models || []}
+                                            placeholder={meta.manufacturer ? 'Select model...' : 'Select manufacturer first...'}
+                                        />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Subtitle / Variant <span className="text-gray-400 normal-case font-normal">(shown below title on card)</span></label>
                                         <input type="text" value={meta.modelDescription}
                                             onChange={e => setMeta(p => ({...p, modelDescription: e.target.value}))}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-400 outline-none transition"
+                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none transition"
                                             placeholder="e.g. Hybrid, 4WD 2.0, Gli" />
                                     </div>
                                 </div>

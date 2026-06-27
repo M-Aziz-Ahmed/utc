@@ -598,8 +598,9 @@ const VehicleRow = ({ vehicle, fields, onView, onDelete }) => {
             </td>
             {/* Dynamic fields — all fields with showOnCard enabled */}
             {entries.map((e, i) => {
-                // Only normalize case if the value is all-caps text (not a code/number)
-                const isAllCaps = e.value === e.value.toUpperCase() && /[A-Z]{2,}/.test(e.value)
+                // Don't normalize chassis/lot/code fields — keep them uppercase
+                const isCodeField = /chassis|lot\s*no|vin|frame/i.test(e.label)
+                const isAllCaps = !isCodeField && e.value === e.value.toUpperCase() && /[A-Z]{2,}/.test(e.value)
                 const display = isAllCaps
                     ? e.value.charAt(0).toUpperCase() + e.value.slice(1).toLowerCase()
                     : e.value
