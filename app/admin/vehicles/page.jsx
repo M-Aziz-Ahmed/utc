@@ -169,7 +169,7 @@ const VehicleCard = ({ vehicle, fields, onView, onDelete }) => {
                             borderBottom:'1px solid #f4f4f4',
                         }}>
                             <div style={{fontSize:'10px', fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.05em', lineHeight:1.2}}>{e.label}</div>
-                            <div style={{fontSize:'12.5px', fontWeight:600, color:'#1e293b', marginTop:'2px', lineHeight:1.3}}>{e.value}</div>
+                            <div style={{fontSize:'12.5px', fontWeight:600, color:'#1e293b', marginTop:'2px',textTransform:'uppercase', lineHeight:1.3}}>{e.value}</div>
                         </div>
                     ))}
                 </div>

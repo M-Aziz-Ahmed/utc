@@ -3,10 +3,10 @@ import { useState, useEffect, useMemo } from 'react'
 
 const LETTERS = ['All', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')]
 
-// ── Reusable search input ──────────────────────────────────────────────────────
+// ── Search input ───────────────────────────────────────────────────────────────
 const SearchBar = ({ value, onChange, placeholder = 'Search...' }) => (
-    <div className="relative mb-2">
-        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <div style={{ position: 'relative', marginBottom: '8px' }}>
+        <svg style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '13px', height: '13px', color: '#9aa0a6' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
         </svg>
         <input
@@ -14,35 +14,34 @@ const SearchBar = ({ value, onChange, placeholder = 'Search...' }) => (
             value={value}
             onChange={e => onChange(e.target.value)}
             placeholder={placeholder}
-            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition"
+            style={{ width: '100%', paddingLeft: '30px', paddingRight: value ? '28px' : '10px', paddingTop: '6px', paddingBottom: '6px', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '12px', outline: 'none', background: '#f8f9fa', boxSizing: 'border-box', color: '#202124' }}
+            onFocus={e => { e.target.style.borderColor = '#1a73e8'; e.target.style.background = '#fff' }}
+            onBlur={e => { e.target.style.borderColor = '#e0e0e0'; e.target.style.background = '#f8f9fa' }}
         />
         {value && (
-            <button onClick={() => onChange('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            <button onClick={() => onChange('')}
+                style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9aa0a6', padding: '2px', display: 'flex' }}>
+                <svg style={{ width: '12px', height: '12px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
         )}
     </div>
 )
 
-// ── A–Z letter filter bar ──────────────────────────────────────────────────────
+// ── A–Z filter ─────────────────────────────────────────────────────────────────
 const AlphaFilter = ({ value, onChange, available }) => (
-    <div className="flex flex-wrap gap-0.5 mb-3">
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', marginBottom: '10px' }}>
         {LETTERS.map(l => {
             const isAvail = l === 'All' || available.has(l)
             const isActive = value === l
             return (
-                <button
-                    key={l}
-                    onClick={() => onChange(isActive ? 'All' : l)}
-                    disabled={!isAvail}
-                    className={`w-7 h-6 rounded text-xs font-bold transition ${
-                        isActive
-                            ? 'bg-blue-600 text-white'
-                            : isAvail
-                            ? 'bg-gray-100 text-gray-700 hover:bg-blue-100 hover:text-blue-700'
-                            : 'bg-gray-50 text-gray-300 cursor-not-allowed'
-                    }`}
-                >
+                <button key={l} onClick={() => onChange(isActive ? 'All' : l)} disabled={!isAvail}
+                    style={{
+                        width: l === 'All' ? '32px' : '22px', height: '22px', borderRadius: '4px', border: 'none',
+                        fontSize: '10px', fontWeight: 700, cursor: isAvail ? 'pointer' : 'not-allowed',
+                        transition: 'all 0.1s',
+                        background: isActive ? '#1a73e8' : isAvail ? '#f1f3f4' : 'transparent',
+                        color: isActive ? '#fff' : isAvail ? '#444746' : '#dadce0',
+                    }}>
                     {l}
                 </button>
             )
@@ -50,45 +49,46 @@ const AlphaFilter = ({ value, onChange, available }) => (
     </div>
 )
 
-// ── Compact pill/chip selector ─────────────────────────────────────────────────
+// ── Pill grid — click auto-advances ───────────────────────────────────────────
 const PillGrid = ({ items, selected, onSelect, getLabel, getSub, emptyMsg, emptyAction, onEdit }) => {
     if (items.length === 0) return (
-        <div className="text-center py-10 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-            <p className="text-sm text-gray-500 mb-1">{emptyMsg}</p>
+        <div style={{ textAlign: 'center', padding: '32px 16px', background: '#f8f9fa', borderRadius: '8px', border: '2px dashed #e0e0e0' }}>
+            <p style={{ fontSize: '12px', color: '#9aa0a6', margin: '0 0 8px' }}>{emptyMsg}</p>
             {emptyAction}
         </div>
     )
     return (
-        <div className="flex flex-wrap gap-2">
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             {items.map((item, idx) => {
                 const isSelected = selected === item || selected?._id === item?._id || selected?.name === item?.name
                 return (
-                    <div key={item._id || idx} className="relative group">
-                        <button
-                            onClick={() => onSelect(item)}
-                            className={`group flex flex-col items-start px-4 py-2.5 rounded-xl border-2 text-left transition-all ${
-                                isSelected
-                                    ? 'border-blue-500 bg-blue-50 shadow-sm'
-                                    : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/40'
-                            }`}
-                            style={onEdit ? { paddingRight: '2rem' } : {}}
+                    <div key={item._id || idx} style={{ position: 'relative' }}
+                        onMouseEnter={e => { if (onEdit) e.currentTarget.querySelector('.edit-btn')?.style && (e.currentTarget.querySelector('.edit-btn').style.opacity = '1') }}
+                        onMouseLeave={e => { if (onEdit) e.currentTarget.querySelector('.edit-btn')?.style && (e.currentTarget.querySelector('.edit-btn').style.opacity = '0') }}
+                    >
+                        <button onClick={() => onSelect(item)}
+                            style={{
+                                display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+                                padding: getSub ? '7px 12px' : '6px 12px',
+                                paddingRight: onEdit ? '26px' : (getSub ? '12px' : '12px'),
+                                borderRadius: '8px', border: isSelected ? '2px solid #1a73e8' : '1px solid #e0e0e0',
+                                background: isSelected ? '#e8f0fe' : '#fff', cursor: 'pointer', textAlign: 'left',
+                                transition: 'all 0.12s',
+                                boxShadow: isSelected ? '0 1px 4px rgba(26,115,232,0.15)' : '0 1px 2px rgba(0,0,0,0.04)',
+                            }}
+                            onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.borderColor = '#1a73e8'; e.currentTarget.style.background = '#f0f4ff' } }}
+                            onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.borderColor = '#e0e0e0'; e.currentTarget.style.background = '#fff' } }}
                         >
-                            <span className={`text-sm font-semibold leading-tight ${isSelected ? 'text-blue-700' : 'text-gray-800'}`}>
-                                {getLabel(item)}
-                            </span>
-                            {getSub && (
-                                <span className={`text-xs mt-0.5 ${isSelected ? 'text-blue-500' : 'text-gray-400'}`}>
-                                    {getSub(item)}
-                                </span>
+                            <span style={{ fontSize: '12px', fontWeight: 600, color: isSelected ? '#1a73e8' : '#202124', lineHeight: 1.3 }}>{getLabel(item)}</span>
+                            {getSub && getSub(item) && (
+                                <span style={{ fontSize: '10px', color: isSelected ? '#4285f4' : '#9aa0a6', marginTop: '1px' }}>{getSub(item)}</span>
                             )}
                         </button>
                         {onEdit && (
-                            <button
-                                onClick={e => { e.stopPropagation(); onEdit(item, idx) }}
-                                className="absolute top-1.5 right-1.5 w-5 h-5 rounded flex items-center justify-center bg-gray-100 hover:bg-blue-100 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition"
-                                title="Edit"
-                            >
-                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <button className="edit-btn" onClick={e => { e.stopPropagation(); onEdit(item, idx) }}
+                                style={{ position: 'absolute', top: '3px', right: '3px', width: '18px', height: '18px', borderRadius: '4px', background: '#f1f3f4', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.15s' }}
+                                title="Edit">
+                                <svg style={{ width: '10px', height: '10px', color: '#5f6368' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 11l6-6 3 3-6 6H9v-3z" />
                                 </svg>
                             </button>
@@ -100,23 +100,31 @@ const PillGrid = ({ items, selected, onSelect, getLabel, getSub, emptyMsg, empty
     )
 }
 
-// ── Nav buttons ────────────────────────────────────────────────────────────────
+// ── Back button only (next is auto on selection) ──────────────────────────────
+const BackBtn = ({ onBack }) => (
+    onBack ? (
+        <button onClick={onBack}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '5px 12px', fontSize: '12px', fontWeight: 500, color: '#5f6368', border: '1px solid #e0e0e0', borderRadius: '20px', background: '#fff', cursor: 'pointer', transition: 'all 0.12s' }}
+            onMouseEnter={e => e.currentTarget.style.background = '#f1f3f4'}
+            onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+        >
+            <svg style={{ width: '12px', height: '12px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            Back
+        </button>
+    ) : <div />
+)
+
+// ── StepNav — kept for step 5 submit row ─────────────────────────────────────
 const StepNav = ({ onBack, onNext, nextLabel, nextDisabled }) => (
-    <div className="flex justify-between mt-6 pt-4 border-t border-gray-100">
-        {onBack
-            ? <button onClick={onBack} className="flex items-center gap-1.5 px-5 py-2 text-sm font-semibold text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                Back
-              </button>
-            : <div />
-        }
-        <button
-            onClick={onNext}
-            disabled={nextDisabled}
-            className="flex items-center gap-1.5 px-6 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition"
+    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #f1f3f4' }}>
+        <BackBtn onBack={onBack} />
+        <button onClick={onNext} disabled={nextDisabled}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '7px 18px', fontSize: '13px', fontWeight: 600, color: '#fff', background: nextDisabled ? '#dadce0' : '#1a73e8', border: 'none', borderRadius: '20px', cursor: nextDisabled ? 'not-allowed' : 'pointer', transition: 'all 0.12s' }}
+            onMouseEnter={e => { if (!nextDisabled) e.currentTarget.style.background = '#1557b0' }}
+            onMouseLeave={e => { if (!nextDisabled) e.currentTarget.style.background = '#1a73e8' }}
         >
             {nextLabel}
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            <svg style={{ width: '13px', height: '13px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
         </button>
     </div>
 )
@@ -595,138 +603,163 @@ const AddVehiclePage = () => {
     const crumbs = [selectedGroup?.name, selectedVenue?.name, selectedManufacturer?.name, selectedModel?.name].filter(Boolean)
 
     return (
-        <div className="min-h-screen bg-gray-50 py-6 px-4">
-            <div className="max-w-4xl mx-auto">
+        <div style={{ padding: '20px 24px', minHeight: '100vh', background: '#f6f8fc' }}>
+            <div style={{ maxWidth: '760px', margin: '0 auto' }}>
 
                 {/* Header */}
-                <div className="mb-5">
-                    <h1 className="text-2xl font-bold text-gray-900">Add New Vehicle</h1>
+                <div style={{ marginBottom: '16px' }}>
+                    <h1 style={{ fontSize: '18px', fontWeight: 600, color: '#202124', margin: 0 }}>Add New Vehicle</h1>
                     {crumbs.length > 0 && (
-                        <p className="text-xs text-gray-400 mt-1 flex items-center gap-1 flex-wrap">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
                             {crumbs.map((c, i) => (
-                                <span key={i} className="flex items-center gap-1">
-                                    {i > 0 && <span className="text-gray-300">›</span>}
-                                    <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-600">{c}</span>
+                                <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#5f6368' }}>
+                                    {i > 0 && <span style={{ color: '#dadce0' }}>›</span>}
+                                    <span style={{ background: '#e8f0fe', color: '#1a73e8', padding: '1px 7px', borderRadius: '10px', fontWeight: 500 }}>{c}</span>
                                 </span>
                             ))}
-                        </p>
+                        </div>
                     )}
                 </div>
 
-                {/* Step indicator — clickable pills */}
-                <div className="flex items-center gap-1 mb-5 overflow-x-auto pb-1">
+                {/* Step pills */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '14px', overflowX: 'auto', paddingBottom: '2px' }}>
                     {steps.map((step, idx) => (
-                        <div key={step.num} className="flex items-center gap-1 shrink-0">
+                        <div key={step.num} style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
                             <button
                                 onClick={() => canGoToStep(step.num) && setCurrentStep(step.num)}
                                 disabled={!canGoToStep(step.num)}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                                    currentStep === step.num
-                                        ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
-                                        : currentStep > step.num
-                                        ? 'bg-green-100 text-green-700 cursor-pointer hover:bg-green-200'
-                                        : canGoToStep(step.num)
-                                        ? 'bg-gray-100 text-gray-500 cursor-pointer hover:bg-gray-200'
-                                        : 'bg-gray-100 text-gray-300 cursor-not-allowed'
-                                }`}
+                                style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: '5px',
+                                    padding: '5px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 600,
+                                    border: 'none', cursor: canGoToStep(step.num) ? 'pointer' : 'not-allowed',
+                                    transition: 'all 0.15s',
+                                    background: currentStep === step.num ? '#1a73e8'
+                                        : currentStep > step.num ? '#e6f4ea'
+                                        : '#f1f3f4',
+                                    color: currentStep === step.num ? '#fff'
+                                        : currentStep > step.num ? '#137333'
+                                        : canGoToStep(step.num) ? '#444746' : '#bdc1c6',
+                                }}
                             >
                                 {currentStep > step.num
-                                    ? <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                                    : <span>{step.num}</span>
+                                    ? <svg style={{ width: '10px', height: '10px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                    : <span style={{ fontSize: '10px', opacity: 0.8 }}>{step.num}</span>
                                 }
                                 {step.label}
                             </button>
-                            {idx < steps.length - 1 && <div className={`w-4 h-px ${currentStep > step.num ? 'bg-green-300' : 'bg-gray-200'}`} />}
+                            {idx < steps.length - 1 && (
+                                <div style={{ width: '12px', height: '1px', background: currentStep > step.num ? '#34a853' : '#dadce0', flexShrink: 0 }} />
+                            )}
                         </div>
                     ))}
                 </div>
 
                 {/* Content card */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e0e0e0', padding: '16px 20px' }}>
 
                     {/* ── Step 1: Group ── */}
                     {currentStep === 1 && (
                         <div>
-                            <h2 className="text-base font-bold text-gray-800 mb-3">Select Auction Group</h2>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                <h2 style={{ fontSize: '13px', fontWeight: 600, color: '#202124', margin: 0 }}>Select Auction Group</h2>
+                                <span style={{ fontSize: '11px', color: '#9aa0a6' }}>{filteredGroups.list.length} groups</span>
+                            </div>
                             <SearchBar value={groupSearch} onChange={v => { setGroupSearch(v); setGroupLetter('All') }} placeholder="Search groups..." />
                             <AlphaFilter value={groupLetter} onChange={setGroupLetter} available={filteredGroups.available} />
                             <PillGrid
                                 items={filteredGroups.list}
                                 selected={selectedGroup}
-                                onSelect={(g) => { setSelectedGroup(g); setSelectedVenue(null) }}
+                                onSelect={(g) => { setSelectedGroup(g); setSelectedVenue(null); setCurrentStep(2) }}
                                 getLabel={g => g.name}
                                 getSub={g => `${g.options?.length || 0} venue${g.options?.length !== 1 ? 's' : ''}`}
                                 emptyMsg="No auction groups found"
-                                emptyAction={<a href="/admin/auctionDetails" className="text-xs text-blue-600 underline">Create one first</a>}
+                                emptyAction={<a href="/admin/auctionDetails" style={{ fontSize: '11px', color: '#1a73e8' }}>Create one first</a>}
                             />
-                            <StepNav onNext={() => setCurrentStep(2)} nextLabel="Select Venue" nextDisabled={!selectedGroup} />
                         </div>
                     )}
 
                     {/* ── Step 2: Venue ── */}
                     {currentStep === 2 && (
                         <div>
-                            <h2 className="text-base font-bold text-gray-800 mb-1">Select Venue</h2>
-                            <p className="text-xs text-gray-400 mb-3">Group: <span className="font-semibold text-gray-600">{selectedGroup?.name}</span></p>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                <div>
+                                    <h2 style={{ fontSize: '13px', fontWeight: 600, color: '#202124', margin: 0 }}>Select Venue</h2>
+                                    <p style={{ fontSize: '11px', color: '#9aa0a6', margin: '2px 0 0' }}>Group: <span style={{ fontWeight: 600, color: '#5f6368' }}>{selectedGroup?.name}</span></p>
+                                </div>
+                                <BackBtn onBack={() => setCurrentStep(1)} />
+                            </div>
                             <SearchBar value={venueSearch} onChange={v => { setVenueSearch(v); setVenueLetter('All') }} placeholder="Search venues..." />
                             <AlphaFilter value={venueLetter} onChange={setVenueLetter} available={filteredVenues.available} />
                             <PillGrid
                                 items={filteredVenues.list}
                                 selected={selectedVenue}
-                                onSelect={setSelectedVenue}
+                                onSelect={(v) => { setSelectedVenue(v); setCurrentStep(3) }}
                                 getLabel={v => v.name}
-                                getSub={v => v.membership ? `#${v.membership}` : null}
+                                getSub={v => v.membership ? `` : null}
                                 emptyMsg="No venues in this group"
-                                emptyAction={<a href="/admin/auctionDetails" className="text-xs text-blue-600 underline">Add venues first</a>}
+                                emptyAction={<a href="/admin/auctionDetails" style={{ fontSize: '11px', color: '#1a73e8' }}>Add venues first</a>}
                             />
-                            <StepNav onBack={() => setCurrentStep(1)} onNext={() => setCurrentStep(3)} nextLabel="Select Manufacturer" nextDisabled={!selectedVenue} />
                         </div>
                     )}
 
                     {/* ── Step 3: Manufacturer ── */}
                     {currentStep === 3 && (
                         <div>
-                            <div className="flex items-center justify-between mb-3">
-                                <h2 className="text-base font-bold text-gray-800">Select Manufacturer</h2>
-                                <button onClick={() => setShowAddManufacturer(true)} className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 border border-blue-200 hover:border-blue-400 px-2.5 py-1.5 rounded-lg transition">
-                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                                    New
-                                </button>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                <h2 style={{ fontSize: '13px', fontWeight: 600, color: '#202124', margin: 0 }}>Select Manufacturer</h2>
+                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                    <button onClick={() => setShowAddManufacturer(true)}
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 600, color: '#1a73e8', border: '1px solid #d2e3fc', borderRadius: '20px', padding: '4px 10px', background: '#fff', cursor: 'pointer' }}>
+                                        <svg style={{ width: '10px', height: '10px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                        New
+                                    </button>
+                                    <BackBtn onBack={() => setCurrentStep(2)} />
+                                </div>
                             </div>
                             <SearchBar value={mfgSearch} onChange={v => { setMfgSearch(v); setMfgLetter('All') }} placeholder="Search manufacturers..." />
                             <AlphaFilter value={mfgLetter} onChange={setMfgLetter} available={filteredMfg.available} />
                             <PillGrid
                                 items={filteredMfg.list}
                                 selected={selectedManufacturer}
-                                onSelect={(m) => { setSelectedManufacturer(m); setSelectedModel(null) }}
+                                onSelect={(m) => { setSelectedManufacturer(m); setSelectedModel(null); setCurrentStep(4) }}
                                 getLabel={m => m.name}
-                                getSub={m => [m.country, `${m.models?.length || 0} models`].filter(Boolean).join(' · ')}
+                                getSub={m => [`${m.models?.length || 0} models`].filter(Boolean).join(' · ')}
                                 emptyMsg="No manufacturers found"
                                 onEdit={(m) => setEditingMaker({ _id: m._id, name: m.name, country: m.country || '' })}
                             />
-                            <StepNav onBack={() => setCurrentStep(2)} onNext={() => setCurrentStep(4)} nextLabel="Select Model" nextDisabled={!selectedManufacturer} />
                         </div>
                     )}
 
                     {/* ── Step 4: Model ── */}
                     {currentStep === 4 && (
                         <div>
-                            <div className="flex items-center justify-between mb-3">
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                                 <div>
-                                    <h2 className="text-base font-bold text-gray-800">Select Car Model</h2>
-                                    <p className="text-xs text-gray-400">From <span className="font-semibold text-gray-600">{selectedManufacturer?.name}</span></p>
+                                    <h2 style={{ fontSize: '13px', fontWeight: 600, color: '#202124', margin: 0 }}>Select Model</h2>
+                                    <p style={{ fontSize: '11px', color: '#9aa0a6', margin: '2px 0 0' }}>Maker: <span style={{ fontWeight: 600, color: '#5f6368' }}>{selectedManufacturer?.name}</span></p>
                                 </div>
-                                <button onClick={() => setShowAddModel(true)} className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 border border-blue-200 hover:border-blue-400 px-2.5 py-1.5 rounded-lg transition">
-                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                                    New
-                                </button>
+                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                    <button onClick={() => setShowAddModel(true)}
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 600, color: '#1a73e8', border: '1px solid #d2e3fc', borderRadius: '20px', padding: '4px 10px', background: '#fff', cursor: 'pointer' }}>
+                                        <svg style={{ width: '10px', height: '10px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                        New
+                                    </button>
+                                    <BackBtn onBack={() => setCurrentStep(3)} />
+                                </div>
                             </div>
                             <SearchBar value={modelSearch} onChange={v => { setModelSearch(v); setModelLetter('All') }} placeholder="Search models..." />
                             <AlphaFilter value={modelLetter} onChange={setModelLetter} available={filteredModels.available} />
                             <PillGrid
                                 items={filteredModels.list}
                                 selected={selectedModel}
-                                onSelect={(m) => { setSelectedModel(m); setSelectedVariant('') }}
+                                onSelect={(m) => {
+                                    setSelectedModel(m)
+                                    setSelectedVariant('')
+                                    if (m.defaults && Object.keys(m.defaults).length > 0) {
+                                        setFormData(prev => ({ ...m.defaults, ...prev }))
+                                    }
+                                    setCurrentStep(5)
+                                }}
                                 getLabel={m => m.name}
                                 getSub={m => `${m.variants?.length || 0} variant${m.variants?.length !== 1 ? 's' : ''}`}
                                 emptyMsg="No models yet"
@@ -735,43 +768,62 @@ const AddVehiclePage = () => {
                                     setEditingModel({ manufacturerId: selectedManufacturer._id, modelIndex: idx, name: m.name, description: m.description || '' })
                                 }}
                             />
-                            <StepNav onBack={() => setCurrentStep(3)} onNext={() => setCurrentStep(5)} nextLabel="Vehicle Details" nextDisabled={!selectedModel} />
                         </div>
                     )}
 
                     {/* ── Step 5: Vehicle Details ── */}
                     {currentStep === 5 && (
                         <div>
-                            <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-base font-bold text-gray-800">Vehicle Details</h2>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowAddField(true)}
-                                    className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 border border-blue-200 hover:border-blue-400 px-2.5 py-1.5 rounded-lg transition"
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                                <div>
+                                    <h2 style={{ fontSize: '13px', fontWeight: 600, color: '#202124', margin: 0 }}>Vehicle Details</h2>
+                                    <p style={{ fontSize: '11px', color: '#9aa0a6', margin: '2px 0 0' }}>{selectedManufacturer?.name} · {selectedModel?.name}</p>
+                                </div>
+                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAddField(true)}
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 600, color: '#1a73e8', border: '1px solid #d2e3fc', borderRadius: '20px', padding: '4px 10px', background: '#fff', cursor: 'pointer' }}
                                 >
-                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                                    Add New Field
-                                </button>
+                                        <svg style={{ width: '10px', height: '10px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                        + Field
+                                    </button>
+                                    <BackBtn onBack={() => setCurrentStep(4)} />
+                                </div>
                             </div>
                             <form onSubmit={handleSubmit}>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                                {/* Subtitle / Variant */}
+                                <div style={{ marginBottom: '14px', paddingBottom: '14px', borderBottom: '1px solid #f1f3f4' }}>
+                                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '5px' }}>
+                                        Subtitle / Variant
+                                        <span style={{ marginLeft: '4px', fontWeight: 400, color: '#9aa0a6', textTransform: 'none', letterSpacing: 'normal' }}>(shown below title on card)</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={selectedVariant}
+                                        onChange={e => setSelectedVariant(e.target.value)}
+                                        placeholder="e.g. Hybrid, 4WD 2.0, Gli, Wagon 1.5"
+                                        style={{ width: '100%', maxWidth: '320px', padding: '6px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none' }}
+                                    />
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px', marginBottom: '14px' }}>
                                     {fields.filter(f => f.type !== 'file' && f.type !== 'image' && f.label?.toLowerCase().trim() !== 'description').map(field => (
-                                        <div key={field._id} className={field.type === 'boolean' ? 'lg:col-span-2' : ''}>
-                                            <label className="block text-xs font-bold text-gray-600 mb-1.5">
-                                                {field.label}{field.isRequired && <span className="text-red-500 ml-0.5">*</span>}
+                                        <div key={field._id} style={field.type === 'boolean' ? { gridColumn: 'span 2' } : {}}>
+                                            <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
+                                                {field.label}{field.isRequired && <span style={{ color: '#c5221f', marginLeft: '2px' }}>*</span>}
                                             </label>
                                             {renderInput(field)}
                                         </div>
                                     ))}
                                 </div>
                                 {fields.some(f => f.type === 'file' || f.type === 'image') && (
-                                    <div className="border-t pt-4 mb-4">
-                                        <h3 className="text-sm font-bold text-gray-700 mb-3">Files & Images</h3>
-                                        <div className="grid grid-cols-1 gap-4">
+                                    <div style={{ borderTop: '1px solid #f1f3f4', paddingTop: '12px', marginBottom: '12px' }}>
+                                        <h3 style={{ fontSize: '11px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>Files & Images</h3>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                             {fields.filter(f => f.type === 'file' || f.type === 'image').map(field => (
                                                 <div key={field._id}>
-                                                    <label className="block text-xs font-bold text-gray-600 mb-1.5">
-                                                        {field.label}{field.isRequired && <span className="text-red-500 ml-0.5">*</span>}
+                                                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
+                                                        {field.label}{field.isRequired && <span style={{ color: '#c5221f', marginLeft: '2px' }}>*</span>}
                                                     </label>
                                                     {renderInput(field)}
                                                 </div>
@@ -779,14 +831,15 @@ const AddVehiclePage = () => {
                                         </div>
                                     </div>
                                 )}
-                                {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>}
-                                {success && <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">Vehicle added successfully! Redirecting...</div>}
-                                <div className="flex justify-between pt-4 border-t border-gray-100">
-                                    <button type="button" onClick={() => setCurrentStep(4)} className="flex items-center gap-1.5 px-5 py-2 text-sm font-semibold text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                                        Back
-                                    </button>
-                                    <button type="submit" disabled={submitting} className="px-6 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 transition">
+                                {error && (
+                                    <div style={{ marginBottom: '12px', padding: '10px 12px', background: '#fce8e6', border: '1px solid #f5c6c2', borderRadius: '6px', fontSize: '12px', color: '#c5221f' }}>{error}</div>
+                                )}
+                                {success && (
+                                    <div style={{ marginBottom: '12px', padding: '10px 12px', background: '#e6f4ea', border: '1px solid #b7dfbe', borderRadius: '6px', fontSize: '12px', color: '#137333' }}>Vehicle added successfully! Redirecting...</div>
+                                )}
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '12px', borderTop: '1px solid #f1f3f4' }}>
+                                    <button type="submit" disabled={submitting}
+                                        style={{ padding: '8px 24px', fontSize: '13px', fontWeight: 600, color: '#fff', background: submitting ? '#9aa0a6' : '#1a73e8', border: 'none', borderRadius: '20px', cursor: submitting ? 'not-allowed' : 'pointer' }}>
                                         {submitting ? 'Adding...' : 'Add Vehicle'}
                                     </button>
                                 </div>
@@ -798,21 +851,21 @@ const AddVehiclePage = () => {
 
             {/* ── Add Manufacturer Modal ── */}
             {showAddManufacturer && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowAddManufacturer(false)}>
-                    <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-base font-bold mb-4">Add Manufacturer</h3>
-                        <div className="space-y-3">
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }} onClick={() => setShowAddManufacturer(false)}>
+                    <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', maxWidth: '360px', width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#202124', margin: '0 0 14px' }}>Add Manufacturer</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             <div>
-                                <label className="text-xs font-semibold text-gray-600 mb-1 block">Name *</label>
-                                <input type="text" value={newManufacturer.name} onChange={e => setNewManufacturer({ ...newManufacturer, name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="e.g., Toyota" />
+                                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Name *</label>
+                                <input type="text" value={newManufacturer.name} onChange={e => setNewManufacturer({ ...newManufacturer, name: e.target.value })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g., Toyota" />
                             </div>
                             <div>
-                                <label className="text-xs font-semibold text-gray-600 mb-1 block">Country</label>
-                                <input type="text" value={newManufacturer.country} onChange={e => setNewManufacturer({ ...newManufacturer, country: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="e.g., Japan" />
+                                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Country</label>
+                                <input type="text" value={newManufacturer.country} onChange={e => setNewManufacturer({ ...newManufacturer, country: e.target.value })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g., Japan" />
                             </div>
-                            <div className="flex gap-2 pt-1">
-                                <button onClick={() => setShowAddManufacturer(false)} className="flex-1 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Cancel</button>
-                                <button onClick={handleAddManufacturer} disabled={!newManufacturer.name.trim() || saving} className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm disabled:opacity-50">{saving ? 'Adding...' : 'Add'}</button>
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                                <button onClick={() => setShowAddManufacturer(false)} style={{ flex: 1, padding: '7px', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '12px', cursor: 'pointer', background: '#fff', color: '#5f6368' }}>Cancel</button>
+                                <button onClick={handleAddManufacturer} disabled={!newManufacturer.name.trim() || saving} style={{ flex: 1, padding: '7px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Adding...' : 'Add'}</button>
                             </div>
                         </div>
                     </div>
@@ -821,21 +874,21 @@ const AddVehiclePage = () => {
 
             {/* ── Add Model Modal ── */}
             {showAddModel && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowAddModel(false)}>
-                    <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-base font-bold mb-4">Add Model</h3>
-                        <div className="space-y-3">
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }} onClick={() => setShowAddModel(false)}>
+                    <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', maxWidth: '360px', width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#202124', margin: '0 0 14px' }}>Add Model</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             <div>
-                                <label className="text-xs font-semibold text-gray-600 mb-1 block">Name *</label>
-                                <input type="text" value={newModel.name} onChange={e => setNewModel({ ...newModel, name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="e.g., Camry" />
+                                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Name *</label>
+                                <input type="text" value={newModel.name} onChange={e => setNewModel({ ...newModel, name: e.target.value })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g., Camry" />
                             </div>
                             <div>
-                                <label className="text-xs font-semibold text-gray-600 mb-1 block">Description</label>
-                                <input type="text" value={newModel.description} onChange={e => setNewModel({ ...newModel, description: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="e.g., Sedan" />
+                                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Description</label>
+                                <input type="text" value={newModel.description} onChange={e => setNewModel({ ...newModel, description: e.target.value })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g., Sedan" />
                             </div>
-                            <div className="flex gap-2 pt-1">
-                                <button onClick={() => setShowAddModel(false)} className="flex-1 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Cancel</button>
-                                <button onClick={handleAddModel} disabled={!newModel.name.trim() || saving} className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm disabled:opacity-50">{saving ? 'Adding...' : 'Add'}</button>
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                                <button onClick={() => setShowAddModel(false)} style={{ flex: 1, padding: '7px', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '12px', cursor: 'pointer', background: '#fff', color: '#5f6368' }}>Cancel</button>
+                                <button onClick={handleAddModel} disabled={!newModel.name.trim() || saving} style={{ flex: 1, padding: '7px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Adding...' : 'Add'}</button>
                             </div>
                         </div>
                     </div>
@@ -844,18 +897,18 @@ const AddVehiclePage = () => {
 
             {/* ── Add Variant Modal ── */}
             {showAddVariant && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowAddVariant(false)}>
-                    <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-base font-bold mb-1">Add Variant</h3>
-                        <p className="text-xs text-gray-500 mb-4">{selectedManufacturer?.name} · {selectedModel?.name}</p>
-                        <div className="space-y-3">
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }} onClick={() => setShowAddVariant(false)}>
+                    <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', maxWidth: '360px', width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#202124', margin: '0 0 4px' }}>Add Variant</h3>
+                        <p style={{ fontSize: '11px', color: '#9aa0a6', margin: '0 0 14px' }}>{selectedManufacturer?.name} · {selectedModel?.name}</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             <div>
-                                <label className="text-xs font-semibold text-gray-600 mb-1 block">Variant Name *</label>
-                                <input type="text" value={newVariant} onChange={e => setNewVariant(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="e.g., GLI, GLX" />
+                                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Variant Name *</label>
+                                <input type="text" value={newVariant} onChange={e => setNewVariant(e.target.value)} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g., GLI, GLX" />
                             </div>
-                            <div className="flex gap-2 pt-1">
-                                <button onClick={() => setShowAddVariant(false)} className="flex-1 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Cancel</button>
-                                <button onClick={handleAddVariant} disabled={!newVariant.trim() || saving} className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm disabled:opacity-50">{saving ? 'Adding...' : 'Add'}</button>
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                                <button onClick={() => setShowAddVariant(false)} style={{ flex: 1, padding: '7px', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '12px', cursor: 'pointer', background: '#fff', color: '#5f6368' }}>Cancel</button>
+                                <button onClick={handleAddVariant} disabled={!newVariant.trim() || saving} style={{ flex: 1, padding: '7px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Adding...' : 'Add'}</button>
                             </div>
                         </div>
                     </div>
@@ -864,34 +917,21 @@ const AddVehiclePage = () => {
 
             {/* ── Edit Maker Modal ── */}
             {editingMaker && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setEditingMaker(null)}>
-                    <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-base font-bold mb-4">Edit Manufacturer</h3>
-                        <div className="space-y-3">
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }} onClick={() => setEditingMaker(null)}>
+                    <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', maxWidth: '360px', width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#202124', margin: '0 0 14px' }}>Edit Manufacturer</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             <div>
-                                <label className="text-xs font-semibold text-gray-600 mb-1 block">Name *</label>
-                                <input
-                                    autoFocus
-                                    type="text"
-                                    value={editingMaker.name}
-                                    onChange={e => setEditingMaker(prev => ({ ...prev, name: e.target.value }))}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none"
-                                />
+                                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Name *</label>
+                                <input autoFocus type="text" value={editingMaker.name} onChange={e => setEditingMaker(p => ({ ...p, name: e.target.value }))} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
                             </div>
                             <div>
-                                <label className="text-xs font-semibold text-gray-600 mb-1 block">Country</label>
-                                <input
-                                    type="text"
-                                    value={editingMaker.country}
-                                    onChange={e => setEditingMaker(prev => ({ ...prev, country: e.target.value }))}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none"
-                                />
+                                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Country</label>
+                                <input type="text" value={editingMaker.country} onChange={e => setEditingMaker(p => ({ ...p, country: e.target.value }))} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
                             </div>
-                            <div className="flex gap-2 pt-1">
-                                <button onClick={() => setEditingMaker(null)} className="flex-1 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Cancel</button>
-                                <button onClick={handleSaveMakerEdit} disabled={!editingMaker.name.trim() || saving} className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm disabled:opacity-50">
-                                    {saving ? 'Saving…' : 'Save'}
-                                </button>
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                                <button onClick={() => setEditingMaker(null)} style={{ flex: 1, padding: '7px', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '12px', cursor: 'pointer', background: '#fff', color: '#5f6368' }}>Cancel</button>
+                                <button onClick={handleSaveMakerEdit} disabled={!editingMaker.name.trim() || saving} style={{ flex: 1, padding: '7px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Saving…' : 'Save'}</button>
                             </div>
                         </div>
                     </div>
@@ -900,36 +940,22 @@ const AddVehiclePage = () => {
 
             {/* ── Edit Model Modal ── */}
             {editingModel && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setEditingModel(null)}>
-                    <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-base font-bold mb-1">Edit Model</h3>
-                        <p className="text-xs text-gray-500 mb-4">{selectedManufacturer?.name}</p>
-                        <div className="space-y-3">
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }} onClick={() => setEditingModel(null)}>
+                    <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', maxWidth: '360px', width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#202124', margin: '0 0 4px' }}>Edit Model</h3>
+                        <p style={{ fontSize: '11px', color: '#9aa0a6', margin: '0 0 14px' }}>{selectedManufacturer?.name}</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             <div>
-                                <label className="text-xs font-semibold text-gray-600 mb-1 block">Model Name *</label>
-                                <input
-                                    autoFocus
-                                    type="text"
-                                    value={editingModel.name}
-                                    onChange={e => setEditingModel(prev => ({ ...prev, name: e.target.value }))}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none"
-                                />
+                                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Model Name *</label>
+                                <input autoFocus type="text" value={editingModel.name} onChange={e => setEditingModel(p => ({ ...p, name: e.target.value }))} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
                             </div>
                             <div>
-                                <label className="text-xs font-semibold text-gray-600 mb-1 block">Description</label>
-                                <input
-                                    type="text"
-                                    value={editingModel.description}
-                                    onChange={e => setEditingModel(prev => ({ ...prev, description: e.target.value }))}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none"
-                                    placeholder="e.g., Sedan"
-                                />
+                                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Description</label>
+                                <input type="text" value={editingModel.description} onChange={e => setEditingModel(p => ({ ...p, description: e.target.value }))} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g., Sedan" />
                             </div>
-                            <div className="flex gap-2 pt-1">
-                                <button onClick={() => setEditingModel(null)} className="flex-1 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Cancel</button>
-                                <button onClick={handleSaveModelEdit} disabled={!editingModel.name.trim() || saving} className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm disabled:opacity-50">
-                                    {saving ? 'Saving…' : 'Save'}
-                                </button>
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                                <button onClick={() => setEditingModel(null)} style={{ flex: 1, padding: '7px', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '12px', cursor: 'pointer', background: '#fff', color: '#5f6368' }}>Cancel</button>
+                                <button onClick={handleSaveModelEdit} disabled={!editingModel.name.trim() || saving} style={{ flex: 1, padding: '7px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Saving…' : 'Save'}</button>
                             </div>
                         </div>
                     </div>
@@ -937,58 +963,86 @@ const AddVehiclePage = () => {
             )}
 
             {/* ── Add Field Modal ── */}
-            {showAddField && (                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowAddField(false)}>
-                    <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-base font-bold">Add New Field</h3>
-                            <button onClick={() => setShowAddField(false)} className="text-gray-400 hover:text-gray-600">
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            {showAddField && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }} onClick={() => setShowAddField(false)}>
+                    <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', maxWidth: '380px', width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                            <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#202124', margin: 0 }}>Add New Field</h3>
+                            <button onClick={() => setShowAddField(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9aa0a6', padding: '2px', display: 'flex' }}>
+                                <svg style={{ width: '14px', height: '14px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
-                        <p className="text-xs text-gray-400 mb-4">Field will be added to the <span className="font-semibold text-gray-600">add-vehicles</span> form.</p>
-                        <div className="space-y-3">
+                        <p style={{ fontSize: '11px', color: '#9aa0a6', marginBottom: '14px' }}>
+                            Field will be added to the <span style={{ fontWeight: 600, color: '#5f6368' }}>add-vehicles</span> form.
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             <div>
-                                <label className="text-xs font-semibold text-gray-600 mb-1 block">Label *</label>
-                                <input type="text" value={newField.label} onChange={e => setNewField(f => ({ ...f, label: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="e.g., Engine No." />
+                                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Label *</label>
+                                <input type="text" value={newField.label} onChange={e => setNewField(f => ({ ...f, label: e.target.value }))}
+                                    style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
+                                    placeholder="e.g., Engine No." />
                             </div>
                             <div>
-                                <label className="text-xs font-semibold text-gray-600 mb-1 block">Type</label>
-                                <select value={newField.type} onChange={e => setNewField(f => ({ ...f, type: e.target.value, options: [] }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+                                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Type</label>
+                                <select value={newField.type} onChange={e => setNewField(f => ({ ...f, type: e.target.value, options: [] }))}
+                                    style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', background: '#fff', boxSizing: 'border-box' }}>
                                     {FIELD_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                                 </select>
                             </div>
                             {newField.type === 'dropdown' && (
-                                <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 space-y-2">
-                                    <label className="text-xs font-semibold text-gray-600 block">Options</label>
-                                    {newField.options.map((opt, i) => (
-                                        <div key={i} className="flex gap-2">
-                                            <input type="text" value={opt} onChange={e => setNewField(f => ({ ...f, options: f.options.map((o, j) => j === i ? e.target.value : o) }))} className="flex-1 px-2 py-1.5 border border-gray-300 rounded-lg text-sm" placeholder={`Option ${i + 1}`} />
-                                            <button type="button" onClick={() => setNewField(f => ({ ...f, options: f.options.filter((_, j) => j !== i) }))} className="text-red-400 hover:text-red-600 px-1">✕</button>
-                                        </div>
-                                    ))}
-                                    <div className="flex gap-2">
-                                        <input type="text" value={newFieldOption} onChange={e => setNewFieldOption(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (newFieldOption.trim()) { setNewField(f => ({ ...f, options: [...f.options, newFieldOption.trim()] })); setNewFieldOption('') } } }} className="flex-1 px-2 py-1.5 border border-gray-300 rounded-lg text-sm" placeholder="Type option, press Enter" />
-                                        <button type="button" onClick={() => { if (newFieldOption.trim()) { setNewField(f => ({ ...f, options: [...f.options, newFieldOption.trim()] })); setNewFieldOption('') } }} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs">Add</button>
+                                <div style={{ background: '#f8f9fa', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '10px' }}>
+                                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Options</label>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
+                                        {newField.options.map((opt, i) => (
+                                            <div key={i} style={{ display: 'flex', gap: '6px' }}>
+                                                <input type="text" value={opt}
+                                                    onChange={e => setNewField(f => ({ ...f, options: f.options.map((o, j) => j === i ? e.target.value : o) }))}
+                                                    style={{ flex: 1, padding: '5px 8px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none' }}
+                                                    placeholder={`Option ${i + 1}`} />
+                                                <button type="button" onClick={() => setNewField(f => ({ ...f, options: f.options.filter((_, j) => j !== i) }))}
+                                                    style={{ padding: '4px 6px', background: 'none', border: 'none', cursor: 'pointer', color: '#c5221f', fontSize: '13px' }}>✕</button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '6px' }}>
+                                        <input type="text" value={newFieldOption}
+                                            onChange={e => setNewFieldOption(e.target.value)}
+                                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (newFieldOption.trim()) { setNewField(f => ({ ...f, options: [...f.options, newFieldOption.trim()] })); setNewFieldOption('') } } }}
+                                            style={{ flex: 1, padding: '5px 8px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none' }}
+                                            placeholder="Type option, press Enter" />
+                                        <button type="button"
+                                            onClick={() => { if (newFieldOption.trim()) { setNewField(f => ({ ...f, options: [...f.options, newFieldOption.trim()] })); setNewFieldOption('') } }}
+                                            style={{ padding: '5px 10px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
+                                            + Add
+                                        </button>
                                     </div>
                                 </div>
                             )}
-                            <div className="flex items-center gap-3">
-                                <span className="text-xs font-semibold text-gray-600">Required?</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Required?</span>
                                 {[{ label: 'Yes', val: true }, { label: 'No', val: false }].map(({ label, val }) => (
-                                    <label key={String(val)} className={`flex items-center gap-1.5 cursor-pointer px-3 py-1.5 rounded-lg border text-xs font-medium transition ${newField.isRequired === val ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-500'}`}>
-                                        <input type="radio" className="sr-only" checked={newField.isRequired === val} onChange={() => setNewField(f => ({ ...f, isRequired: val }))} />
+                                    <label key={String(val)}
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 500,
+                                            border: newField.isRequired === val ? '1px solid #1a73e8' : '1px solid #e0e0e0',
+                                            background: newField.isRequired === val ? '#e8f0fe' : '#fff',
+                                            color: newField.isRequired === val ? '#1a73e8' : '#5f6368' }}>
+                                        <input type="radio" style={{ display: 'none' }} checked={newField.isRequired === val} onChange={() => setNewField(f => ({ ...f, isRequired: val }))} />
                                         {label}
                                     </label>
                                 ))}
                             </div>
                             {addFieldMsg && (
-                                <div className={`p-2.5 rounded-lg text-xs ${addFieldMsg.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                                <div style={{ padding: '8px 12px', borderRadius: '6px', fontSize: '12px',
+                                    background: addFieldMsg.type === 'success' ? '#e6f4ea' : '#fce8e6',
+                                    color: addFieldMsg.type === 'success' ? '#137333' : '#c5221f',
+                                    border: `1px solid ${addFieldMsg.type === 'success' ? '#b7dfbe' : '#f5c6c2'}` }}>
                                     {addFieldMsg.text}
                                 </div>
                             )}
-                            <div className="flex gap-2 pt-1">
-                                <button onClick={() => setShowAddField(false)} className="flex-1 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Cancel</button>
-                                <button onClick={handleAddField} disabled={!newField.label.trim() || addingField} className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm disabled:opacity-50">
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                                <button onClick={() => setShowAddField(false)} style={{ flex: 1, padding: '7px', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '12px', cursor: 'pointer', background: '#fff', color: '#5f6368' }}>Cancel</button>
+                                <button onClick={handleAddField} disabled={!newField.label.trim() || addingField}
+                                    style={{ flex: 1, padding: '7px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: addingField ? 'not-allowed' : 'pointer', opacity: addingField ? 0.7 : 1 }}>
                                     {addingField ? 'Adding...' : 'Add Field'}
                                 </button>
                             </div>

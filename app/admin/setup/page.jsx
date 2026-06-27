@@ -1,478 +1,536 @@
 'use client'
-import { useState, useEffect } from "react";
+import { useEffect, useState, useRef } from 'react'
 
-// ─── Fetch dynamic fields for a given form name ──────────────────────────────
-const useDynamicFields = (belongsto) => {
-    const [dynFields, setDynFields] = useState([]);
-    useEffect(() => {
-        if (!belongsto) return;
-        fetch('/api/fields', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ belongsto }),
-        })
-            .then((r) => r.json())
-            .then((data) => setDynFields(Array.isArray(data) ? data : []))
-            .catch(() => setDynFields([]));
-    }, [belongsto]);
-    return dynFields;
-};
+// ── tiny helpers ───────────────────────────────────────────────────────────────
+const clx = (...a) => a.filter(Boolean).join(' ')
 
-// ─── Render a single dynamic field ──────────────────────────────────────────
-const DynamicFieldRenderer = ({ field, value, onChange }) => {
-    const base = "border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition w-full";
-    const label = (
-        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-            {field.label}{field.isRequired && <span className="text-red-500 ml-0.5">*</span>}
-        </label>
-    );
-
-    const { type } = field;
-
-    if (type === 'dropdown') {
-        return (
-            <div className="flex flex-col gap-1">
-                {label}
-                <select value={value || ''} onChange={onChange} required={field.isRequired} className={base + " bg-white"}>
-                    <option value="">Select…</option>
-                    {(field.options || []).map((opt) => (
-                        <option key={opt} value={opt}>{opt}</option>
-                    ))}
-                </select>
-            </div>
-        );
+const Btn = ({ children, onClick, variant = 'ghost', size = 'sm', disabled, className, type = 'button' }) => {
+    const base = 'inline-flex items-center gap-1.5 font-medium rounded-lg transition focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed'
+    const sizes = { sm: 'px-3 py-1.5 text-xs', md: 'px-4 py-2 text-sm' }
+    const variants = {
+        ghost:   'border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300',
+        primary: 'bg-[#1a73e8] text-white hover:bg-[#1557b0] border border-[#1a73e8]',
+        danger:  'border border-red-200 text-red-600 hover:bg-red-50',
+        success: 'bg-green-600 text-white hover:bg-green-700 border border-green-600',
     }
-    if (type === 'boolean') {
-        return (
-            <div className="flex flex-col gap-1">
-                {label}
-                <label className="flex items-center gap-2 cursor-pointer mt-1">
-                    <input
-                        type="checkbox"
-                        checked={!!value}
-                        onChange={(e) => onChange({ target: { value: e.target.checked } })}
-                        className="w-4 h-4 accent-blue-500"
-                    />
-                    <span className="text-sm text-gray-600">Yes</span>
-                </label>
-            </div>
-        );
-    }
-    if (type === 'date') {
-        return (
-            <div className="flex flex-col gap-1">
-                {label}
-                <input type="date" value={value || ''} onChange={onChange} required={field.isRequired} className={base} />
-            </div>
-        );
-    }
-    // text, number, email, password, image, file
-    const inputType = ['number', 'email', 'password', 'image', 'file'].includes(type) ? type : 'text';
     return (
-        <div className="flex flex-col gap-1">
-            {label}
-            <input type={inputType} value={value || ''} onChange={onChange} required={field.isRequired} className={base} />
-        </div>
-    );
-};
+        <button type={type} onClick={onClick} disabled={disabled} className={clx(base, sizes[size], variants[variant], className)}>
+            {children}
+        </button>
+    )
+}
 
-// ─── Reusable static field ───────────────────────────────────────────────────
-const Field = ({ label, value, onChange, type = 'text', textarea = false, required = false }) => (
-    <div className="flex flex-col gap-1">
-        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-            {label}{required && <span className="text-red-500 ml-0.5">*</span>}
-        </label>
-        {textarea ? (
-            <textarea
-                rows={3}
-                value={value}
-                onChange={onChange}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition resize-none"
-            />
-        ) : (
-            <input
-                type={type}
-                value={value}
-                onChange={onChange}
-                required={required}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition"
-            />
-        )}
+const Modal = ({ title, onClose, children, width = '480px' }) => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={onClose}>
+        <div style={{ background: '#fff', borderRadius: '12px', width: '100%', maxWidth: width, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #e0e0e0' }}>
+                <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#202124', margin: 0 }}>{title}</h3>
+                <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#5f6368', padding: '4px', borderRadius: '50%' }}>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <div style={{ padding: '20px' }}>{children}</div>
+        </div>
     </div>
-);
+)
 
-// ─── Status message ──────────────────────────────────────────────────────────
-const Message = ({ text, ok }) => {
-    if (!text) return null;
-    return (
-        <div className={`px-4 py-3 rounded-lg text-sm font-medium mb-4 ${ok
-            ? 'bg-green-50 text-green-700 border border-green-200'
-            : 'bg-red-50 text-red-700 border border-red-200'}`}>
-            {text}
-        </div>
-    );
-};
-
-// ─── Card wrapper ────────────────────────────────────────────────────────────
-const Card = ({ title, icon, children }) => (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center gap-3 mb-6">
-            <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 text-lg">
-                {icon}
-            </div>
-            <h2 className="text-lg font-bold text-gray-800">{title}</h2>
-        </div>
+const Field = ({ label, children, required }) => (
+    <div>
+        <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '5px' }}>
+            {label}{required && <span style={{ color: '#c5221f', marginLeft: '2px' }}>*</span>}
+        </label>
         {children}
     </div>
-);
+)
 
-// ─── Section divider ─────────────────────────────────────────────────────────
-const Section = ({ title }) => (
-    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-1 mt-2">{title}</p>
-);
+const Input = ({ value, onChange, placeholder, type = 'text', ...rest }) => (
+    <input
+        type={type}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        style={{ width: '100%', padding: '7px 10px', border: '1px solid #c4c7c5', borderRadius: '4px', fontSize: '13px', color: '#202124', outline: 'none', boxSizing: 'border-box' }}
+        onFocus={e => e.target.style.borderColor = '#1a73e8'}
+        onBlur={e => e.target.style.borderColor = '#c4c7c5'}
+        {...rest}
+    />
+)
 
-// ─── Supplier Form ───────────────────────────────────────────────────────────
-const SupplierForm = () => {
-    const FORM = 'supplier';
-    const empty = { name: '', email: '', phone: '', company: '', vat: '', address: '', city: '', country: '', notes: '' };
-    const [values, setValues] = useState(empty);
-    const [dynValues, setDynValues] = useState({});
-    const [msg, setMsg] = useState({ text: '', ok: false });
-    const dynFields = useDynamicFields(FORM);
+const Select = ({ value, onChange, children, ...rest }) => (
+    <select
+        value={value}
+        onChange={onChange}
+        style={{ width: '100%', padding: '7px 10px', border: '1px solid #c4c7c5', borderRadius: '4px', fontSize: '13px', color: '#202124', outline: 'none', background: '#fff' }}
+        {...rest}
+    >
+        {children}
+    </select>
+)
 
-    const set = (key) => (e) => setValues({ ...values, [key]: e.target.value });
-    const setDyn = (key) => (e) => setDynValues({ ...dynValues, [key]: e.target.value });
+// ── Main Page ──────────────────────────────────────────────────────────────────
+export default function SetupPage() {
+    const [manufacturers, setManufacturers] = useState([])
+    const [fields, setFields] = useState([])          // dynamic fields for add-vehicles
+    const [loading, setLoading] = useState(true)
+    const [search, setSearch] = useState('')
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const res = await fetch('/api/supplier', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...values, ...dynValues }),
-        });
-        const data = await res.json().catch(() => ({ message: 'Server error' }));
-        setMsg({ text: data.message || (res.ok ? 'Saved' : 'Error'), ok: res.ok });
-        if (res.ok) { setValues(empty); setDynValues({}); }
-    };
+    // selected manufacturer whose models are shown in the right panel
+    const [activeMfg, setActiveMfg] = useState(null)
+
+    // modals
+    const [mfgModal, setMfgModal]     = useState(null)  // null | 'add' | { ...manufacturer }
+    const [modelModal, setModelModal] = useState(null)  // null | 'add' | { mfgId, modelIndex, ...model }
+    const [saving, setSaving]         = useState(false)
+
+    useEffect(() => { load() }, [])
+
+    const load = async () => {
+        setLoading(true)
+        const [mRes, fRes] = await Promise.all([
+            fetch('/api/manufacturer'),
+            fetch('/api/fields'),
+        ])
+        const mData = mRes.ok ? await mRes.json() : []
+        const fData = fRes.ok ? await fRes.json() : []
+        const mfgs = mData.filter(m => !m.isRikusoCompany).sort((a, b) => a.name.localeCompare(b.name))
+        setManufacturers(mfgs)
+        setFields(fData.filter(f => f.belongsto === 'add-vehicles'))
+        if (mfgs.length > 0) setActiveMfg(prev => prev ? mfgs.find(m => m._id === prev._id) || mfgs[0] : mfgs[0])
+        setLoading(false)
+    }
+
+    // ── Manufacturer CRUD ──────────────────────────────────────────────────────
+    const saveMfg = async (data) => {
+        setSaving(true)
+        try {
+            if (data._id) {
+                const res = await fetch(`/api/manufacturer/${data._id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: data.name, country: data.country }) })
+                if (!res.ok) throw new Error('Failed')
+            } else {
+                const res = await fetch('/api/manufacturer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: data.name, country: data.country, models: [] }) })
+                if (!res.ok) throw new Error('Failed')
+            }
+            await load()
+            setMfgModal(null)
+        } catch (e) { alert(e.message) }
+        finally { setSaving(false) }
+    }
+
+    const deleteMfg = async (id) => {
+        if (!confirm('Delete this manufacturer and all its models?')) return
+        await fetch(`/api/manufacturer/${id}`, { method: 'DELETE' })
+        if (activeMfg?._id === id) setActiveMfg(null)
+        await load()
+    }
+
+    // ── Model CRUD ─────────────────────────────────────────────────────────────
+    const saveModel = async (data) => {
+        setSaving(true)
+        try {
+            const mfg = manufacturers.find(m => m._id === data.mfgId)
+            if (!mfg) throw new Error('Manufacturer not found')
+            let updatedModels
+            if (data.modelIndex !== undefined) {
+                updatedModels = mfg.models.map((m, i) => i === data.modelIndex
+                    ? { ...m, name: data.name, description: data.description, defaults: data.defaults }
+                    : m
+                )
+            } else {
+                updatedModels = [...(mfg.models || []), { name: data.name, description: data.description, defaults: data.defaults, variants: [] }]
+            }
+            const res = await fetch(`/api/manufacturer/${data.mfgId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ models: updatedModels }) })
+            if (!res.ok) throw new Error('Failed')
+            await load()
+            setModelModal(null)
+        } catch (e) { alert(e.message) }
+        finally { setSaving(false) }
+    }
+
+    const deleteModel = async (mfgId, modelIndex) => {
+        if (!confirm('Delete this model?')) return
+        const mfg = manufacturers.find(m => m._id === mfgId)
+        const updatedModels = mfg.models.filter((_, i) => i !== modelIndex)
+        await fetch(`/api/manufacturer/${mfgId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ models: updatedModels }) })
+        await load()
+    }
+
+    const filteredMfg = manufacturers.filter(m => m.name.toLowerCase().includes(search.toLowerCase()) || m.country?.toLowerCase().includes(search.toLowerCase()))
 
     return (
-        <Card title="Add Supplier" icon="🏭">
-            <Message text={msg.text} ok={msg.ok} />
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <Section title="Basic Info" />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Field label="Name" value={values.name}    onChange={set('name')}    required />
-                    <Field label="Company"   value={values.company} onChange={set('company')} />
-                    <Field label="Email"     value={values.email}   onChange={set('email')}   type="email" />
-                    <Field label="Phone"     value={values.phone}   onChange={set('phone')} />
-                    <Field label="VAT"       value={values.vat}     onChange={set('vat')} />
-                    <Field label="City"      value={values.city}    onChange={set('city')} />
-                    <Field label="Country"   value={values.country} onChange={set('country')} />
-                    <Field label="Address"   value={values.address} onChange={set('address')} />
+        <div style={{ padding: '20px 24px', minHeight: '100vh', background: '#f6f8fc' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                <div>
+                    <h1 style={{ fontSize: '20px', fontWeight: 500, color: '#202124', margin: 0 }}>Vehicle Setup</h1>
+                    <p style={{ fontSize: '12px', color: '#5f6368', marginTop: '2px' }}>Manage manufacturers, models and their default field values</p>
                 </div>
-                <Field label="Notes" value={values.notes} onChange={set('notes')} textarea />
-
-                {dynFields.length > 0 && (
-                    <>
-                        <Section title="Additional Fields" />
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {dynFields.map((f) => (
-                                <DynamicFieldRenderer
-                                    key={f._id}
-                                    field={f}
-                                    value={dynValues[f.label] ?? ''}
-                                    onChange={setDyn(f.label)}
-                                />
-                            ))}
-                        </div>
-                    </>
-                )}
-
-                <button type="submit" className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2.5 rounded-lg transition text-sm">
-                    Save Supplier
-                </button>
-            </form>
-        </Card>
-    );
-};
-
-// ─── Consignee Form ──────────────────────────────────────────────────────────
-const ConsigneeForm = () => {
-    const FORM = 'consignee';
-    const empty = { name: '', email: '', phone: '', company: '', vat: '', address: '', city: '', country: '', notes: '' };
-    const [values, setValues] = useState(empty);
-    const [dynValues, setDynValues] = useState({});
-    const [msg, setMsg] = useState({ text: '', ok: false });
-    const dynFields = useDynamicFields(FORM);
-
-    const set = (key) => (e) => setValues({ ...values, [key]: e.target.value });
-    const setDyn = (key) => (e) => setDynValues({ ...dynValues, [key]: e.target.value });
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const res = await fetch('/api/consignee', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...values, ...dynValues }),
-        });
-        const data = await res.json().catch(() => ({ message: 'Server error' }));
-        setMsg({ text: data.message || (res.ok ? 'Saved' : 'Error'), ok: res.ok });
-        if (res.ok) { setValues(empty); setDynValues({}); }
-    };
-
-    return (
-        <Card title="Add Consignee" icon="📦">
-            <Message text={msg.text} ok={msg.ok} />
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <Section title="Basic Info" />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Field label="Name" value={values.name}    onChange={set('name')}    required />
-                    <Field label="Company"   value={values.company} onChange={set('company')} />
-                    <Field label="Email"     value={values.email}   onChange={set('email')}   type="email" />
-                    <Field label="Phone"     value={values.phone}   onChange={set('phone')} />
-                    <Field label="VAT"       value={values.vat}     onChange={set('vat')} />
-                    <Field label="City"      value={values.city}    onChange={set('city')} />
-                    <Field label="Country"   value={values.country} onChange={set('country')} />
-                    <Field label="Address"   value={values.address} onChange={set('address')} />
-                </div>
-                <Field label="Notes" value={values.notes} onChange={set('notes')} textarea />
-
-                {dynFields.length > 0 && (
-                    <>
-                        <Section title="Additional Fields" />
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {dynFields.map((f) => (
-                                <DynamicFieldRenderer
-                                    key={f._id}
-                                    field={f}
-                                    value={dynValues[f.label] ?? ''}
-                                    onChange={setDyn(f.label)}
-                                />
-                            ))}
-                        </div>
-                    </>
-                )}
-
-                <button type="submit" className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2.5 rounded-lg transition text-sm">
-                    Save Consignee
-                </button>
-            </form>
-        </Card>
-    );
-};
-
-// ─── Dimensions input inside a car model ─────────────────────────────────────
-const DimensionInputs = ({ dims, onChange }) => {
-    const numInput = (label, key) => (
-        <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{label}</label>
-            <input
-                type="number"
-                value={dims[key] ?? ''}
-                onChange={(e) => onChange({ ...dims, [key]: e.target.value })}
-                placeholder="0"
-                className="border border-gray-200 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
-            />
-        </div>
-    );
-    const unitSel = (key, opts) => (
-        <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Unit</label>
-            <select
-                value={dims[key] ?? opts[0]}
-                onChange={(e) => onChange({ ...dims, [key]: e.target.value })}
-                className="border border-gray-200 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
-            >
-                {opts.map((o) => <option key={o} value={o}>{o}</option>)}
-            </select>
-        </div>
-    );
-    return (
-        <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Dimensions</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {numInput('Length', 'length')}
-                {numInput('Width',  'width')}
-                {numInput('Height', 'height')}
-                {unitSel('unit_size', ['cm', 'm', 'mm', 'in', 'ft'])}
+                <Btn variant="primary" size="md" onClick={() => setMfgModal({ name: '', country: '' })}>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                    Add Manufacturer
+                </Btn>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-                {numInput('Weight', 'weight')}
-                {unitSel('unit_weight', ['kg', 'g', 'lb', 'oz', 't'])}
-            </div>
-        </div>
-    );
-};
 
-// ─── Manufacturer + Car Model Form ───────────────────────────────────────────
-const ManufacturerForm = () => {
-    const FORM = 'manufacturer';
-    const emptyMfr = { name: '', country: '', models: [] };
-    const emptyModel = { name: '', description: '', dimensions: {} };
-    const [values, setValues] = useState(emptyMfr);
-    const [modelInput, setModelInput] = useState(emptyModel);
-    const [dynValues, setDynValues] = useState({});
-    const [msg, setMsg] = useState({ text: '', ok: false });
-    const dynFields = useDynamicFields(FORM);
-
-    const setDyn = (key) => (e) => setDynValues({ ...dynValues, [key]: e.target.value });
-
-    const addModel = () => {
-        if (!modelInput.name.trim()) return;
-        setValues({ ...values, models: [...values.models, { ...modelInput }] });
-        setModelInput(emptyModel);
-    };
-
-    const removeModel = (i) => setValues({ ...values, models: values.models.filter((_, idx) => idx !== i) });
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const res = await fetch('/api/manufacturer', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...values, ...dynValues }),
-        });
-        const data = await res.json().catch(() => ({ message: 'Server error' }));
-        setMsg({ text: data.message || (res.ok ? 'Saved' : 'Error'), ok: res.ok });
-        if (res.ok) { setValues(emptyMfr); setModelInput(emptyModel); setDynValues({}); }
-    };
-
-    return (
-        <Card title="Add Manufacturer & Car Models" icon="🚗">
-            <Message text={msg.text} ok={msg.ok} />
-            <form onSubmit={handleSubmit} className="space-y-5">
-                <Section title="Manufacturer" />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Field label="Manufacturer Name" value={values.name}    onChange={(e) => setValues({ ...values, name: e.target.value })} required />
-                    <Field label="Country of Origin"  value={values.country} onChange={(e) => setValues({ ...values, country: e.target.value })} />
+            {loading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '80px' }}>
+                    <div style={{ width: '32px', height: '32px', border: '3px solid #e8f0fe', borderTopColor: '#1a73e8', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
                 </div>
+            ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '16px', alignItems: 'start' }}>
 
-                {/* Car models */}
-                <div className="border border-gray-200 rounded-xl p-4 space-y-4">
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Car Models</p>
-
-                    {/* Added models list */}
-                    {values.models.length > 0 && (
-                        <div className="space-y-2">
-                            {values.models.map((m, i) => {
-                                const d = m.dimensions || {};
-                                const hasDims = d.length || d.width || d.height || d.weight;
-                                return (
-                                    <div key={i} className="flex items-start justify-between bg-gray-50 rounded-lg px-3 py-2 gap-3">
-                                        <div className="min-w-0">
-                                            <p className="text-sm font-semibold text-gray-800">{m.name}</p>
-                                            {m.description && <p className="text-xs text-gray-500 mt-0.5">{m.description}</p>}
-                                            {hasDims && (
-                                                <p className="text-xs text-gray-400 mt-0.5">
-                                                    {[d.length && `L: ${d.length}`, d.width && `W: ${d.width}`, d.height && `H: ${d.height}`].filter(Boolean).join(' · ')}
-                                                    {d.length && ` ${d.unit_size || 'cm'}`}
-                                                    {d.weight && `  ·  ${d.weight} ${d.unit_weight || 'kg'}`}
-                                                </p>
-                                            )}
+                    {/* ── Left: Manufacturer list ── */}
+                    <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
+                        <div style={{ padding: '12px', borderBottom: '1px solid #f1f3f4' }}>
+                            <input
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                placeholder="Search manufacturers…"
+                                style={{ width: '100%', padding: '6px 10px', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                            />
+                        </div>
+                        <div style={{ maxHeight: 'calc(100vh - 220px)', overflowY: 'auto' }}>
+                            {filteredMfg.length === 0 && (
+                                <div style={{ padding: '24px', textAlign: 'center', fontSize: '12px', color: '#9aa0a6' }}>No manufacturers found</div>
+                            )}
+                            {filteredMfg.map(m => (
+                                <div
+                                    key={m._id}
+                                    onClick={() => setActiveMfg(m)}
+                                    style={{
+                                        padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #f1f3f4',
+                                        background: activeMfg?._id === m._id ? '#e8f0fe' : 'transparent',
+                                        borderLeft: activeMfg?._id === m._id ? '3px solid #1a73e8' : '3px solid transparent',
+                                        transition: 'all 0.12s',
+                                    }}
+                                    onMouseEnter={e => { if (activeMfg?._id !== m._id) e.currentTarget.style.background = '#f8f9fa' }}
+                                    onMouseLeave={e => { if (activeMfg?._id !== m._id) e.currentTarget.style.background = 'transparent' }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <div>
+                                            <div style={{ fontSize: '13px', fontWeight: 600, color: activeMfg?._id === m._id ? '#1a73e8' : '#202124' }}>{m.name}</div>
+                                            <div style={{ fontSize: '11px', color: '#9aa0a6', marginTop: '1px' }}>
+                                                {[m.country, `${m.models?.length || 0} models`].filter(Boolean).join(' · ')}
+                                            </div>
                                         </div>
-                                        <button type="button" onClick={() => removeModel(i)} className="text-red-400 hover:text-red-600 transition shrink-0 mt-0.5">
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
-                                        </button>
+                                        <div style={{ display: 'flex', gap: '4px' }} onClick={e => e.stopPropagation()}>
+                                            <button onClick={() => setMfgModal({ _id: m._id, name: m.name, country: m.country || '' })}
+                                                style={{ padding: '3px', background: 'none', border: 'none', cursor: 'pointer', color: '#9aa0a6', borderRadius: '4px' }}
+                                                onMouseEnter={e => e.currentTarget.style.color = '#1a73e8'}
+                                                onMouseLeave={e => e.currentTarget.style.color = '#9aa0a6'}
+                                                title="Edit">
+                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                            </button>
+                                            <button onClick={() => deleteMfg(m._id)}
+                                                style={{ padding: '3px', background: 'none', border: 'none', cursor: 'pointer', color: '#9aa0a6', borderRadius: '4px' }}
+                                                onMouseEnter={e => e.currentTarget.style.color = '#c5221f'}
+                                                onMouseLeave={e => e.currentTarget.style.color = '#9aa0a6'}
+                                                title="Delete">
+                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </div>
                                     </div>
-                                );
-                            })}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* ── Right: Models panel ── */}
+                    <ModelsPanel
+                        manufacturer={activeMfg ? manufacturers.find(m => m._id === activeMfg._id) : null}
+                        fields={fields}
+                        onAddModel={() => activeMfg && setModelModal({ mfgId: activeMfg._id, name: '', description: '', defaults: {} })}
+                        onEditModel={(idx, model) => activeMfg && setModelModal({ mfgId: activeMfg._id, modelIndex: idx, name: model.name, description: model.description || '', defaults: model.defaults || {} })}
+                        onDeleteModel={(idx) => activeMfg && deleteModel(activeMfg._id, idx)}
+                    />
+                </div>
+            )}
+
+            {/* ── Manufacturer Modal ── */}
+            {mfgModal && (
+                <MfgModal
+                    data={mfgModal}
+                    saving={saving}
+                    onSave={saveMfg}
+                    onClose={() => setMfgModal(null)}
+                />
+            )}
+
+            {/* ── Model Modal ── */}
+            {modelModal && (
+                <ModelModal
+                    data={modelModal}
+                    fields={fields}
+                    saving={saving}
+                    onSave={saveModel}
+                    onClose={() => setModelModal(null)}
+                />
+            )}
+
+            <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+        </div>
+    )
+}
+
+// ── Models Panel ───────────────────────────────────────────────────────────────
+function ModelsPanel({ manufacturer, fields, onAddModel, onEditModel, onDeleteModel }) {
+    const [search, setSearch] = useState('')
+
+    if (!manufacturer) return (
+        <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e0e0e0', padding: '48px', textAlign: 'center' }}>
+            <div style={{ fontSize: '32px', marginBottom: '8px' }}>👈</div>
+            <p style={{ fontSize: '13px', color: '#9aa0a6' }}>Select a manufacturer to manage its models</p>
+        </div>
+    )
+
+    const models = (manufacturer.models || []).filter(m => m.name.toLowerCase().includes(search.toLowerCase()))
+    const dropdownFields = fields.filter(f => f.type === 'dropdown' || f.type === 'text' || f.type === 'number')
+
+    return (
+        <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
+            {/* Panel header */}
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
+                    <h2 style={{ fontSize: '14px', fontWeight: 600, color: '#202124', margin: 0, whiteSpace: 'nowrap' }}>
+                        {manufacturer.name} — Models
+                    </h2>
+                    <span style={{ fontSize: '11px', color: '#9aa0a6', background: '#f1f3f4', padding: '2px 8px', borderRadius: '12px' }}>
+                        {manufacturer.models?.length || 0}
+                    </span>
+                    <input
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="Search models…"
+                        style={{ padding: '5px 10px', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '12px', outline: 'none', width: '180px' }}
+                    />
+                </div>
+                <Btn variant="primary" onClick={onAddModel}>
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                    Add Model
+                </Btn>
+            </div>
+
+            {/* Models grid */}
+            <div style={{ padding: '16px', maxHeight: 'calc(100vh - 220px)', overflowY: 'auto' }}>
+                {models.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '40px', color: '#9aa0a6', fontSize: '13px' }}>
+                        {manufacturer.models?.length === 0 ? 'No models yet — add one above' : 'No models match your search'}
+                    </div>
+                ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px' }}>
+                        {models.map((model, idx) => {
+                            const realIdx = manufacturer.models.findIndex(m => m.name === model.name)
+                            const defaultCount = Object.keys(model.defaults || {}).length
+                            return (
+                                <div key={idx} style={{ border: '1px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden', background: '#fafafa' }}>
+                                    {/* Model card header */}
+                                    <div style={{ padding: '10px 12px', background: '#fff', borderBottom: '1px solid #f1f3f4', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <div>
+                                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#202124' }}>{model.name}</div>
+                                            {model.description && <div style={{ fontSize: '11px', color: '#9aa0a6', marginTop: '1px' }}>{model.description}</div>}
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '4px' }}>
+                                            <button onClick={() => onEditModel(realIdx, model)}
+                                                title="Edit model & defaults"
+                                                style={{ padding: '4px 8px', border: '1px solid #e0e0e0', borderRadius: '6px', background: '#fff', cursor: 'pointer', fontSize: '11px', color: '#1a73e8', fontWeight: 600 }}>
+                                                Edit
+                                            </button>
+                                            <button onClick={() => onDeleteModel(realIdx)}
+                                                title="Delete model"
+                                                style={{ padding: '4px', border: '1px solid #fecaca', borderRadius: '6px', background: '#fff5f5', cursor: 'pointer', color: '#c5221f' }}>
+                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {/* Model card body — show defaults */}
+                                    <div style={{ padding: '10px 12px' }}>
+                                        {defaultCount === 0 ? (
+                                            <p style={{ fontSize: '11px', color: '#c4c7c5', fontStyle: 'italic', margin: 0 }}>No defaults set</p>
+                                        ) : (
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
+                                                {Object.entries(model.defaults || {}).map(([fieldId, val]) => {
+                                                    const field = fields.find(f => f._id === fieldId)
+                                                    if (!field || val === '' || val === undefined) return null
+                                                    return (
+                                                        <div key={fieldId} style={{ padding: '3px 0', borderBottom: '1px solid #f4f4f4' }}>
+                                                            <div style={{ fontSize: '9px', fontWeight: 700, color: '#9aa0a6', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{field.label}</div>
+                                                            <div style={{ fontSize: '12px', fontWeight: 600, color: '#202124' }}>{String(val)}</div>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        )}
+                                        {/* Variants */}
+                                        {model.variants?.length > 0 && (
+                                            <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #f1f3f4' }}>
+                                                <div style={{ fontSize: '10px', fontWeight: 700, color: '#9aa0a6', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Variants</div>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                                    {model.variants.map((v, i) => (
+                                                        <span key={i} style={{ fontSize: '10px', padding: '2px 7px', background: '#e8f0fe', color: '#1a73e8', borderRadius: '12px', fontWeight: 500 }}>{v}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                )}
+            </div>
+        </div>
+    )
+}
+
+// ── Manufacturer Modal ─────────────────────────────────────────────────────────
+function MfgModal({ data, saving, onSave, onClose }) {
+    const [form, setForm] = useState({ name: data.name || '', country: data.country || '', _id: data._id })
+    return (
+        <Modal title={data._id ? 'Edit Manufacturer' : 'Add Manufacturer'} onClose={onClose}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <Field label="Name" required>
+                    <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Toyota" />
+                </Field>
+                <Field label="Country">
+                    <Input value={form.country} onChange={e => setForm(p => ({ ...p, country: e.target.value }))} placeholder="e.g. Japan" />
+                </Field>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
+                    <Btn onClick={onClose}>Cancel</Btn>
+                    <Btn variant="primary" disabled={!form.name.trim() || saving} onClick={() => onSave(form)}>
+                        {saving ? 'Saving…' : data._id ? 'Save Changes' : 'Add Manufacturer'}
+                    </Btn>
+                </div>
+            </div>
+        </Modal>
+    )
+}
+
+// ── Model Modal ────────────────────────────────────────────────────────────────
+function ModelModal({ data, fields, saving, onSave, onClose }) {
+    const [form, setForm] = useState({
+        mfgId:       data.mfgId,
+        modelIndex:  data.modelIndex,
+        name:        data.name || '',
+        description: data.description || '',
+        defaults:    { ...(data.defaults || {}) },
+    })
+    const [variantInput, setVariantInput] = useState('')
+    const [variants, setVariants] = useState(data.variants || [])
+
+    // Fields eligible for defaults: exclude file/image/boolean
+    const defaultableFields = fields.filter(f =>
+        !['file', 'image', 'boolean'].includes(f.type)
+        && f.belongsto === 'add-vehicles'
+    )
+
+    const setDefault = (fieldId, value) => {
+        setForm(p => ({ ...p, defaults: { ...p.defaults, [fieldId]: value } }))
+    }
+
+    const clearDefault = (fieldId) => {
+        setForm(p => {
+            const d = { ...p.defaults }
+            delete d[fieldId]
+            return { ...p, defaults: d }
+        })
+    }
+
+    const addVariant = () => {
+        const v = variantInput.trim()
+        if (!v || variants.includes(v)) return
+        setVariants(prev => [...prev, v])
+        setVariantInput('')
+    }
+
+    const removeVariant = (v) => setVariants(prev => prev.filter(x => x !== v))
+
+    const handleSave = () => {
+        // Filter out empty string defaults
+        const cleanDefaults = Object.fromEntries(
+            Object.entries(form.defaults).filter(([, v]) => v !== '' && v !== null && v !== undefined)
+        )
+        onSave({ ...form, defaults: cleanDefaults, variants })
+    }
+
+    return (
+        <Modal title={data.modelIndex !== undefined ? `Edit Model — ${data.name}` : 'Add Model'} onClose={onClose} width="600px">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+                {/* Name & Description */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <Field label="Model Name" required>
+                        <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Corolla" />
+                    </Field>
+                    <Field label="Description">
+                        <Input value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} placeholder="e.g. Sedan" />
+                    </Field>
+                </div>
+
+                {/* Default field values */}
+                <div>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>
+                        Default Field Values
+                        <span style={{ marginLeft: '6px', fontSize: '10px', color: '#9aa0a6', fontWeight: 400, textTransform: 'none' }}>
+                            — pre-filled when adding a vehicle with this model
+                        </span>
+                    </div>
+                    {defaultableFields.length === 0 ? (
+                        <p style={{ fontSize: '12px', color: '#9aa0a6', fontStyle: 'italic' }}>
+                            No fields configured for "add-vehicles". <a href="/admin/fields" style={{ color: '#1a73e8' }}>Add fields first.</a>
+                        </p>
+                    ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px', background: '#f8f9fa', padding: '12px', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+                            {defaultableFields.map(field => (
+                                <div key={field._id}>
+                                    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
+                                        {field.label}
+                                        {form.defaults[field._id] !== undefined && form.defaults[field._id] !== '' && (
+                                            <button onClick={() => clearDefault(field._id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c5221f', fontSize: '9px', padding: '0 2px' }} title="Clear default">✕</button>
+                                        )}
+                                    </label>
+                                    {field.type === 'dropdown' ? (
+                                        <Select value={form.defaults[field._id] ?? ''} onChange={e => setDefault(field._id, e.target.value)}>
+                                            <option value="">— no default —</option>
+                                            {field.options?.map((o, i) => <option key={i} value={o}>{o}</option>)}
+                                        </Select>
+                                    ) : field.type === 'number' ? (
+                                        <Input type="number" value={form.defaults[field._id] ?? ''} onChange={e => setDefault(field._id, e.target.value)} placeholder="Leave blank = no default" />
+                                    ) : (
+                                        <Input value={form.defaults[field._id] ?? ''} onChange={e => setDefault(field._id, e.target.value)} placeholder="Leave blank = no default" />
+                                    )}
+                                </div>
+                            ))}
                         </div>
                     )}
+                </div>
 
-                    {/* New model input */}
-                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 space-y-3">
-                        <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">New Model</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <Field label="Model Name"  value={modelInput.name}        onChange={(e) => setModelInput({ ...modelInput, name: e.target.value })} />
-                            <Field label="Description" value={modelInput.description} onChange={(e) => setModelInput({ ...modelInput, description: e.target.value })} />
-                        </div>
-                        <DimensionInputs
-                            dims={modelInput.dimensions}
-                            onChange={(dims) => setModelInput({ ...modelInput, dimensions: dims })}
+                {/* Variants */}
+                <div>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Variants / Trims</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+                        {variants.map(v => (
+                            <span key={v} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#e8f0fe', color: '#1a73e8', fontSize: '12px', padding: '3px 10px', borderRadius: '12px', fontWeight: 500 }}>
+                                {v}
+                                <button onClick={() => removeVariant(v)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1a73e8', padding: 0, fontSize: '12px', lineHeight: 1 }}>×</button>
+                            </span>
+                        ))}
+                        {variants.length === 0 && <span style={{ fontSize: '11px', color: '#c4c7c5', fontStyle: 'italic' }}>No variants yet</span>}
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                        <Input value={variantInput} onChange={e => setVariantInput(e.target.value)} placeholder="e.g. GLI, GLX, Hybrid"
+                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addVariant() } }}
+                            style={{ flex: 1, padding: '6px 10px', border: '1px solid #c4c7c5', borderRadius: '4px', fontSize: '12px', outline: 'none' }}
                         />
-                        <button
-                            type="button"
-                            onClick={addModel}
-                            disabled={!modelInput.name.trim()}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition disabled:opacity-40"
-                        >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                            </svg>
-                            Add Model
-                        </button>
+                        <Btn onClick={addVariant} disabled={!variantInput.trim()}>+ Add</Btn>
                     </div>
                 </div>
 
-                {dynFields.length > 0 && (
-                    <>
-                        <Section title="Additional Fields" />
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {dynFields.map((f) => (
-                                <DynamicFieldRenderer
-                                    key={f._id}
-                                    field={f}
-                                    value={dynValues[f.label] ?? ''}
-                                    onChange={setDyn(f.label)}
-                                />
-                            ))}
-                        </div>
-                    </>
-                )}
-
-                <button type="submit" className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2.5 rounded-lg transition text-sm">
-                    Save Manufacturer
-                </button>
-            </form>
-        </Card>
-    );
-};
-
-// ─── Tabs ────────────────────────────────────────────────────────────────────
-const TABS = [
-    { key: 'supplier',     label: 'Supplier',     icon: '🏭' },
-    { key: 'consignee',    label: 'Consignee',    icon: '📦' },
-    { key: 'manufacturer', label: 'Manufacturer', icon: '🚗' },
-];
-
-export default function SetupPage() {
-    const [tab, setTab] = useState('supplier');
-
-    return (
-        <div className="min-h-screen bg-gray-100 py-10 px-4">
-            <div className="max-w-2xl mx-auto">
-                <div className="mb-8">
-                    <h1 className="text-2xl font-bold text-gray-900">Setup</h1>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Manage suppliers, consignees, manufacturers, and dimensions.
-                        Dynamic fields added via the Fields manager appear automatically under each form.
-                    </p>
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', paddingTop: '4px', borderTop: '1px solid #f1f3f4', marginTop: '4px' }}>
+                    <Btn onClick={onClose}>Cancel</Btn>
+                    <Btn variant="primary" disabled={!form.name.trim() || saving} onClick={handleSave}>
+                        {saving ? 'Saving…' : data.modelIndex !== undefined ? 'Save Changes' : 'Add Model'}
+                    </Btn>
                 </div>
-
-                {/* Tab bar */}
-                <div className="flex gap-1 bg-white border border-gray-200 rounded-xl p-1 mb-6 shadow-sm flex-wrap">
-                    {TABS.map((t) => (
-                        <button
-                            key={t.key}
-                            onClick={() => setTab(t.key)}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-semibold transition ${
-                                tab === t.key
-                                    ? 'bg-blue-500 text-white shadow'
-                                    : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
-                            }`}
-                        >
-                            <span>{t.icon}</span>
-                            <span>{t.label}</span>
-                        </button>
-                    ))}
-                </div>
-
-                {tab === 'supplier'     && <SupplierForm />}
-                {tab === 'consignee'    && <ConsigneeForm />}
-                {tab === 'manufacturer' && <ManufacturerForm />}
             </div>
-        </div>
-    );
+        </Modal>
+    )
 }
