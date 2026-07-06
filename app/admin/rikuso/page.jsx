@@ -135,7 +135,11 @@ const AllocControls = ({ vehicle, rikusoCompanies, consignees, allocations,
             {/* Presold label */}
             {vehicle.consignee && (
                 <div style={{ padding: '4px 8px', background: '#e8f0fe', borderRadius: '6px', fontSize: '11px', color: '#1a73e8', fontWeight: 500 }}>
-                    📋 {consignees.find(c => c._id === vehicle.consignee)?.label || 'Presold'}
+                    {(() => {
+                        const c = consignees.find(c => c._id === vehicle.consignee)
+                        if (!c) return '📋 Presold'
+                        return `📋 ${c.name}${c.purchasedAmount ? ` · $${Number(c.purchasedAmount).toLocaleString()}` : ''}`
+                    })()}
                 </div>
             )}
 
@@ -476,7 +480,8 @@ const RikusoManagementPage = () => {
     const handlePresoldSubmit = async (e) => {
         e.preventDefault()
         try {
-            const res = await fetch('/api/consignee', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(presoldData) })
+            const payload = { name: presoldData.clientName, purchasedAmount: presoldData.purchasedAmount }
+            const res = await fetch('/api/consignee', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
             if (!res.ok) throw new Error('Failed to create consignee')
             const newConsignee = await res.json()
             const upd = await fetch('/api/vehicles', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vehicleId: selectedVehicle._id, consignee: newConsignee._id, allocationStatus: true }) })
