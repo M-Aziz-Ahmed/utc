@@ -30,14 +30,13 @@ const ALLOC_OPTIONS = [
 
 // ── Export details modal ───────────────────────────────────────────────────────
 const ExportModal = ({ vehicle, onSave, onClose }) => {
-    const [country, setCountry]     = useState(vehicle.exportCountry || '')
-    const [consignee, setConsignee] = useState(vehicle.exportConsignee || '')
-    const [saving, setSaving]       = useState(false)
+    const [country, setCountry] = useState(vehicle.exportCountry || '')
+    const [saving, setSaving]   = useState(false)
 
     const handleSubmit = async (e) => {
         e.preventDefault()
         setSaving(true)
-        await onSave(vehicle._id, { country: country.trim(), consignee: consignee.trim() })
+        await onSave(vehicle._id, { country: country.trim() })
         setSaving(false)
     }
 
@@ -70,28 +69,13 @@ const ExportModal = ({ vehicle, onSave, onClose }) => {
                             onBlur={e => e.target.style.borderColor = '#e0e0e0'}
                         />
                     </div>
-                    <div>
-                        <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '5px' }}>
-                            Consignee / Customer Name <span style={{ color: '#c5221f' }}>*</span>
-                        </label>
-                        <input
-                            type="text"
-                            value={consignee}
-                            onChange={e => setConsignee(e.target.value)}
-                            required
-                            placeholder="e.g. ABC Motors Ltd…"
-                            style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
-                            onFocus={e => e.target.style.borderColor = '#1a73e8'}
-                            onBlur={e => e.target.style.borderColor = '#e0e0e0'}
-                        />
-                    </div>
                     <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
                         <button type="button" onClick={onClose}
                             style={{ flex: 1, padding: '8px', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '12px', cursor: 'pointer', background: '#fff', color: '#5f6368' }}>
                             Cancel
                         </button>
-                        <button type="submit" disabled={saving || !country.trim() || !consignee.trim()}
-                            style={{ flex: 1, padding: '8px', background: saving ? '#9aa0a6' : '#1a73e8', color: '#fff', border: 'none', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: (!country.trim() || !consignee.trim()) ? 0.5 : 1 }}>
+                        <button type="submit" disabled={saving || !country.trim()}
+                            style={{ flex: 1, padding: '8px', background: saving ? '#9aa0a6' : '#1a73e8', color: '#fff', border: 'none', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: !country.trim() ? 0.5 : 1 }}>
                             {saving ? 'Saving…' : 'Save Export'}
                         </button>
                     </div>
@@ -127,17 +111,17 @@ const AllocControls = ({ vehicle, rikusoCompanies, consignees, allocations,
             </select>
 
             {/* Export details badge — shown when export is set */}
-            {alloc === 'export' && (vehicle.exportCountry || vehicle.exportConsignee) && (
+            {alloc === 'export' && vehicle.exportCountry && (
                 <div style={{ padding: '4px 8px', background: '#e8f0fe', borderRadius: '6px', fontSize: '11px', color: '#1a73e8', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>🌍 {[vehicle.exportCountry, vehicle.exportConsignee].filter(Boolean).join(' · ')}</span>
+                    <span>🌍 {vehicle.exportCountry}</span>
                     <button onClick={() => onExportSelect(vehicle)}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1a73e8', fontSize: '10px', fontWeight: 600, padding: '0 2px' }}>Edit</button>
                 </div>
             )}
-            {alloc === 'export' && !vehicle.exportCountry && !vehicle.exportConsignee && (
+            {alloc === 'export' && !vehicle.exportCountry && (
                 <button onClick={() => onExportSelect(vehicle)}
                     style={{ padding: '4px 8px', background: '#fce8e6', border: '1px dashed #f5c6c2', borderRadius: '6px', fontSize: '11px', color: '#c5221f', cursor: 'pointer', fontWeight: 500, textAlign: 'left' }}>
-                    ⚠ Add export country &amp; consignee
+                    ⚠ Add export country
                 </button>
             )}
 
@@ -388,14 +372,14 @@ const AllocRow = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
                         <option value="">Allocation…</option>
                         {ALLOC_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
-                    {allocations[vehicle._id] === 'export' && (vehicle.exportCountry || vehicle.exportConsignee) && (
+                    {allocations[vehicle._id] === 'export' && vehicle.exportCountry && (
                         <div style={{ fontSize: '10px', color: '#1a73e8', background: '#e8f0fe', padding: '2px 6px', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' }}>
-                            <span>🌍 {[vehicle.exportCountry, vehicle.exportConsignee].filter(Boolean).join(' · ')}</span>
+                            <span>🌍 {vehicle.exportCountry}</span>
                             <button onClick={() => onExportSelect(vehicle)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1a73e8', fontSize: '10px', fontWeight: 600, padding: 0 }}>Edit</button>
                         </div>
                     )}
-                    {allocations[vehicle._id] === 'export' && !vehicle.exportCountry && !vehicle.exportConsignee && (
-                        <button onClick={() => onExportSelect(vehicle)} style={{ padding: '2px 6px', background: '#fce8e6', border: 'none', borderRadius: '4px', fontSize: '10px', color: '#c5221f', cursor: 'pointer', textAlign: 'left' }}>⚠ Add details</button>
+                    {allocations[vehicle._id] === 'export' && !vehicle.exportCountry && (
+                        <button onClick={() => onExportSelect(vehicle)} style={{ padding: '2px 6px', background: '#fce8e6', border: 'none', borderRadius: '4px', fontSize: '10px', color: '#c5221f', cursor: 'pointer', textAlign: 'left' }}>⚠ Add country</button>
                     )}
                 </div>
             </td>
@@ -438,7 +422,7 @@ const RikusoManagementPage = () => {
     // presold modal
     const [selectedVehicle, setSelectedVehicle]   = useState(null)
     const [showPresoldModal, setShowPresoldModal]  = useState(false)
-    const [presoldData, setPresoldData]            = useState({ consigneeName: '', label: '' })
+    const [presoldData, setPresoldData]            = useState({ clientName: '', purchasedAmount: '' })
 
     // export modal
     const [exportVehicle, setExportVehicle] = useState(null)
@@ -482,9 +466,9 @@ const RikusoManagementPage = () => {
         setSelectedVehicle(vehicle)
         if (vehicle.consignee) {
             const c = consignees.find(x => x._id === vehicle.consignee)
-            setPresoldData({ consigneeName: c?.name || '', label: c?.label || '' })
+            setPresoldData({ clientName: c?.name || '', purchasedAmount: c?.purchasedAmount || '' })
         } else {
-            setPresoldData({ consigneeName: '', label: '' })
+            setPresoldData({ clientName: '', purchasedAmount: '' })
         }
         setShowPresoldModal(true)
     }
@@ -509,15 +493,15 @@ const RikusoManagementPage = () => {
         if (res.ok) setVehicles(p => p.map(v => v._id === vehicle._id ? { ...v, consignee: null, allocationStatus: false } : v))
     }
 
-    const handleExportSave = async (vehicleId, { country, consignee }) => {
+    const handleExportSave = async (vehicleId, { country }) => {
         try {
             const res = await fetch('/api/vehicles', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ vehicleId, exportCountry: country, exportConsignee: consignee }),
+                body: JSON.stringify({ vehicleId, exportCountry: country }),
             })
             if (res.ok) {
-                setVehicles(p => p.map(v => v._id === vehicleId ? { ...v, exportCountry: country, exportConsignee: consignee } : v))
+                setVehicles(p => p.map(v => v._id === vehicleId ? { ...v, exportCountry: country } : v))
                 setExportVehicle(null)
             }
         } catch (e) { alert('Failed to save export details') }
@@ -609,21 +593,21 @@ const RikusoManagementPage = () => {
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }} onClick={() => setShowPresoldModal(false)}>
                     <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', maxWidth: '420px', width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-                            <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#202124', margin: 0 }}>Presold Label</h3>
+                            <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#202124', margin: 0 }}>Pre-Sold</h3>
                             <button onClick={() => setShowPresoldModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9aa0a6', display: 'flex' }}>
                                 <svg style={{ width: '14px', height: '14px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
                         <form onSubmit={handlePresoldSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             <div>
-                                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Consignee Name *</label>
-                                <input type="text" value={presoldData.consigneeName} onChange={e => setPresoldData(p => ({ ...p, consigneeName: e.target.value }))} required
-                                    style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="Enter consignee name…" />
+                                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Client Name *</label>
+                                <input type="text" value={presoldData.clientName} onChange={e => setPresoldData(p => ({ ...p, clientName: e.target.value }))} required
+                                    style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="Enter client name…" />
                             </div>
                             <div>
-                                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Label</label>
-                                <input type="text" value={presoldData.label} onChange={e => setPresoldData(p => ({ ...p, label: e.target.value }))}
-                                    style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="Enter label…" />
+                                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Purchased Amount *</label>
+                                <input type="number" value={presoldData.purchasedAmount} onChange={e => setPresoldData(p => ({ ...p, purchasedAmount: e.target.value }))} required
+                                    style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="Enter amount…" />
                             </div>
                             <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
                                 <button type="button" onClick={() => setShowPresoldModal(false)} style={{ flex: 1, padding: '8px', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '12px', cursor: 'pointer', background: '#fff', color: '#5f6368' }}>Cancel</button>
