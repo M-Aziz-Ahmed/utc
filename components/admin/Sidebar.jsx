@@ -41,7 +41,7 @@ const Sidebar = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                 </svg>
             )
-        },                        
+        },
         {
             name: 'Vehicles Management',
             href: '',
@@ -178,21 +178,21 @@ const Sidebar = () => {
 
     return (
         <div className={`h-screen transition-all duration-300 flex flex-col shrink-0 z-40 ${toggle ? 'w-64' : 'w-14'}`}
-            style={{background:'#f0f4f9', borderRight:'1px solid #e0e0e0'}}>
+            style={{ background: '#f0f4f9', borderRight: '1px solid #e0e0e0' }}>
             {/* Header Area */}
-            <div className="flex items-center justify-between min-h-[56px] px-3" style={{borderBottom:'1px solid #e0e0e0'}}>
+            <div className="flex items-center justify-between min-h-[56px] px-3" style={{ borderBottom: '1px solid #e0e0e0' }}>
                 {toggle && (
                     <span className="font-bold tracking-widest uppercase select-none"
-                        style={{fontSize:'11px', color:'#444746', letterSpacing:'0.12em'}}>
+                        style={{ fontSize: '11px', color: '#444746', letterSpacing: '0.12em' }}>
                         UTC ADMIN
                     </span>
                 )}
                 <button
                     onClick={handleToggle}
                     className="p-1.5 rounded-full transition-colors focus:outline-none ml-auto"
-                    style={{color:'#444746'}}
-                    onMouseEnter={e => e.currentTarget.style.background='#e2e5e9'}
-                    onMouseLeave={e => e.currentTarget.style.background='transparent'}
+                    style={{ color: '#444746' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#e2e5e9'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -229,7 +229,7 @@ const Sidebar = () => {
                                 <span style={{
                                     color: isActive ? '#0842a0' : '#444746',
                                     flexShrink: 0,
-                                    display:'flex',
+                                    display: 'flex',
                                 }}>
                                     {n.icon}
                                 </span>
@@ -237,14 +237,14 @@ const Sidebar = () => {
                                 {toggle && (
                                     <div className="flex items-center justify-between w-full ml-3 overflow-hidden">
                                         <span className="truncate font-medium"
-                                            style={{fontSize:'var(--text-sm)', color: isActive ? '#0842a0' : '#444746'}}>
+                                            style={{ fontSize: 'var(--text-sm)', color: isActive ? '#0842a0' : '#444746' }}>
                                             {n.name}
                                         </span>
                                         {n.subL && (
                                             <svg
                                                 className={`w-3 h-3 transform transition-transform duration-200 ${isMenuOpen ? 'rotate-180' : ''}`}
                                                 fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                                style={{color: isActive ? '#0842a0' : '#80868b', flexShrink:0}}
+                                                style={{ color: isActive ? '#0842a0' : '#80868b', flexShrink: 0 }}
                                             >
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                             </svg>
@@ -255,7 +255,7 @@ const Sidebar = () => {
 
                             {/* Submenu */}
                             {n.subL && isMenuOpen && toggle && (
-                                <div className="mt-0.5 ml-3 pl-3 space-y-0.5" style={{borderLeft: '2px solid #c4c7c5'}}>
+                                <div className="mt-0.5 ml-3 pl-3 space-y-0.5" style={{ borderLeft: '2px solid #c4c7c5' }}>
                                     {n.subL.map((sl, index) => {
                                         const isSubActive = sl.href === pathname;
                                         return (
@@ -264,16 +264,16 @@ const Sidebar = () => {
                                                 href={sl.href}
                                                 className="w-full flex items-center gap-2 transition-all"
                                                 style={{
-                                                    padding:'5px 10px',
-                                                    borderRadius:'20px',
+                                                    padding: '5px 10px',
+                                                    borderRadius: '20px',
                                                     background: isSubActive ? '#d3e3fd' : 'transparent',
-                                                    fontSize:'var(--text-sm)',
+                                                    fontSize: 'var(--text-sm)',
                                                 }}
                                                 onMouseEnter={e => { if (!isSubActive) e.currentTarget.style.background = '#e2e5e9' }}
                                                 onMouseLeave={e => { if (!isSubActive) e.currentTarget.style.background = 'transparent' }}
                                             >
-                                                <span style={{color: isSubActive ? '#0842a0' : '#444746', flexShrink:0}}>{sl.icon}</span>
-                                                <span className="truncate" style={{color: isSubActive ? '#0842a0' : '#444746', fontWeight: isSubActive ? 600 : 400}}>{sl.name}</span>
+                                                <span style={{ color: isSubActive ? '#0842a0' : '#444746', flexShrink: 0 }}>{sl.icon}</span>
+                                                <span className="truncate" style={{ color: isSubActive ? '#0842a0' : '#444746', fontWeight: isSubActive ? 600 : 400 }}>{sl.name}</span>
                                             </Link>
                                         );
                                     })}
