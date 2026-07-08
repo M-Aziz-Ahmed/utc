@@ -52,7 +52,7 @@ const Sidebar = () => {
             ),
             subL: [
                 {
-                    name: 'Management',
+                    name: 'Vehicle Entry Form',
                     href: '/admin/vehicles',
                     icon: (
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
