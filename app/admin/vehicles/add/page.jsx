@@ -108,6 +108,81 @@ const BackBtn = ({ onBack }) => (
     ) : <div />
 )
 
+// ── Reusable add-field form (vehicles and accounts modals) ────────────────────
+const AddFieldForm = ({ belongsto, onDone, onCancel, FIELD_TYPES }) => {
+    const [field, setField] = useState({ label: '', type: 'text', isRequired: false, options: [] })
+    const [optionInput, setOptionInput] = useState('')
+    const [adding, setAdding] = useState(false)
+    const [msg, setMsg] = useState(null)
+
+    const handleAdd = async () => {
+        if (!field.label.trim()) return
+        setAdding(true); setMsg(null)
+        try {
+            const payload = { ...field, belongsto }
+            if (field.type === 'dropdown') payload.options = field.options.filter(o => o.trim())
+            const res = await fetch('/api/newField', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.message || 'Failed')
+            onDone()
+        } catch (err) { setMsg(err.message) }
+        finally { setAdding(false) }
+    }
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div>
+                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Label *</label>
+                <input autoFocus type="text" value={field.label} onChange={e => setField(f => ({ ...f, label: e.target.value }))}
+                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g., Push Price" />
+            </div>
+            <div>
+                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Type</label>
+                <select value={field.type} onChange={e => setField(f => ({ ...f, type: e.target.value, options: [] }))}
+                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fff', boxSizing: 'border-box' }}>
+                    {FIELD_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+            </div>
+            {field.type === 'dropdown' && (
+                <div style={{ background: '#f8f9fa', border: '1px solid #e0e0e0', borderRadius: '10px', padding: '12px' }}>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>Options</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
+                        {field.options.map((opt, i) => (
+                            <div key={i} style={{ display: 'flex', gap: '6px' }}>
+                                <input type="text" value={opt} onChange={e => setField(f => ({ ...f, options: f.options.map((o, j) => j === i ? e.target.value : o) }))}
+                                    style={{ flex: 1, padding: '6px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none' }} placeholder={`Option ${i + 1}`} />
+                                <button type="button" onClick={() => setField(f => ({ ...f, options: f.options.filter((_, j) => j !== i) }))}
+                                    style={{ padding: '4px 8px', background: 'none', border: 'none', cursor: 'pointer', color: '#c5221f', fontSize: '14px' }}>✕</button>
+                            </div>
+                        ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                        <input type="text" value={optionInput} onChange={e => setOptionInput(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (optionInput.trim()) { setField(f => ({ ...f, options: [...f.options, optionInput.trim()] })); setOptionInput('') } } }}
+                            style={{ flex: 1, padding: '6px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none' }} placeholder="Type option, press Enter" />
+                        <button type="button" onClick={() => { if (optionInput.trim()) { setField(f => ({ ...f, options: [...f.options, optionInput.trim()] })); setOptionInput('') } }}
+                            style={{ padding: '6px 12px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>+ Add</button>
+                    </div>
+                </div>
+            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Required?</span>
+                {[{ label: 'Yes', val: true }, { label: 'No', val: false }].map(({ label, val }) => (
+                    <label key={String(val)} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer', padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 500, border: field.isRequired === val ? '1px solid #1a73e8' : '1px solid #e0e0e0', background: field.isRequired === val ? '#e8f0fe' : '#fff', color: field.isRequired === val ? '#1a73e8' : '#5f6368' }}>
+                        <input type="radio" style={{ display: 'none' }} checked={field.isRequired === val} onChange={() => setField(f => ({ ...f, isRequired: val }))} />
+                        {label}
+                    </label>
+                ))}
+            </div>
+            {msg && <div style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12px', background: '#fce8e6', color: '#c5221f', border: '1px solid #f5c6c2' }}>{msg}</div>}
+            <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                <button onClick={onCancel} style={{ flex: 1, padding: '9px', border: '1px solid #e0e0e0', borderRadius: '24px', fontSize: '13px', cursor: 'pointer', background: '#fff', color: '#5f6368' }}>Cancel</button>
+                <button onClick={handleAdd} disabled={!field.label.trim() || adding} style={{ flex: 1, padding: '9px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '24px', fontSize: '13px', fontWeight: 600, cursor: adding ? 'not-allowed' : 'pointer', opacity: adding ? 0.7 : 1 }}>{adding ? 'Adding...' : 'Add Field'}</button>
+            </div>
+        </div>
+    )
+}
+
 // ── Two-panel selection layout (defined outside component to prevent remount) ─
 const SelectionPanel = ({ title, subtitle, countLabel, search, onSearch, searchPlaceholder, letter, onLetter, available, items, selected, onSelect, getLabel, getSub, emptyMsg, emptyAction, onEdit, onBack, extraAction }) => (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -168,6 +243,8 @@ const AddVehiclePage = () => {
 
     const [formData, setFormData] = useState({})
     const [fields, setFields] = useState([])
+    const [accountFields, setAccountFields] = useState([])
+    const [accountData, setAccountData] = useState({})
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState(null)
     const [success, setSuccess] = useState(false)
@@ -176,6 +253,7 @@ const AddVehiclePage = () => {
     const [showAddModel, setShowAddModel] = useState(false)
     const [showAddVariant, setShowAddVariant] = useState(false)
     const [showAddField, setShowAddField] = useState(false)
+    const [showAddAccountField, setShowAddAccountField] = useState(false)
     const [newField, setNewField] = useState({ label: '', type: 'text', isRequired: false, options: [] })
     const [newFieldOption, setNewFieldOption] = useState('')
     const [addingField, setAddingField] = useState(false)
@@ -195,7 +273,7 @@ const AddVehiclePage = () => {
     const [inlineAdding, setInlineAdding] = useState(false)
     const [addMainImageUrl, setAddMainImageUrl] = useState('')
 
-    useEffect(() => { fetchAuctionGroups(); fetchManufacturers(); fetchFields() }, [])
+    useEffect(() => { fetchAuctionGroups(); fetchManufacturers(); fetchFields(); fetchAccountFields() }, [])
 
     const fetchAuctionGroups = async () => {
         try { const res = await fetch('/api/auctionGroup'); if (res.ok) setAuctionGroups((await res.json()) || []) } catch (e) { console.error(e) }
@@ -208,6 +286,13 @@ const AddVehiclePage = () => {
             const res = await fetch('/api/fields', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ belongsto: 'add-vehicles' }) })
             const data = await res.json()
             if (res.ok && Array.isArray(data)) setFields(data)
+        } catch (e) { console.error(e) }
+    }
+    const fetchAccountFields = async () => {
+        try {
+            const res = await fetch('/api/fields', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ belongsto: 'accounts' }) })
+            const data = await res.json()
+            if (res.ok && Array.isArray(data)) setAccountFields(data)
         } catch (e) { console.error(e) }
     }
 
@@ -287,6 +372,7 @@ const AddVehiclePage = () => {
         const fd = new FormData()
         fd.append('vehicleData', JSON.stringify({
             ...formData,
+            ...accountData,
             auctionGroup: selectedGroup?.name, auctionGroupId: selectedGroup?._id,
             auctionVenue: selectedVenue?.name,
             manufacturer: selectedManufacturer?.name, manufacturerId: selectedManufacturer?._id,
@@ -303,6 +389,11 @@ const AddVehiclePage = () => {
             if ((f.type === 'file' || f.type === 'image') && Array.isArray(v))
                 v.forEach((fo, i) => fd.append(`dynamic_${f.label}_${i}`, fo.file))
         })
+        accountFields.forEach(f => {
+            const v = accountData[f._id]
+            if ((f.type === 'file' || f.type === 'image') && Array.isArray(v))
+                v.forEach((fo, i) => fd.append(`dynamic_${f.label}_${i}`, fo.file))
+        })
         try {
             const res = await fetch('/api/vehicles', { method: 'POST', body: fd })
             if (!res.ok) throw new Error('Failed to add vehicle')
@@ -312,6 +403,7 @@ const AddVehiclePage = () => {
     }
 
     const handleChange = (id, value) => setFormData(prev => ({ ...prev, [id]: value }))
+    const handleAccountChange = (id, value) => setAccountData(prev => ({ ...prev, [id]: value }))
 
     const sortByName = (a, b) => (a.name || '').localeCompare(b.name || '')
 
@@ -420,6 +512,28 @@ const AddVehiclePage = () => {
             )
         }
         return <input type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'} required={field.isRequired} value={value} onChange={e => handleChange(field._id, e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder={`Enter ${field.label.toLowerCase()}`} />
+    }
+
+    // ── renderAccountInput — same as renderInput but uses accountData/handleAccountChange ──
+    const renderAccountInput = (field) => {
+        const value = accountData[field._id] ?? ''
+        if (field.type === 'dropdown') return (
+            <select required={field.isRequired} value={value} onChange={e => handleAccountChange(field._id, e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                <option value="">Select...</option>
+                {field.options?.map((o, i) => <option key={i} value={o}>{o}</option>)}
+            </select>
+        )
+        if (field.type === 'boolean') return (
+            <div className="flex gap-2">
+                {[{ label: 'Yes', value: true }, { label: 'No', value: false }].map(({ label, value: opt }) => (
+                    <label key={String(opt)} className={`flex-1 flex items-center justify-center gap-2 cursor-pointer px-3 py-2.5 rounded-lg border-2 text-sm ${accountData[field._id] === opt ? 'border-blue-500 bg-blue-50 text-blue-700 font-semibold' : 'border-gray-200 text-gray-600'}`}>
+                        <input type="radio" className="sr-only" checked={accountData[field._id] === opt} onChange={() => handleAccountChange(field._id, opt)} />
+                        {label}
+                    </label>
+                ))}
+            </div>
+        )
+        return <input type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'} required={field.isRequired} value={value} onChange={e => handleAccountChange(field._id, e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder={`Enter ${field.label.toLowerCase()}`} />
     }
 
     const steps = [
@@ -709,7 +823,44 @@ const AddVehiclePage = () => {
                                 {error && <div style={{ marginBottom: '14px', padding: '12px 14px', background: '#fce8e6', border: '1px solid #f5c6c2', borderRadius: '8px', fontSize: '13px', color: '#c5221f' }}>{error}</div>}
                                 {success && <div style={{ marginBottom: '14px', padding: '12px 14px', background: '#e6f4ea', border: '1px solid #b7dfbe', borderRadius: '8px', fontSize: '13px', color: '#137333' }}>Vehicle added successfully! Redirecting...</div>}
 
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '16px', borderTop: '1px solid #f1f3f4' }}>
+                                {/* ── Accounts section ── */}
+                                <div style={{ borderTop: '2px solid #e8f0fe', paddingTop: '20px', marginTop: '4px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                                        <div>
+                                            <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#202124', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '6px', background: '#e8f0fe' }}>
+                                                    <svg style={{ width: '13px', height: '13px', color: '#1a73e8' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                </span>
+                                                Account Details
+                                            </h3>
+                                            <p style={{ fontSize: '12px', color: '#9aa0a6', margin: '3px 0 0' }}>Financial and accounting fields for this vehicle</p>
+                                        </div>
+                                        <button type="button" onClick={() => setShowAddAccountField(true)}
+                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600, color: '#1a73e8', border: '1px solid #d2e3fc', borderRadius: '20px', padding: '5px 12px', background: '#f0f4ff', cursor: 'pointer' }}>
+                                            <svg style={{ width: '11px', height: '11px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                            Add Field
+                                        </button>
+                                    </div>
+                                    {accountFields.length === 0 ? (
+                                        <div style={{ textAlign: 'center', padding: '32px 16px', background: '#f8f9fa', borderRadius: '10px', border: '2px dashed #e0e0e0' }}>
+                                            <p style={{ fontSize: '13px', color: '#9aa0a6', margin: '0 0 8px' }}>No account fields yet</p>
+                                            <button type="button" onClick={() => setShowAddAccountField(true)} style={{ fontSize: '12px', color: '#1a73e8', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>+ Add your first account field</button>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '14px' }}>
+                                            {accountFields.filter(f => f.type !== 'file' && f.type !== 'image').map(field => (
+                                                <div key={field._id} style={field.type === 'boolean' ? { gridColumn: 'span 2' } : {}}>
+                                                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>
+                                                        {field.label}{field.isRequired && <span style={{ color: '#c5221f', marginLeft: '2px' }}>*</span>}
+                                                    </label>
+                                                    {renderAccountInput(field)}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '16px', borderTop: '1px solid #f1f3f4', marginTop: '20px' }}>
                                     <button type="submit" disabled={submitting}
                                         style={{ padding: '10px 28px', fontSize: '14px', fontWeight: 600, color: '#fff', background: submitting ? '#9aa0a6' : '#1a73e8', border: 'none', borderRadius: '24px', cursor: submitting ? 'not-allowed' : 'pointer', boxShadow: submitting ? 'none' : '0 2px 8px rgba(26,115,232,0.3)', transition: 'all 0.15s' }}>
                                         {submitting ? 'Adding...' : 'Add Vehicle →'}
@@ -875,6 +1026,29 @@ const AddVehiclePage = () => {
                             <button onClick={handleAddField} disabled={!newField.label.trim() || addingField} style={{ flex: 1, padding: '9px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '24px', fontSize: '13px', fontWeight: 600, cursor: addingField ? 'not-allowed' : 'pointer', opacity: addingField ? 0.7 : 1 }}>{addingField ? 'Adding...' : 'Add Field'}</button>
                         </div>
                     </div>
+                </div>
+            </div>
+        )}
+
+        {/* ── Add Account Field Modal ── */}
+        {showAddAccountField && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }} onClick={() => setShowAddAccountField(false)}>
+                <div className="modal-card" style={{ maxWidth: '420px' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <div>
+                            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#202124', margin: 0 }}>Add Account Field</h3>
+                        </div>
+                        <button onClick={() => setShowAddAccountField(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9aa0a6', padding: '2px', display: 'flex' }}>
+                            <svg style={{ width: '16px', height: '16px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                    <p style={{ fontSize: '12px', color: '#9aa0a6', margin: '0 0 16px' }}>Field will be added to the <strong style={{ color: '#5f6368' }}>accounts</strong> form.</p>
+                    <AddFieldForm
+                        belongsto="accounts"
+                        onDone={() => { fetchAccountFields(); setShowAddAccountField(false) }}
+                        onCancel={() => setShowAddAccountField(false)}
+                        FIELD_TYPES={FIELD_TYPES}
+                    />
                 </div>
             </div>
         )}
