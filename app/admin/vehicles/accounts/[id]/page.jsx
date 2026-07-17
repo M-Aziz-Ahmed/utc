@@ -352,24 +352,35 @@ const VehicleAccountPage = ({ params }) => {
 
                                 {/* Auto-calculated total */}
                                 {(() => {
+                                    const numFields = accountFields.filter(f => f.type === 'number' || f.type === 'text')
                                     const taxFields = accountFields.filter(f => f.type === 'tax' && f.linkedTax && f.linkedField)
                                     if (taxFields.length === 0) return null
 
-                                    let totalTaxes = 0
+                                    let sumInputs = 0
+                                    let sumTaxes = 0
+
                                     taxFields.forEach(tf => {
                                         const linkedTax = taxes.find(t => t._id === tf.linkedTax)
                                         const sourceField = accountFields.find(f => f.label === tf.linkedField)
                                         if (!linkedTax || !sourceField) return
                                         const sourceVal = parseFloat(accountData[sourceField._id]) || 0
-                                        totalTaxes += linkedTax.type === 'percentage'
+                                        sumTaxes += linkedTax.type === 'percentage'
                                             ? (sourceVal * linkedTax.rate / 100)
                                             : linkedTax.rate
                                     })
 
+                                    numFields.forEach(f => {
+                                        if (!f.linkedTax) {
+                                            sumInputs += parseFloat(accountData[f._id]) || 0
+                                        }
+                                    })
+
+                                    const grandTotal = sumInputs + sumTaxes
+
                                     return (
-                                        <div style={{ marginTop: '16px', padding: '10px 14px', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                            <span style={{ fontSize: '12px', fontWeight: 600, color: '#0369a1' }}>Total Taxes</span>
-                                            <span style={{ fontSize: '16px', fontWeight: 800, color: '#0369a1' }}>{totalTaxes.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                        <div style={{ marginTop: '16px', padding: '12px 16px', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <span style={{ fontSize: '13px', fontWeight: 700, color: '#0369a1' }}>Total Price</span>
+                                            <span style={{ fontSize: '18px', fontWeight: 800, color: '#0369a1' }}>{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                         </div>
                                     )
                                 })()}
