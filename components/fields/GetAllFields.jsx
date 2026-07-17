@@ -50,7 +50,7 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
     const startEdit = (f) => {
         setEditing(f._id);
         setEditDraft({ label:f.label, type:f.type, isRequired:f.isRequired??false,
-            belongsto:f.belongsto??'', options:f.options||[], newOption:'', linkedTax:f.linkedTax||'' });
+            belongsto:f.belongsto??'', options:f.options||[], newOption:'', linkedTax:f.linkedTax||'', linkedField:f.linkedField||'' });
     };
     const cancelEdit = () => { setEditing(null); setEditDraft({}); };
 
@@ -66,6 +66,7 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
             }
             if (editDraft.type === 'tax') {
                 d.linkedTax = editDraft.linkedTax || null;
+                d.linkedField = editDraft.linkedField || '';
             }
             const res = await fetch(`/api/fields/${id}`, {
                 method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(d) });
@@ -297,11 +298,17 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                                                     <div className="col-span-2 border-2 border-amber-200 rounded-lg p-3 bg-amber-50">
                                                         <label className="text-xs font-semibold text-amber-700 uppercase tracking-wide block mb-2">Linked Tax</label>
                                                         <select value={editDraft.linkedTax||''} onChange={e=>setEditDraft({...editDraft,linkedTax:e.target.value})}
-                                                            className="w-full border border-amber-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-amber-400 bg-white">
+                                                            className="w-full border border-amber-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-amber-400 bg-white mb-2">
                                                             <option value="">Select a tax...</option>
                                                             {taxes.filter(t=>t.active).map(t=><option key={t._id} value={t._id}>{t.name} ({t.type==='percentage'?`${t.rate}%`:`$${t.rate}`})</option>)}
                                                         </select>
-                                                        {taxes.filter(t=>t.active).length===0&&<p className="text-xs text-amber-600 mt-1 italic">No active taxes. <a href="/admin/setup/tax" className="underline">Create taxes first.</a></p>}
+                                                        {taxes.filter(t=>t.active).length===0&&<p className="text-xs text-amber-600 mb-2 italic">No active taxes. <a href="/admin/setup/tax" className="underline">Create taxes first.</a></p>}
+                                                        <label className="text-xs font-semibold text-amber-700 uppercase tracking-wide block mb-2">Calculate from field</label>
+                                                        <select value={editDraft.linkedField||''} onChange={e=>setEditDraft({...editDraft,linkedField:e.target.value})}
+                                                            className="w-full border border-amber-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-amber-400 bg-white">
+                                                            <option value="">Select source field...</option>
+                                                            {fields.filter(f=>(f.type==='number'||f.type==='text')&&f._id!==editing).map(f=><option key={f._id} value={f.label}>{f.label}{f.belongsto?` (${f.belongsto})`:''}</option>)}
+                                                        </select>
                                                     </div>
                                                 )}
                                                 <div className="col-span-2">

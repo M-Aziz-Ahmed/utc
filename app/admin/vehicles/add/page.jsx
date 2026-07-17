@@ -490,26 +490,27 @@ const AddVehiclePage = () => {
         )
         if (field.type === 'tax') {
             const linkedTax = taxes.find(t => t._id === field.linkedTax)
+            const sourceField = fields.find(f => f.label === field.linkedField) || accountFields.find(f => f.label === field.linkedField)
+            const allData = { ...formData, ...accountData }
+            const sourceVal = sourceField ? parseFloat(allData[sourceField._id]) || 0 : 0
+            let taxAmount = 0
+            if (linkedTax && sourceVal > 0) {
+                taxAmount = linkedTax.type === 'percentage'
+                    ? (sourceVal * linkedTax.rate / 100)
+                    : linkedTax.rate
+            }
             return (
-                <div style={{ padding: '10px 12px', borderRadius: '8px', border: linkedTax ? '1px solid #fbbf24' : '1px solid #e0e0e0', background: linkedTax ? '#fffbeb' : '#f8f9fa' }}>
-                    {linkedTax ? (
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <div style={{ fontSize: '11px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{linkedTax.name}</div>
-                                <div style={{ fontSize: '18px', fontWeight: 700, color: '#202124', marginTop: '2px' }}>
-                                    {linkedTax.type === 'percentage' ? `${linkedTax.rate}%` : `$${linkedTax.rate}`}
-                                </div>
-                                {linkedTax.code && <div style={{ fontSize: '10px', color: '#9aa0a6', marginTop: '1px' }}>Code: {linkedTax.code}</div>}
-                            </div>
-                            <span style={{
-                                display: 'inline-block', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600,
-                                background: linkedTax.type === 'percentage' ? '#fef3c7' : '#e0e7ff',
-                                color: linkedTax.type === 'percentage' ? '#92400e' : '#3730a3',
-                            }}>{linkedTax.type === 'percentage' ? 'Percentage' : 'Fixed'}</span>
-                        </div>
-                    ) : (
-                        <div style={{ fontSize: '12px', color: '#9aa0a6', fontStyle: 'italic' }}>No tax linked to this field</div>
-                    )}
+                <div style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid #fbbf24', background: '#fffbeb' }}>
+                    <div className="flex items-center justify-between mb-1">
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            {linkedTax ? linkedTax.name : 'Tax'}{linkedTax?.code ? ` (${linkedTax.code})` : ''}
+                        </span>
+                        {linkedTax && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', background: linkedTax.type === 'percentage' ? '#fef3c7' : '#e0e7ff', color: linkedTax.type === 'percentage' ? '#92400e' : '#3730a3', fontWeight: 600 }}>{linkedTax.type === 'percentage' ? `${linkedTax.rate}%` : `Fixed $${linkedTax.rate}`}</span>}
+                    </div>
+                    {sourceField && <div style={{ fontSize: '10px', color: '#9aa0a6', marginBottom: '4px' }}>Based on: <span style={{ fontWeight: 600, color: '#5f6368' }}>{sourceField.label}</span> = {sourceVal.toLocaleString()}</div>}
+                    <div style={{ fontSize: '18px', fontWeight: 700, color: '#92400e' }}>
+                        {taxAmount > 0 ? taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
+                    </div>
                 </div>
             )
         }
@@ -567,26 +568,27 @@ const AddVehiclePage = () => {
         )
         if (field.type === 'tax') {
             const linkedTax = taxes.find(t => t._id === field.linkedTax)
+            const sourceField = accountFields.find(f => f.label === field.linkedField) || fields.find(f => f.label === field.linkedField)
+            const allData = { ...accountData, ...formData }
+            const sourceVal = sourceField ? parseFloat(allData[sourceField._id]) || 0 : 0
+            let taxAmount = 0
+            if (linkedTax && sourceVal > 0) {
+                taxAmount = linkedTax.type === 'percentage'
+                    ? (sourceVal * linkedTax.rate / 100)
+                    : linkedTax.rate
+            }
             return (
-                <div style={{ padding: '10px 12px', borderRadius: '8px', border: linkedTax ? '1px solid #fbbf24' : '1px solid #e0e0e0', background: linkedTax ? '#fffbeb' : '#f8f9fa' }}>
-                    {linkedTax ? (
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <div style={{ fontSize: '11px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{linkedTax.name}</div>
-                                <div style={{ fontSize: '18px', fontWeight: 700, color: '#202124', marginTop: '2px' }}>
-                                    {linkedTax.type === 'percentage' ? `${linkedTax.rate}%` : `$${linkedTax.rate}`}
-                                </div>
-                                {linkedTax.code && <div style={{ fontSize: '10px', color: '#9aa0a6', marginTop: '1px' }}>Code: {linkedTax.code}</div>}
-                            </div>
-                            <span style={{
-                                display: 'inline-block', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600,
-                                background: linkedTax.type === 'percentage' ? '#fef3c7' : '#e0e7ff',
-                                color: linkedTax.type === 'percentage' ? '#92400e' : '#3730a3',
-                            }}>{linkedTax.type === 'percentage' ? 'Percentage' : 'Fixed'}</span>
-                        </div>
-                    ) : (
-                        <div style={{ fontSize: '12px', color: '#9aa0a6', fontStyle: 'italic' }}>No tax linked to this field</div>
-                    )}
+                <div style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid #fbbf24', background: '#fffbeb' }}>
+                    <div className="flex items-center justify-between mb-1">
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            {linkedTax ? linkedTax.name : 'Tax'}{linkedTax?.code ? ` (${linkedTax.code})` : ''}
+                        </span>
+                        {linkedTax && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', background: linkedTax.type === 'percentage' ? '#fef3c7' : '#e0e7ff', color: linkedTax.type === 'percentage' ? '#92400e' : '#3730a3', fontWeight: 600 }}>{linkedTax.type === 'percentage' ? `${linkedTax.rate}%` : `Fixed $${linkedTax.rate}`}</span>}
+                    </div>
+                    {sourceField && <div style={{ fontSize: '10px', color: '#9aa0a6', marginBottom: '4px' }}>Based on: <span style={{ fontWeight: 600, color: '#5f6368' }}>{sourceField.label}</span> = {sourceVal.toLocaleString()}</div>}
+                    <div style={{ fontSize: '18px', fontWeight: 700, color: '#92400e' }}>
+                        {taxAmount > 0 ? taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
+                    </div>
                 </div>
             )
         }

@@ -22,6 +22,8 @@ const Page = () => {
     const [newOption, setNewOption] = useState("");
     const [taxes, setTaxes] = useState([]);
     const [linkedTax, setLinkedTax] = useState("");
+    const [linkedField, setLinkedField] = useState("");
+    const [allFields, setAllFields] = useState([]);
 
     // Fetch unique forms from fields
     useEffect(() => {
@@ -34,6 +36,7 @@ const Page = () => {
                 // Extract unique form names
                 const uniqueForms = [...new Set(data.map(f => f.belongsto).filter(Boolean))];
                 setForms(uniqueForms.sort());
+                setAllFields(data);
             } catch (e) {
                 console.error('Error fetching forms:', e);
             }
@@ -114,6 +117,7 @@ const Page = () => {
             // Add linked tax if type is tax
             if (type === 'tax' && linkedTax) {
                 fieldData.linkedTax = linkedTax;
+                fieldData.linkedField = linkedField;
             }
             
             const res = await fetch('/api/newField', {
@@ -131,6 +135,7 @@ const Page = () => {
             setDropdownOptions(['']);
             setNewOption('');
             setLinkedTax('');
+            setLinkedField('');
             setRefreshKey((k) => k + 1);
         } catch (err) {
             setMessage({ type: 'error', text: err.message });
@@ -290,6 +295,21 @@ const Page = () => {
                                             No active taxes found. <a href="/admin/setup/tax" style={{color:'var(--accent)'}}>Create taxes first</a>
                                         </p>
                                     )}
+                                    <label style={{display:'block', fontSize:'var(--text-xs)', fontWeight:600, color:'#5f6368', marginBottom:'6px', marginTop:'10px', textTransform:'uppercase', letterSpacing:'0.05em'}}>
+                                        Calculate from field
+                                    </label>
+                                    <select
+                                        value={linkedField}
+                                        onChange={(e) => setLinkedField(e.target.value)}
+                                        style={{width:'100%', padding:'7px 10px', border:'1px solid #c4c7c5', borderRadius:'4px', fontSize:'13px', color:'#202124', outline:'none', background:'#fff'}}
+                                    >
+                                        <option value="">Select source field...</option>
+                                        {allFields.filter(f => f.type === 'number' || f.type === 'text').map((f) => (
+                                            <option key={f._id} value={f.label}>
+                                                {f.label} {f.belongsto ? `(${f.belongsto})` : ''}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
                             )}
 
