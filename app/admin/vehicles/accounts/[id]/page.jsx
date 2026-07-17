@@ -61,22 +61,11 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, accountFi
                 ? (sourceVal * linkedTax.rate / 100)
                 : linkedTax.rate
         }
+        const display = taxAmount > 0 ? taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'
         return (
-            <div style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #fbbf24', background: '#fffbeb', boxSizing: 'border-box' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        {linkedTax ? linkedTax.name : 'Tax'}{linkedTax?.code ? ` (${linkedTax.code})` : ''}
-                    </span>
-                    {linkedTax && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', background: linkedTax.type === 'percentage' ? '#fef3c7' : '#e0e7ff', color: linkedTax.type === 'percentage' ? '#92400e' : '#3730a3', fontWeight: 600 }}>{linkedTax.type === 'percentage' ? `${linkedTax.rate}%` : `Fixed $${linkedTax.rate}`}</span>}
-                </div>
-                {sourceField && (
-                    <div style={{ fontSize: '10px', color: '#9aa0a6', marginBottom: '4px' }}>
-                        Based on: <span style={{ fontWeight: 600, color: '#5f6368' }}>{sourceField.label}</span> = {sourceVal.toLocaleString()}
-                    </div>
-                )}
-                <div style={{ fontSize: '20px', fontWeight: 700, color: '#92400e' }}>
-                    {taxAmount > 0 ? taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
-                </div>
+            <div style={{ position: 'relative' }}>
+                <input readOnly value={display} style={{ ...base, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', fontWeight: 700, fontSize: '14px', cursor: 'default' }} />
+                {linkedTax && <span style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', fontSize: '9px', padding: '1px 5px', borderRadius: '6px', background: linkedTax.type === 'percentage' ? '#fef3c7' : '#e0e7ff', color: linkedTax.type === 'percentage' ? '#92400e' : '#3730a3', fontWeight: 600, pointerEvents: 'none' }}>{linkedTax.type === 'percentage' ? `${linkedTax.rate}%` : 'Fixed'}</span>}
             </div>
         )
     }
@@ -354,66 +343,33 @@ const VehicleAccountPage = ({ params }) => {
                                 <>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '14px' }}>
                                     {accountFields.filter(f => f.type !== 'file' && f.type !== 'image').map(field => (
-                                        <div key={field._id} style={field.type === 'boolean' ? { gridColumn: 'span 2' } : field.type === 'tax' ? { gridColumn: 'span 2' } : {}}>
-                                            {field.type !== 'tax' && (
-                                                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>{field.label}{field.isRequired && <span style={{ color: '#c5221f', marginLeft: '2px' }}>*</span>}</label>
-                                            )}
+                                        <div key={field._id} style={field.type === 'boolean' ? { gridColumn: 'span 2' } : {}}>
+                                            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>{field.label}{field.isRequired && <span style={{ color: '#c5221f', marginLeft: '2px' }}>*</span>}</label>
                                             <FieldInput field={field} value={accountData[field._id]} onChange={v => setAccountData(p => ({ ...p, [field._id]: v }))} taxes={taxes} accountData={accountData} accountFields={accountFields} />
                                         </div>
                                     ))}
                                 </div>
 
-                                {/* Auto-calculated summary */}
+                                {/* Auto-calculated total */}
                                 {(() => {
-                                    const numFields = accountFields.filter(f => f.type === 'number' || f.type === 'text')
                                     const taxFields = accountFields.filter(f => f.type === 'tax' && f.linkedTax && f.linkedField)
-                                    const totalFields = accountFields.filter(f => f.label?.toLowerCase().includes('total') || f.label?.toLowerCase().includes('fob'))
-                                    if (taxFields.length === 0 && totalFields.length === 0) return null
+                                    if (taxFields.length === 0) return null
 
-                                    let sumInputs = 0
-                                    let sumTaxes = 0
-                                    const taxBreakdown = []
-
+                                    let totalTaxes = 0
                                     taxFields.forEach(tf => {
                                         const linkedTax = taxes.find(t => t._id === tf.linkedTax)
                                         const sourceField = accountFields.find(f => f.label === tf.linkedField)
                                         if (!linkedTax || !sourceField) return
                                         const sourceVal = parseFloat(accountData[sourceField._id]) || 0
-                                        const taxAmt = linkedTax.type === 'percentage'
+                                        totalTaxes += linkedTax.type === 'percentage'
                                             ? (sourceVal * linkedTax.rate / 100)
                                             : linkedTax.rate
-                                        sumTaxes += taxAmt
-                                        taxBreakdown.push({ label: tf.label, source: sourceField.label, sourceVal, taxName: linkedTax.name, taxAmt })
                                     })
-
-                                    numFields.forEach(f => {
-                                        if (!f.linkedTax) {
-                                            sumInputs += parseFloat(accountData[f._id]) || 0
-                                        }
-                                    })
-
-                                    const grandTotal = sumInputs + sumTaxes
 
                                     return (
-                                        <div style={{ marginTop: '20px', padding: '16px', background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)', borderRadius: '10px', border: '1px solid #bae6fd' }}>
-                                            <div style={{ fontSize: '11px', fontWeight: 700, color: '#0369a1', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                <svg style={{ width: '14px', height: '14px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                                                Auto-Calculated Summary
-                                            </div>
-                                            {taxBreakdown.length > 0 && (
-                                                <div style={{ marginBottom: '10px' }}>
-                                                    {taxBreakdown.map((tb, i) => (
-                                                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', fontSize: '12px', borderBottom: i < taxBreakdown.length - 1 ? '1px solid #bae6fd' : 'none' }}>
-                                                            <span style={{ color: '#5f6368' }}>{tb.label} <span style={{ color: '#9aa0a6', fontSize: '10px' }}>({tb.source}: {tb.sourceVal.toLocaleString()} × {tb.taxName})</span></span>
-                                                            <span style={{ fontWeight: 700, color: '#92400e' }}>{tb.taxAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', borderTop: '2px solid #7dd3fc' }}>
-                                                <span style={{ fontSize: '13px', fontWeight: 700, color: '#0c4a6e' }}>Computed Total</span>
-                                                <span style={{ fontSize: '18px', fontWeight: 800, color: '#0369a1' }}>{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                            </div>
+                                        <div style={{ marginTop: '16px', padding: '10px 14px', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <span style={{ fontSize: '12px', fontWeight: 600, color: '#0369a1' }}>Total Taxes</span>
+                                            <span style={{ fontSize: '16px', fontWeight: 800, color: '#0369a1' }}>{totalTaxes.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                         </div>
                                     )
                                 })()}
