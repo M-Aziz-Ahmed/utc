@@ -351,6 +351,7 @@ const VehicleAccountPage = ({ params }) => {
                                     <Link href="/admin/fields" style={{ fontSize: '12px', color: '#1a73e8', fontWeight: 600, textDecoration: 'none' }}>Go to Dynamic Fields →</Link>
                                 </div>
                             ) : (
+                                <>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '14px' }}>
                                     {accountFields.filter(f => f.type !== 'file' && f.type !== 'image').map(field => (
                                         <div key={field._id} style={field.type === 'boolean' ? { gridColumn: 'span 2' } : field.type === 'tax' ? { gridColumn: 'span 2' } : {}}>
@@ -416,6 +417,7 @@ const VehicleAccountPage = ({ params }) => {
                                         </div>
                                     )
                                 })()}
+                                </>
                             )}
                         </div>
 
