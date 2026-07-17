@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import GetAllFields from "@/components/fields/GetAllFields";
 
-const FIELD_TYPES = ["text", "number", "boolean", "password", "email", "date", "file", "image", "dropdown"];
+const FIELD_TYPES = ["text", "number", "boolean", "password", "email", "date", "file", "image", "dropdown", "tax"];
 
 const Page = () => {
     const [label, setLabel] = useState("");
@@ -20,6 +20,8 @@ const Page = () => {
     // Dropdown options state
     const [dropdownOptions, setDropdownOptions] = useState([""]);
     const [newOption, setNewOption] = useState("");
+    const [taxes, setTaxes] = useState([]);
+    const [linkedTax, setLinkedTax] = useState("");
 
     // Fetch unique forms from fields
     useEffect(() => {
@@ -38,6 +40,19 @@ const Page = () => {
         };
         fetchForms();
     }, [refreshKey]);
+
+    // Fetch taxes
+    useEffect(() => {
+        const fetchTaxes = async () => {
+            try {
+                const res = await fetch('/api/tax');
+                if (res.ok) setTaxes(await res.json());
+            } catch (e) {
+                console.error('Error fetching taxes:', e);
+            }
+        };
+        fetchTaxes();
+    }, []);
 
     const handleCreateForm = async (e) => {
         e.preventDefault();
@@ -95,6 +110,11 @@ const Page = () => {
                 }
                 fieldData.options = validOptions;
             }
+
+            // Add linked tax if type is tax
+            if (type === 'tax' && linkedTax) {
+                fieldData.linkedTax = linkedTax;
+            }
             
             const res = await fetch('/api/newField', {
                 method: 'POST',
@@ -110,6 +130,7 @@ const Page = () => {
             setBelongsto('');
             setDropdownOptions(['']);
             setNewOption('');
+            setLinkedTax('');
             setRefreshKey((k) => k + 1);
         } catch (err) {
             setMessage({ type: 'error', text: err.message });
@@ -243,6 +264,32 @@ const Page = () => {
                                     <p style={{fontSize:'var(--text-xs)', color:'#9aa0a6', marginTop:'6px', fontStyle:'italic'}}>
                                         Press Enter or click Add to add a new option
                                     </p>
+                                </div>
+                            )}
+
+                            {/* Linked Tax - Only show if type is tax */}
+                            {type === 'tax' && (
+                                <div style={{border:'1px solid #d2e3fc', borderRadius:'8px', padding:'12px', background:'rgba(232,240,254,0.3)'}}>
+                                    <label style={{display:'block', fontSize:'var(--text-xs)', fontWeight:600, color:'#5f6368', marginBottom:'8px', textTransform:'uppercase', letterSpacing:'0.05em'}}>
+                                        Link Tax
+                                    </label>
+                                    <select
+                                        value={linkedTax}
+                                        onChange={(e) => setLinkedTax(e.target.value)}
+                                        style={{width:'100%', padding:'7px 10px', border:'1px solid #c4c7c5', borderRadius:'4px', fontSize:'13px', color:'#202124', outline:'none', background:'#fff'}}
+                                    >
+                                        <option value="">Select a tax...</option>
+                                        {taxes.filter(t => t.active).map((t) => (
+                                            <option key={t._id} value={t._id}>
+                                                {t.name} ({t.type === 'percentage' ? `${t.rate}%` : `$${t.rate}`})
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {taxes.filter(t => t.active).length === 0 && (
+                                        <p style={{fontSize:'var(--text-xs)', color:'#9aa0a6', marginTop:'6px', fontStyle:'italic'}}>
+                                            No active taxes found. <a href="/admin/setup/tax" style={{color:'var(--accent)'}}>Create taxes first</a>
+                                        </p>
+                                    )}
                                 </div>
                             )}
 

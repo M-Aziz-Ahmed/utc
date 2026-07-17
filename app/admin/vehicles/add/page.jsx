@@ -259,11 +259,12 @@ const AddVehiclePage = () => {
     const [addingField, setAddingField] = useState(false)
     const [addFieldMsg, setAddFieldMsg] = useState(null)
 
-    const FIELD_TYPES = ['text', 'number', 'boolean', 'email', 'date', 'file', 'image', 'dropdown']
+    const FIELD_TYPES = ['text', 'number', 'boolean', 'email', 'date', 'file', 'image', 'dropdown', 'tax']
     const [newManufacturer, setNewManufacturer] = useState({ name: '', country: '' })
     const [newModel, setNewModel] = useState({ name: '', description: '' })
     const [newVariant, setNewVariant] = useState('')
     const [saving, setSaving] = useState(false)
+    const [taxes, setTaxes] = useState([])
 
     const [editingMaker, setEditingMaker] = useState(null)
     const [editingModel, setEditingModel] = useState(null)
@@ -273,7 +274,7 @@ const AddVehiclePage = () => {
     const [inlineAdding, setInlineAdding] = useState(false)
     const [addMainImageUrl, setAddMainImageUrl] = useState('')
 
-    useEffect(() => { fetchAuctionGroups(); fetchManufacturers(); fetchFields(); fetchAccountFields() }, [])
+    useEffect(() => { fetchAuctionGroups(); fetchManufacturers(); fetchFields(); fetchAccountFields(); fetchTaxes() }, [])
 
     const fetchAuctionGroups = async () => {
         try { const res = await fetch('/api/auctionGroup'); if (res.ok) setAuctionGroups((await res.json()) || []) } catch (e) { console.error(e) }
@@ -293,6 +294,12 @@ const AddVehiclePage = () => {
             const res = await fetch('/api/fields', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ belongsto: 'accounts' }) })
             const data = await res.json()
             if (res.ok && Array.isArray(data)) setAccountFields(data)
+        } catch (e) { console.error(e) }
+    }
+    const fetchTaxes = async () => {
+        try {
+            const res = await fetch('/api/tax')
+            if (res.ok) setTaxes(await res.json())
         } catch (e) { console.error(e) }
     }
 
@@ -481,6 +488,31 @@ const AddVehiclePage = () => {
                 ))}
             </div>
         )
+        if (field.type === 'tax') {
+            const linkedTax = taxes.find(t => t._id === field.linkedTax)
+            return (
+                <div style={{ padding: '10px 12px', borderRadius: '8px', border: linkedTax ? '1px solid #fbbf24' : '1px solid #e0e0e0', background: linkedTax ? '#fffbeb' : '#f8f9fa' }}>
+                    {linkedTax ? (
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <div style={{ fontSize: '11px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{linkedTax.name}</div>
+                                <div style={{ fontSize: '18px', fontWeight: 700, color: '#202124', marginTop: '2px' }}>
+                                    {linkedTax.type === 'percentage' ? `${linkedTax.rate}%` : `$${linkedTax.rate}`}
+                                </div>
+                                {linkedTax.code && <div style={{ fontSize: '10px', color: '#9aa0a6', marginTop: '1px' }}>Code: {linkedTax.code}</div>}
+                            </div>
+                            <span style={{
+                                display: 'inline-block', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600,
+                                background: linkedTax.type === 'percentage' ? '#fef3c7' : '#e0e7ff',
+                                color: linkedTax.type === 'percentage' ? '#92400e' : '#3730a3',
+                            }}>{linkedTax.type === 'percentage' ? 'Percentage' : 'Fixed'}</span>
+                        </div>
+                    ) : (
+                        <div style={{ fontSize: '12px', color: '#9aa0a6', fontStyle: 'italic' }}>No tax linked to this field</div>
+                    )}
+                </div>
+            )
+        }
         if (field.type === 'file' || field.type === 'image') {
             const files = Array.isArray(formData[field._id]) ? formData[field._id] : []
             return (
@@ -533,6 +565,31 @@ const AddVehiclePage = () => {
                 ))}
             </div>
         )
+        if (field.type === 'tax') {
+            const linkedTax = taxes.find(t => t._id === field.linkedTax)
+            return (
+                <div style={{ padding: '10px 12px', borderRadius: '8px', border: linkedTax ? '1px solid #fbbf24' : '1px solid #e0e0e0', background: linkedTax ? '#fffbeb' : '#f8f9fa' }}>
+                    {linkedTax ? (
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <div style={{ fontSize: '11px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{linkedTax.name}</div>
+                                <div style={{ fontSize: '18px', fontWeight: 700, color: '#202124', marginTop: '2px' }}>
+                                    {linkedTax.type === 'percentage' ? `${linkedTax.rate}%` : `$${linkedTax.rate}`}
+                                </div>
+                                {linkedTax.code && <div style={{ fontSize: '10px', color: '#9aa0a6', marginTop: '1px' }}>Code: {linkedTax.code}</div>}
+                            </div>
+                            <span style={{
+                                display: 'inline-block', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600,
+                                background: linkedTax.type === 'percentage' ? '#fef3c7' : '#e0e7ff',
+                                color: linkedTax.type === 'percentage' ? '#92400e' : '#3730a3',
+                            }}>{linkedTax.type === 'percentage' ? 'Percentage' : 'Fixed'}</span>
+                        </div>
+                    ) : (
+                        <div style={{ fontSize: '12px', color: '#9aa0a6', fontStyle: 'italic' }}>No tax linked to this field</div>
+                    )}
+                </div>
+            )
+        }
         return <input type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'} required={field.isRequired} value={value} onChange={e => handleAccountChange(field._id, e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder={`Enter ${field.label.toLowerCase()}`} />
     }
 

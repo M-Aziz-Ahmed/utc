@@ -32,7 +32,7 @@ const getAllImages = (vehicle) => {
 }
 
 // ── Shared field input ────────────────────────────────────────────────────────
-const FieldInput = ({ field, value, onChange }) => {
+const FieldInput = ({ field, value, onChange, taxes = [] }) => {
     const base = { width: '100%', padding: '8px 11px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: '#fff' }
     const focus = e => { e.target.style.borderColor = '#1a73e8'; e.target.style.boxShadow = '0 0 0 3px rgba(26,115,232,0.1)' }
     const blur  = e => { e.target.style.borderColor = '#e0e0e0'; e.target.style.boxShadow = 'none' }
@@ -51,6 +51,32 @@ const FieldInput = ({ field, value, onChange }) => {
             ))}
         </div>
     )
+    if (field.type === 'tax') {
+        const linkedTax = taxes.find(t => t._id === field.linkedTax)
+        return (
+            <div style={{ ...base, background: linkedTax ? '#fffbeb' : '#f8f9fa', border: linkedTax ? '1px solid #fbbf24' : '1px solid #e0e0e0', padding: '10px 12px' }}>
+                {linkedTax ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{linkedTax.name}</div>
+                            <div style={{ fontSize: '18px', fontWeight: 700, color: '#202124', marginTop: '2px' }}>
+                                {linkedTax.type === 'percentage' ? `${linkedTax.rate}%` : `$${linkedTax.rate}`}
+                            </div>
+                            {linkedTax.code && <div style={{ fontSize: '10px', color: '#9aa0a6', marginTop: '1px' }}>Code: {linkedTax.code}</div>}
+                        </div>
+                        <span style={{
+                            display: 'inline-block', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600,
+                            background: linkedTax.type === 'percentage' ? '#fef3c7' : '#e0e7ff',
+                            color: linkedTax.type === 'percentage' ? '#92400e' : '#3730a3',
+                        }}>{linkedTax.type === 'percentage' ? 'Percentage' : 'Fixed'}</span>
+                    </div>
+                ) : (
+                    <div style={{ fontSize: '12px', color: '#9aa0a6', fontStyle: 'italic' }}>No tax linked to this field</div>
+                )}
+                <input type="hidden" value={value ?? ''} />
+            </div>
+        )
+    }
     return <input type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'} value={value ?? ''} onChange={e => onChange(e.target.value)} required={field.isRequired} placeholder={`Enter ${field.label.toLowerCase()}`} style={base} onFocus={focus} onBlur={blur} />
 }
 
@@ -68,14 +94,17 @@ const VehicleAccountPage = ({ params }) => {
     const [loading, setLoading]             = useState(true)
     const [saving, setSaving]               = useState(false)
     const [saveMsg, setSaveMsg]             = useState(null)
+    const [taxes, setTaxes]                 = useState([])
 
     useEffect(() => {
         Promise.all([
             fetch(`/api/vehicles/${id}`).then(r => r.json()),
             fetch('/api/fields', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ belongsto: 'add-vehicles' }) }).then(r => r.json()),
             fetch('/api/fields', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ belongsto: 'accounts' }) }).then(r => r.json()),
-        ]).then(([v, vf, af]) => {
+            fetch('/api/tax').then(r => r.ok ? r.json() : []),
+        ]).then(([v, vf, af, tx]) => {
             setVehicle(v); setMainImageUrl(v.mainImageUrl || '')
+            setTaxes(Array.isArray(tx) ? tx : [])
             const vFields = Array.isArray(vf) ? vf.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)) : []
             setVehicleFields(vFields)
             const vInit = {}
@@ -253,7 +282,7 @@ const VehicleAccountPage = ({ params }) => {
                                             <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>
                                                 {field.label}{field.isRequired && <span style={{ color: '#c5221f', marginLeft: '2px' }}>*</span>}
                                             </label>
-                                            <FieldInput field={field} value={formData[field._id]} onChange={v => setFormData(p => ({ ...p, [field._id]: v }))} />
+                                            <FieldInput field={field} value={formData[field._id]} onChange={v => setFormData(p => ({ ...p, [field._id]: v }))} taxes={taxes} />
                                         </div>
                                     ))}
                                 </div>
@@ -323,7 +352,7 @@ const VehicleAccountPage = ({ params }) => {
                                     {accountFields.filter(f => f.type !== 'file' && f.type !== 'image').map(field => (
                                         <div key={field._id} style={field.type === 'boolean' ? { gridColumn: 'span 2' } : {}}>
                                             <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>{field.label}{field.isRequired && <span style={{ color: '#c5221f', marginLeft: '2px' }}>*</span>}</label>
-                                            <FieldInput field={field} value={accountData[field._id]} onChange={v => setAccountData(p => ({ ...p, [field._id]: v }))} />
+                                            <FieldInput field={field} value={accountData[field._id]} onChange={v => setAccountData(p => ({ ...p, [field._id]: v }))} taxes={taxes} />
                                         </div>
                                     ))}
                                 </div>

@@ -1,13 +1,14 @@
 'use client'
 import { useEffect, useState, useRef } from "react";
 
-const FIELD_TYPES = ["text","number","boolean","password","email","date","image","file","dropdown"];
+const FIELD_TYPES = ["text","number","boolean","password","email","date","image","file","dropdown","tax"];
 const TYPE_COLORS = {
     text:'bg-blue-50 text-blue-700 border-blue-200', number:'bg-purple-50 text-purple-700 border-purple-200',
     boolean:'bg-yellow-50 text-yellow-700 border-yellow-200', password:'bg-red-50 text-red-700 border-red-200',
     email:'bg-teal-50 text-teal-700 border-teal-200', date:'bg-orange-50 text-orange-700 border-orange-200',
     image:'bg-pink-50 text-pink-700 border-pink-200', file:'bg-indigo-50 text-indigo-700 border-indigo-200',
     dropdown:'bg-green-50 text-green-700 border-green-200',
+    tax:'bg-amber-50 text-amber-700 border-amber-200',
 };
 
 const GetAllFields = ({ refreshKey, onDelete, forms }) => {
@@ -24,6 +25,7 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
     const [quickAddValue, setQuickAddValue] = useState('');
     const [quickAdding, setQuickAdding] = useState(false);
     const [reordering, setReordering] = useState(false);
+    const [taxes, setTaxes] = useState([]);
     const dragItem = useRef(null);
     const dragOver = useRef(null);
 
@@ -41,10 +43,14 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
         return () => { mounted = false };
     }, [refreshKey]);
 
+    useEffect(() => {
+        fetch('/api/tax').then(r => r.ok ? r.json() : []).then(d => setTaxes(d)).catch(() => {})
+    }, []);
+
     const startEdit = (f) => {
         setEditing(f._id);
         setEditDraft({ label:f.label, type:f.type, isRequired:f.isRequired??false,
-            belongsto:f.belongsto??'', options:f.options||[], newOption:'' });
+            belongsto:f.belongsto??'', options:f.options||[], newOption:'', linkedTax:f.linkedTax||'' });
     };
     const cancelEdit = () => { setEditing(null); setEditDraft({}); };
 
@@ -57,6 +63,9 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                 const v = (editDraft.options||[]).filter(o=>o.trim()!=='');
                 if (!v.length) { alert('Add at least one option'); setSaving(false); return; }
                 d.options = v;
+            }
+            if (editDraft.type === 'tax') {
+                d.linkedTax = editDraft.linkedTax || null;
             }
             const res = await fetch(`/api/fields/${id}`, {
                 method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(d) });
@@ -284,6 +293,17 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                                                         </div>
                                                     </div>
                                                 )}
+                                                {editDraft.type==='tax' && (
+                                                    <div className="col-span-2 border-2 border-amber-200 rounded-lg p-3 bg-amber-50">
+                                                        <label className="text-xs font-semibold text-amber-700 uppercase tracking-wide block mb-2">Linked Tax</label>
+                                                        <select value={editDraft.linkedTax||''} onChange={e=>setEditDraft({...editDraft,linkedTax:e.target.value})}
+                                                            className="w-full border border-amber-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-amber-400 bg-white">
+                                                            <option value="">Select a tax...</option>
+                                                            {taxes.filter(t=>t.active).map(t=><option key={t._id} value={t._id}>{t.name} ({t.type==='percentage'?`${t.rate}%`:`$${t.rate}`})</option>)}
+                                                        </select>
+                                                        {taxes.filter(t=>t.active).length===0&&<p className="text-xs text-amber-600 mt-1 italic">No active taxes. <a href="/admin/setup/tax" className="underline">Create taxes first.</a></p>}
+                                                    </div>
+                                                )}
                                                 <div className="col-span-2">
                                                     <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Required?</span>
                                                     <div className="flex gap-3">
@@ -324,6 +344,7 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                                                             {f.isRequired && <span className="jp-badge jp-badge-red">REQ</span>}
                                                             <span className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded border ${TYPE_COLORS[f.type]||'bg-gray-100 text-gray-700 border-gray-200'}`}>{f.type}</span>
                                                             {f.type==='dropdown'&&f.options?.length>0&&<span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">{f.options.length} opts</span>}
+                                                            {f.type==='tax'&&f.linkedTax&&<span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-200">linked: {taxes.find(t=>t._id===f.linkedTax)?.name||'unknown'}</span>}
                                                         </div>
                                                     </div>
                                                 </div>
