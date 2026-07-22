@@ -39,7 +39,7 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, accountFi
     if (field.type === 'dropdown' || field.type === 'select-year' || field.type === 'select-country') return (
         <select value={value ?? ''} onChange={e => onChange(e.target.value)} required={field.isRequired} style={{ ...base }} onFocus={focus} onBlur={blur}>
             <option value="">Select...</option>
-            {[...(field.options || [])].sort((a, b) => a.localeCompare(b)).map((o, i) => <option key={i} value={o}>{o}</option>)}
+            {[...(field.options || [])].sort((a, b) => { const na = Number(a), nb = Number(b); if (!isNaN(na) && !isNaN(nb)) return na - nb; return a.localeCompare(b) }).map((o, i) => <option key={i} value={o}>{o}</option>)}
         </select>
     )
     if (field.type === 'boolean') return (

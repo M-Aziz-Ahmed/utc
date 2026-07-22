@@ -473,7 +473,7 @@ function ModelModal({ data, fields, saving, onSave, onClose }) {
                                     {(field.type === 'dropdown' || field.type === 'select-year' || field.type === 'select-country') ? (
                                         <Select value={form.defaults[field._id] ?? ''} onChange={e => setDefault(field._id, e.target.value)}>
                                             <option value="">— no default —</option>
-                                            {[...(field.options || [])].sort((a, b) => a.localeCompare(b)).map((o, i) => <option key={i} value={o}>{o}</option>)}
+                                            {[...(field.options || [])].sort((a, b) => { const na = Number(a), nb = Number(b); if (!isNaN(na) && !isNaN(nb)) return na - nb; return a.localeCompare(b) }).map((o, i) => <option key={i} value={o}>{o}</option>)}
                                         </Select>
                                     ) : field.type === 'number' ? (
                                         <Input type="number" value={form.defaults[field._id] ?? ''} onChange={e => setDefault(field._id, e.target.value)} placeholder="Leave blank = no default" />

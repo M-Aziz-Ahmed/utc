@@ -283,6 +283,8 @@ const AddVehiclePage = () => {
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState(null)
     const [success, setSuccess] = useState(false)
+    const [createdVehicleId, setCreatedVehicleId] = useState(null)
+    const [createdVehicleQr, setCreatedVehicleQr] = useState(null)
 
     const [showAddManufacturer, setShowAddManufacturer] = useState(false)
     const [showAddModel, setShowAddModel] = useState(false)
@@ -473,8 +475,11 @@ const AddVehiclePage = () => {
         try {
             const res = await fetch('/api/vehicles', { method: 'POST', body: fd })
             if (!res.ok) throw new Error('Failed to add vehicle')
+            const data = await res.json()
+            setCreatedVehicleId(data.vehicleId)
             setSuccess(true)
-            setTimeout(() => { window.location.href = '/admin/vehicles' }, 2000)
+            fetch(`/api/qr/${data.vehicleId}`).then(r => r.ok ? r.json() : null).then(qr => { if (qr) setCreatedVehicleQr(qr) }).catch(() => {})
+            setTimeout(() => { window.location.href = '/admin/vehicles' }, 15000)
         } catch (err) { setError(err.message) } finally { setSubmitting(false) }
     }
 
@@ -538,7 +543,7 @@ const AddVehiclePage = () => {
                     <select required={field.isRequired} value={value} onChange={e => handleChange(field._id, e.target.value)}
                         className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
                         <option value="">Select...</option>
-                        {[...(field.options || [])].sort((a, b) => a.localeCompare(b)).map((o, i) => <option key={i} value={o}>{o}</option>)}
+                        {[...(field.options || [])].sort((a, b) => { const na = Number(a), nb = Number(b); if (!isNaN(na) && !isNaN(nb)) return na - nb; return a.localeCompare(b) }).map((o, i) => <option key={i} value={o}>{o}</option>)}
                     </select>
                     {field.type === 'dropdown' && <button type="button" onClick={() => { setInlineAddOption(inlineAddOption === field._id ? null : field._id); setInlineOptionValue('') }} title="Add new option"
                         className={`px-3 rounded-lg border text-sm font-semibold transition ${inlineAddOption === field._id ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-400 hover:border-blue-400 hover:text-blue-600'}`}>+</button>}
@@ -654,7 +659,7 @@ const AddVehiclePage = () => {
         if (field.type === 'dropdown' || field.type === 'select-year' || field.type === 'select-country') return (
                 <select required={field.isRequired} value={value} onChange={e => handleAccountChange(field._id, e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
                     <option value="">Select...</option>
-                    {[...(field.options || [])].sort((a, b) => a.localeCompare(b)).map((o, i) => <option key={i} value={o}>{o}</option>)}
+                    {[...(field.options || [])].sort((a, b) => { const na = Number(a), nb = Number(b); if (!isNaN(na) && !isNaN(nb)) return na - nb; return a.localeCompare(b) }).map((o, i) => <option key={i} value={o}>{o}</option>)}
                 </select>
         )
         if (field.type === 'boolean') return (
@@ -1009,7 +1014,22 @@ const AddVehiclePage = () => {
                                 )}
 
                                 {error && <div style={{ marginBottom: '14px', padding: '12px 14px', background: '#fce8e6', border: '1px solid #f5c6c2', borderRadius: '8px', fontSize: '13px', color: '#c5221f' }}>{error}</div>}
-                                {success && <div style={{ marginBottom: '14px', padding: '12px 14px', background: '#e6f4ea', border: '1px solid #b7dfbe', borderRadius: '8px', fontSize: '13px', color: '#137333' }}>Vehicle added successfully! Redirecting...</div>}
+                                {success && (
+                                    <div style={{ marginBottom: '14px', padding: '16px', background: '#e6f4ea', border: '1px solid #b7dfbe', borderRadius: '8px', display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontSize: '13px', color: '#137333', fontWeight: 600, marginBottom: '4px' }}>Vehicle added successfully!</div>
+                                            <p style={{ fontSize: '12px', color: '#137333', margin: '0 0 8px', opacity: 0.8 }}>QR Code generated. Scan this to check the vehicle into a yard.</p>
+                                            <button onClick={() => window.location.href = '/admin/vehicles'} style={{ padding: '6px 14px', background: '#137333', color: '#fff', border: 'none', borderRadius: '16px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Go to Vehicles</button>
+                                        </div>
+                                        {createdVehicleQr && (
+                                            <div style={{ textAlign: 'center' }}>
+                                                <img src={createdVehicleQr.qr} alt="QR Code" style={{ width: '120px', height: '120px', borderRadius: '8px', border: '2px solid #fff', background: '#fff', padding: '4px' }} />
+                                                <div style={{ fontSize: '10px', color: '#137333', marginTop: '4px', fontWeight: 600 }}>Scan to check-in</div>
+                                                <a href={createdVehicleQr.qr} download={`QR-${createdVehicleQr.manufacturer}-${createdVehicleQr.model}.png`} style={{ display: 'inline-block', marginTop: '4px', fontSize: '10px', color: '#1a73e8', textDecoration: 'underline', cursor: 'pointer' }}>Download QR</a>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
                                 {/* ── Accounts section ── */}
                                 <div style={{ borderTop: '2px solid #e8f0fe', paddingTop: '20px', marginTop: '4px' }}>
@@ -1145,7 +1165,7 @@ const AddVehiclePage = () => {
                                             {(field.type === 'dropdown' || field.type === 'select-year' || field.type === 'select-country') ? (
                                                 <select value={newModel.defaults?.[field._id] ?? ''} onChange={e => setNewModel(p => ({ ...p, defaults: { ...p.defaults, [field._id]: e.target.value } }))} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', background: '#fff', boxSizing: 'border-box' }}>
                                                     <option value="">— no default —</option>
-                                                    {[...(field.options || [])].sort((a, b) => a.localeCompare(b)).map((o, i) => <option key={i} value={o}>{o}</option>)}
+                                                    {[...(field.options || [])].sort((a, b) => { const na = Number(a), nb = Number(b); if (!isNaN(na) && !isNaN(nb)) return na - nb; return a.localeCompare(b) }).map((o, i) => <option key={i} value={o}>{o}</option>)}
                                                 </select>
                                             ) : field.type === 'number' ? (
                                                 <input type="number" value={newModel.defaults?.[field._id] ?? ''} onChange={e => setNewModel(p => ({ ...p, defaults: { ...p.defaults, [field._id]: e.target.value } }))} placeholder="Leave blank = no default" style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />

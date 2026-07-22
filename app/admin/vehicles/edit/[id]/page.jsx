@@ -11,7 +11,7 @@ const FieldInput = ({ field, value, onChange, allFields = [], allData = {} }) =>
     if (field.type === 'dropdown' || field.type === 'select-year' || field.type === 'select-country') return (
         <select value={value ?? ''} onChange={e => onChange(e.target.value)} required={field.isRequired} style={{ ...base }} onFocus={focus} onBlur={blur}>
             <option value="">Select...</option>
-            {[...(field.options || [])].sort((a, b) => a.localeCompare(b)).map((o, i) => <option key={i} value={o}>{o}</option>)}
+            {[...(field.options || [])].sort((a, b) => { const na = Number(a), nb = Number(b); if (!isNaN(na) && !isNaN(nb)) return na - nb; return a.localeCompare(b) }).map((o, i) => <option key={i} value={o}>{o}</option>)}
         </select>
     )
     if (field.type === 'boolean') return (
@@ -149,6 +149,7 @@ const EditVehiclePage = () => {
     const [error, setError]                 = useState(null)
     const [saveMsg, setSaveMsg]             = useState(null)
     const [showAddAccountField, setShowAddAccountField] = useState(false)
+    const [qrData, setQrData]               = useState(null)
     const FIELD_TYPES = ['text', 'number', 'boolean', 'email', 'date', 'file', 'image', 'dropdown', 'select-year', 'select-country', 'sum']
 
     useEffect(() => { fetchAll() }, [vehicleId])
@@ -168,6 +169,7 @@ const EditVehiclePage = () => {
 
             setVehicle(v)
             setMainImageUrl(v.mainImageUrl || '')
+            fetch(`/api/qr/${vehicleId}`).then(r => r.ok ? r.json() : null).then(qr => { if (qr) setQrData(qr) }).catch(() => {})
 
             const vFields = Array.isArray(vf) ? vf.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)) : []
             setVehicleFields(vFields)
@@ -343,6 +345,18 @@ const EditVehiclePage = () => {
                                 Only account details and images can be edited here.
                             </p>
                         </div>
+                        {qrData && (
+                            <div style={{ marginTop: '14px', padding: '12px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0', textAlign: 'center' }}>
+                                <p style={{ fontSize: '10px', fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 8px' }}>Vehicle QR Code</p>
+                                <img src={qrData.qr} alt="QR Code" style={{ width: '140px', height: '140px', borderRadius: '8px', border: '2px solid #fff', background: '#fff', padding: '4px' }} />
+                                <div style={{ marginTop: '6px' }}>
+                                    <a href={qrData.qr} download={`QR-${qrData.manufacturer}-${qrData.model}.png`} style={{ fontSize: '11px', color: '#1a73e8', textDecoration: 'underline', cursor: 'pointer' }}>Download QR</a>
+                                </div>
+                                {vehicle.physicalIn && (
+                                    <div style={{ marginTop: '6px', padding: '4px 8px', background: '#dcfce7', borderRadius: '12px', fontSize: '10px', fontWeight: 600, color: '#166534', display: 'inline-block' }}>In Yard</div>
+                                )}
+                            </div>
+                        )}
                         <Link href="/admin/vehicles/add" style={{ marginTop: '10px', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#9aa0a6', textDecoration: 'none' }}
                             onMouseEnter={e => e.currentTarget.style.color='#1a73e8'} onMouseLeave={e => e.currentTarget.style.color='#9aa0a6'}>
                             <svg style={{ width: '11px', height: '11px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
