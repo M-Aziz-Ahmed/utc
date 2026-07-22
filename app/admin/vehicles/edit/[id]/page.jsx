@@ -298,8 +298,8 @@ const EditVehiclePage = () => {
     const imageFields    = vehicleFields.filter(f => f.type === 'file' || f.type === 'image')
 
     return (
-        <div style={{ padding: '24px 28px', minHeight: '100vh', background: '#f6f8fc' }}>
-            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        <div style={{ padding: '16px', minHeight: '100vh', background: '#f6f8fc' }}>
+            <style>{`@keyframes spin{to{transform:rotate(360deg)}}@media(max-width:768px){.edit-form-grid{grid-template-columns:1fr!important}}`}</style>
 
             {/* Header */}
             <div style={{ marginBottom: '20px' }}>
@@ -322,7 +322,7 @@ const EditVehiclePage = () => {
 
             {/* Two-column card */}
             <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e8eaed', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '260px 1fr', minHeight: '560px' }}>
+                <form onSubmit={handleSubmit} className="edit-form-grid" style={{ display: 'grid', gridTemplateColumns: '260px 1fr', minHeight: '560px' }}>
 
                     {/* ── Left sidebar ── */}
                     <div style={{ background: '#f8f9fa', borderRight: '1px solid #e8eaed', padding: '28px 20px', display: 'flex', flexDirection: 'column', gap: '2px' }}>

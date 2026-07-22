@@ -565,7 +565,7 @@ const RikusoManagementPage = () => {
     const controlProps = { rikusoCompanies, consignees, allocations, onAllocChange: handleAllocChange, onRikusoChange: handleRikusoChange, onPresold: handlePresold, onRemovePresold: handleRemovePresold, onExportSelect: (v) => setExportVehicle(v) }
 
     return (
-        <div style={{ padding: '20px 24px', minHeight: '100vh', background: '#f6f8fc' }}>
+        <div style={{ padding: '16px', minHeight: '100vh', background: '#f6f8fc' }}>
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                 <div>

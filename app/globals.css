@@ -206,6 +206,33 @@ tbody tr:hover {
 ::-webkit-scrollbar-thumb  { background: var(--border-strong); border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--foreground-faint); }
 
+/* ── Modal card ────────────────────────────────────────────────────────────── */
+.modal-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+@media (max-width: 640px) {
+  .modal-card {
+    max-width: calc(100vw - 32px) !important;
+    max-height: 85vh;
+    margin: 16px;
+    padding: 16px;
+  }
+}
+
+/* ── Responsive helpers ────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .scan-grid { grid-template-columns: 1fr !important; }
+  table { font-size: 11px; display: block; overflow-x: auto; }
+  thead, tbody, tr, th, td { display: revert; }
+}
+
 /* ── Loader ─────────────────────────────────────────────────────────────────── */
 .loader {
   height: 60px;

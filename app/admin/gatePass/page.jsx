@@ -86,7 +86,7 @@ const GatePassPage = () => {
     const isOgpReady = tab === 'OGP'
 
     return (
-        <div style={{ padding: '20px 24px', minHeight: '100vh', background: '#f6f8fc' }}>
+        <div style={{ padding: '16px', minHeight: '100vh', background: '#f6f8fc' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                 <div>
                     <h1 style={{ fontSize: '18px', fontWeight: 500, color: '#202124', margin: 0 }}>Gate Pass Management</h1>
@@ -126,6 +126,7 @@ const GatePassPage = () => {
                 </div>
             ) : (
                 <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
+                    <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                             <tr style={{ borderBottom: '2px solid #f0f4f8', background: '#f8fafc' }}>
@@ -171,6 +172,7 @@ const GatePassPage = () => {
                             })}
                         </tbody>
                     </table>
+                    </div>
                 </div>
             )}
 

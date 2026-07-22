@@ -159,7 +159,7 @@ export default function SetupPage() {
     const filteredMfg = manufacturers.filter(m => m.name.toLowerCase().includes(search.toLowerCase()) || m.country?.toLowerCase().includes(search.toLowerCase()))
 
     return (
-        <div style={{ padding: '20px 24px', minHeight: '100vh', background: '#f6f8fc' }}>
+        <div style={{ padding: '16px', minHeight: '100vh', background: '#f6f8fc' }}>
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
                 <div>

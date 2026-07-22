@@ -79,7 +79,7 @@ const ExportCarsPage = () => {
     }
 
     return (
-        <div style={{ padding: '20px 24px', minHeight: '100vh', background: '#f6f8fc' }}>
+        <div style={{ padding: '16px', minHeight: '100vh', background: '#f6f8fc' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                 <div>
                     <h1 style={{ fontSize: '18px', fontWeight: 500, color: '#202124', margin: 0 }}>Export Cars</h1>

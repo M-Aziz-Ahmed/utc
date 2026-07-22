@@ -747,7 +747,7 @@ const AddVehiclePage = () => {
 
     return (
         <>
-        <div style={{ padding: '24px 28px', minHeight: '100vh', background: '#f6f8fc' }}>
+        <div style={{ padding: '16px', minHeight: '100vh', background: '#f6f8fc' }}>
 
             {/* ── Page header ── */}
             <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>

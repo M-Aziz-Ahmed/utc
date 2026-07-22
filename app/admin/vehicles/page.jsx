@@ -720,9 +720,9 @@ const Page = () => {
     })
 
     return (
-        <div className="px-5 py-5">
+        <div className="px-3 md:px-5 py-5">
             {/* Toolbar */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
                 <div className="flex items-center gap-3">
                     <h1 className="font-medium" style={{fontSize:'var(--text-2xl)', color:'#202124'}}>Vehicle Management</h1>
                     <span style={{fontSize:'var(--text-xs)', color:'#5f6368'}}>
@@ -798,6 +798,7 @@ const Page = () => {
                 <>
                     {/* Table */}
                     <div style={{background:'#fff', borderRadius:'8px', border:'1px solid #e2e8f0', overflow:'hidden', boxShadow:'0 1px 3px rgba(0,0,0,0.06)'}}>
+                        <div style={{overflowX:'auto'}}>
                         <table style={{width:'100%', borderCollapse:'collapse', tableLayout:'auto'}}>
                             <thead>
                                 <tr style={{borderBottom:'2px solid #f0f4f8', background:'#f8fafc'}}>
@@ -818,6 +819,7 @@ const Page = () => {
                                 ))}
                             </tbody>
                         </table>
+                        </div>
                     </div>
                     {/* Pagination */}
                     {totalPages > 1 && (
