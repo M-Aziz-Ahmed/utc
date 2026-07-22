@@ -255,6 +255,28 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
                 </div>
             )}
 
+            {/* price summary */}
+            {(() => {
+                const priceFields = fields.filter(f => f.type === 'number' && f.belongsto === 'add-vehicles' && (f.label?.toLowerCase().includes('price') || f.label?.toLowerCase().includes('fob') || f.label?.toLowerCase().includes('total') || f.label?.toLowerCase().includes('cost')))
+                const prices = priceFields.map(f => {
+                    const val = parseFloat(vehicle[f._id] || vehicle[f.label])
+                    return { label: f.label, value: isNaN(val) ? null : val }
+                }).filter(p => p.value !== null)
+                if (prices.length === 0) return null
+                return (
+                    <div style={{ padding: '6px 10px', borderBottom: '1px solid #f0f4f8', background: '#f0fdf4' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                            {prices.map((p, i) => (
+                                <div key={i} style={{ fontSize: '10px' }}>
+                                    <span style={{ color: '#6b7280', fontWeight: 500 }}>{p.label}: </span>
+                                    <span style={{ color: '#059669', fontWeight: 700 }}>${p.value.toLocaleString()}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )
+            })()}
+
             {/* status dots — same as VehicleCard */}
             <div style={{ padding: '6px 10px', background: '#f8fafc', borderBottom: '1px solid #f0f4f8' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -272,10 +294,15 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
                         ))}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        {['Docs', 'EC', 'TBS', 'BL'].map(l => (
-                            <div key={l} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                <span style={{ width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0, background: '#e2e8f0' }} />
-                                <span style={{ fontSize: '10px', color: '#cbd5e1' }}>{l}</span>
+                        {[
+                            { label: 'IGP', active: !!vehicle.physicalIn, title: 'Inward Gate Pass' },
+                            { label: 'OGP', active: !!vehicle.physicalOut, title: 'Outward Gate Pass' },
+                            { label: 'EC', active: !!vehicle.exportCertNumber, title: 'Export Certificate' },
+                            { label: 'BL', active: !!vehicle.blNumber, title: 'Bill of Lading' },
+                        ].map(s => (
+                            <div key={s.label} title={s.title} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <span style={{ width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0, background: s.active ? '#22c55e' : '#e2e8f0' }} />
+                                <span style={{ fontSize: '10px', fontWeight: s.active ? 700 : 400, color: s.active ? '#16a34a' : '#cbd5e1' }}>{s.label}</span>
                             </div>
                         ))}
                     </div>
@@ -359,6 +386,8 @@ const AllocRow = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
                         { label: 'R', active: alloc === 'resale-to-auction', title: 'Resale' },
                         { label: '⚙', active: rikuso, title: 'Rikuso' },
                         { label: 'P', active: isPresold, title: 'Presold' },
+                        { label: 'I', active: !!vehicle.physicalIn, title: 'IGP' },
+                        { label: 'O', active: !!vehicle.physicalOut, title: 'OGP' },
                     ].map(s => (
                         <span key={s.label} title={s.title} style={{ width: '14px', height: '14px', borderRadius: '3px', fontSize: '8px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', background: s.active ? '#1a73e8' : '#f1f3f4', color: s.active ? '#fff' : '#9aa0a6' }}>{s.label}</span>
                     ))}
@@ -426,7 +455,9 @@ const RikusoManagementPage = () => {
     // presold modal
     const [selectedVehicle, setSelectedVehicle]   = useState(null)
     const [showPresoldModal, setShowPresoldModal]  = useState(false)
-    const [presoldData, setPresoldData]            = useState({ clientName: '', purchasedAmount: '' })
+    const [presoldData, setPresoldData]            = useState({ consigneeId: '', purchasedAmount: '' })
+    const [showNewConsignee, setShowNewConsignee]  = useState(false)
+    const [newConsigneeData, setNewConsigneeData]  = useState({ name: '', company: '', phone: '', email: '' })
 
     // export modal
     const [exportVehicle, setExportVehicle] = useState(null)
@@ -469,10 +500,9 @@ const RikusoManagementPage = () => {
     const handlePresold = (vehicle) => {
         setSelectedVehicle(vehicle)
         if (vehicle.consignee) {
-            const c = consignees.find(x => x._id === vehicle.consignee)
-            setPresoldData({ clientName: c?.name || '', purchasedAmount: c?.purchasedAmount || '' })
+            setPresoldData({ consigneeId: vehicle.consignee, purchasedAmount: consignees.find(c => c._id === vehicle.consignee)?.purchasedAmount || '' })
         } else {
-            setPresoldData({ clientName: '', purchasedAmount: '' })
+            setPresoldData({ consigneeId: '', purchasedAmount: '' })
         }
         setShowPresoldModal(true)
     }
@@ -480,15 +510,33 @@ const RikusoManagementPage = () => {
     const handlePresoldSubmit = async (e) => {
         e.preventDefault()
         try {
-            const payload = { name: presoldData.clientName, purchasedAmount: presoldData.purchasedAmount }
-            const res = await fetch('/api/consignee', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-            if (!res.ok) throw new Error('Failed to create consignee')
-            const newConsignee = await res.json()
-            const upd = await fetch('/api/vehicles', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vehicleId: selectedVehicle._id, consignee: newConsignee._id, allocationStatus: true }) })
+            let consigneeId = presoldData.consigneeId
+            if (!consigneeId) {
+                alert('Please select a client / consignee')
+                return
+            }
+            if (presoldData.purchasedAmount) {
+                await fetch(`/api/consignee/${consigneeId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ purchasedAmount: Number(presoldData.purchasedAmount) }) })
+            }
+            const upd = await fetch('/api/vehicles', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vehicleId: selectedVehicle._id, consignee: consigneeId, allocationStatus: true }) })
             if (!upd.ok) throw new Error('Failed to update vehicle')
-            setVehicles(p => p.map(v => v._id === selectedVehicle._id ? { ...v, consignee: newConsignee._id, allocationStatus: true } : v))
-            setConsignees(p => [...p, newConsignee])
+            const updatedConsignee = await fetch('/api/consignee').then(r => r.ok ? r.json() : [])
+            setConsignees(Array.isArray(updatedConsignee) ? updatedConsignee : [])
+            setVehicles(p => p.map(v => v._id === selectedVehicle._id ? { ...v, consignee: consigneeId, allocationStatus: true } : v))
             setShowPresoldModal(false)
+        } catch (e) { alert(e.message) }
+    }
+
+    const handleCreateConsignee = async () => {
+        if (!newConsigneeData.name.trim()) return
+        try {
+            const res = await fetch('/api/consignee', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newConsigneeData) })
+            if (!res.ok) throw new Error('Failed to create consignee')
+            const created = await res.json()
+            setConsignees(p => [...p, created])
+            setPresoldData(p => ({ ...p, consigneeId: created._id }))
+            setShowNewConsignee(false)
+            setNewConsigneeData({ name: '', company: '', phone: '', email: '' })
         } catch (e) { alert(e.message) }
     }
 
@@ -605,10 +653,36 @@ const RikusoManagementPage = () => {
                         </div>
                         <form onSubmit={handlePresoldSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             <div>
-                                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Client Name *</label>
-                                <input type="text" value={presoldData.clientName} onChange={e => setPresoldData(p => ({ ...p, clientName: e.target.value }))} required
-                                    style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="Enter client name…" />
+                                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
+                                    Client / Consignee *
+                                    <button type="button" onClick={() => setShowNewConsignee(true)} style={{ background: 'none', border: 'none', color: '#1a73e8', cursor: 'pointer', fontWeight: 600, textTransform: 'none', letterSpacing: 'normal', fontSize: '10px' }}>+ New Client</button>
+                                </label>
+                                <select value={presoldData.consigneeId} onChange={e => setPresoldData(p => ({ ...p, consigneeId: e.target.value }))} required
+                                    style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: '#fff', color: presoldData.consigneeId ? '#202124' : '#9aa0a6' }}>
+                                    <option value="">Select client / consignee...</option>
+                                    {consignees.sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(c => <option key={c._id} value={c._id}>{c.name}{c.company ? ` (${c.company})` : ''}</option>)}
+                                </select>
                             </div>
+                            {showNewConsignee && (
+                                <div style={{ background: '#f8f9fa', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em' }}>New Client</span>
+                                        <button type="button" onClick={() => setShowNewConsignee(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c5221f', fontSize: '10px', fontWeight: 600 }}>✕</button>
+                                    </div>
+                                    <input type="text" value={newConsigneeData.name} onChange={e => setNewConsigneeData(p => ({ ...p, name: e.target.value }))} placeholder="Client name *" autoFocus
+                                        style={{ width: '100%', padding: '6px 8px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                                        <input type="text" value={newConsigneeData.company} onChange={e => setNewConsigneeData(p => ({ ...p, company: e.target.value }))} placeholder="Company"
+                                            style={{ padding: '6px 8px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
+                                        <input type="text" value={newConsigneeData.phone} onChange={e => setNewConsigneeData(p => ({ ...p, phone: e.target.value }))} placeholder="Phone"
+                                            style={{ padding: '6px 8px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
+                                    </div>
+                                    <button type="button" onClick={handleCreateConsignee} disabled={!newConsigneeData.name.trim()}
+                                        style={{ padding: '6px', background: newConsigneeData.name.trim() ? '#1a73e8' : '#9aa0a6', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: newConsigneeData.name.trim() ? 'pointer' : 'not-allowed' }}>
+                                        Create & Select
+                                    </button>
+                                </div>
+                            )}
                             <div>
                                 <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Purchased Amount *</label>
                                 <input type="number" value={presoldData.purchasedAmount} onChange={e => setPresoldData(p => ({ ...p, purchasedAmount: e.target.value }))} required
