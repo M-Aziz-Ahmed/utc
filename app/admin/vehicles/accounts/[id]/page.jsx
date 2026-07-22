@@ -117,7 +117,7 @@ const VehicleAccountPage = ({ params }) => {
         ]).then(([v, vf, af, tx]) => {
             setVehicle(v); setMainImageUrl(v.mainImageUrl || '')
             setTaxes(Array.isArray(tx) ? tx : [])
-            const vFields = Array.isArray(vf) ? vf.sort((a, b) => (a.label || '').localeCompare(b.label || '')) : []
+            const vFields = Array.isArray(vf) ? vf.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)) : []
             setVehicleFields(vFields)
             const vInit = {}
             vFields.forEach(f => {
@@ -126,7 +126,7 @@ const VehicleAccountPage = ({ params }) => {
                     vInit[f._id] = f.type === 'date' && val ? String(val).split('T')[0] : val
             })
             setFormData(vInit)
-            const aFields = Array.isArray(af) ? af.sort((a, b) => (a.label || '').localeCompare(b.label || '')) : []
+            const aFields = Array.isArray(af) ? af.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)) : []
             setAccountFields(aFields)
             const aInit = {}
             aFields.forEach(f => { const val = v[f._id] ?? v[f.label]; if (val !== undefined && val !== null) aInit[f._id] = val })

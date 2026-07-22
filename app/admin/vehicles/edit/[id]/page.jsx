@@ -169,7 +169,7 @@ const EditVehiclePage = () => {
             setVehicle(v)
             setMainImageUrl(v.mainImageUrl || '')
 
-            const vFields = Array.isArray(vf) ? vf.sort((a, b) => (a.label || '').localeCompare(b.label || '')) : []
+            const vFields = Array.isArray(vf) ? vf.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)) : []
             setVehicleFields(vFields)
             const vInit = {}
             vFields.forEach(f => {
@@ -179,7 +179,7 @@ const EditVehiclePage = () => {
             })
             setFormData(vInit)
 
-            const aFields = Array.isArray(af) ? af.sort((a, b) => (a.label || '').localeCompare(b.label || '')) : []
+            const aFields = Array.isArray(af) ? af.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)) : []
             setAccountFields(aFields)
             const aInit = {}
             aFields.forEach(f => {
@@ -195,7 +195,7 @@ const EditVehiclePage = () => {
         const res = await fetch('/api/fields', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ belongsto: 'accounts' }) })
         const data = await res.json()
         if (res.ok && Array.isArray(data)) {
-            const sorted = data.sort((a, b) => (a.label || '').localeCompare(b.label || ''))
+            const sorted = data.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
             setAccountFields(sorted)
         }
     }

@@ -215,9 +215,6 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
         if (!groupedFields[key]) groupedFields[key] = [];
         groupedFields[key].push(f);
     });
-    Object.keys(groupedFields).forEach(key => {
-        groupedFields[key].sort((a, b) => (a.label || '').localeCompare(b.label || ''));
-    });
     const sortedForms = Object.keys(groupedFields).sort((a,b)=> a==='Global Fields'?-1:b==='Global Fields'?1:a.localeCompare(b));
 
     return (
