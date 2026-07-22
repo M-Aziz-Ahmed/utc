@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useRef } from "react";
 
-const FIELD_TYPES = ["text","number","boolean","password","email","date","image","file","dropdown","select-year","select-country","tax"];
+const FIELD_TYPES = ["text","number","boolean","password","email","date","image","file","dropdown","select-year","select-country","tax","sum"];
 const TYPE_COLORS = {
     text:'bg-blue-50 text-blue-700 border-blue-200', number:'bg-purple-50 text-purple-700 border-purple-200',
     boolean:'bg-yellow-50 text-yellow-700 border-yellow-200', password:'bg-red-50 text-red-700 border-red-200',
@@ -11,6 +11,7 @@ const TYPE_COLORS = {
     'select-year':'bg-cyan-50 text-cyan-700 border-cyan-200',
     'select-country':'bg-lime-50 text-lime-700 border-lime-200',
     tax:'bg-amber-50 text-amber-700 border-amber-200',
+    sum:'bg-violet-50 text-violet-700 border-violet-200',
 };
 
 const GetAllFields = ({ refreshKey, onDelete, forms }) => {
@@ -52,7 +53,7 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
     const startEdit = (f) => {
         setEditing(f._id);
         setEditDraft({ label:f.label, type:f.type, isRequired:f.isRequired??false,
-            belongsto:f.belongsto??'', options:f.options||[], newOption:'', linkedTax:f.linkedTax||'', linkedField:f.linkedField||'' });
+            belongsto:f.belongsto??'', options:f.options||[], newOption:'', linkedTax:f.linkedTax||'', linkedField:f.linkedField||'', linkedFields:f.linkedFields||[] });
     };
     const cancelEdit = () => { setEditing(null); setEditDraft({}); };
 
@@ -78,6 +79,9 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
             if (editDraft.type === 'tax') {
                 d.linkedTax = editDraft.linkedTax || null;
                 d.linkedField = editDraft.linkedField || '';
+            }
+            if (editDraft.type === 'sum') {
+                d.linkedFields = editDraft.linkedFields || [];
             }
             const res = await fetch(`/api/fields/${id}`, {
                 method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(d) });
@@ -334,6 +338,23 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                                                         </select>
                                                     </div>
                                                 )}
+                                                {editDraft.type==='sum' && (
+                                                    <div className="col-span-2 border-2 border-violet-200 rounded-lg p-3 bg-violet-50">
+                                                        <label className="text-xs font-semibold text-violet-700 uppercase tracking-wide block mb-2">Fields to Sum</label>
+                                                        <p className="text-xs text-violet-500 mb-2">Check the fields whose values should be added together.</p>
+                                                        <div className="space-y-1 max-h-40 overflow-y-auto bg-white rounded border border-violet-200 p-2">
+                                                            {fields.filter(f=>(f.type==='number'||f.type==='text'||f.type==='tax'||f.type==='sum')&&f._id!==editing).map(f=>(
+                                                                <label key={f._id} className="flex items-center gap-2 px-2 py-1 rounded cursor-pointer text-xs hover:bg-violet-50 transition">
+                                                                    <input type="checkbox" className="accent-violet-600" checked={(editDraft.linkedFields||[]).includes(f.label)}
+                                                                        onChange={e=>{const lf=editDraft.linkedFields||[];setEditDraft({...editDraft,linkedFields:e.target.checked?[...lf,f.label]:lf.filter(l=>l!==f.label)})}}/>
+                                                                    <span className="font-medium text-gray-800">{f.label}</span>
+                                                                    <span className="text-gray-400 ml-auto">{f.type}{f.belongsto?` (${f.belongsto})`:''}</span>
+                                                                </label>
+                                                            ))}
+                                                        </div>
+                                                        {(editDraft.linkedFields||[]).length>0&&<p className="text-xs text-violet-600 mt-2 font-medium">Summing: {(editDraft.linkedFields||[]).join(' + ')}</p>}
+                                                    </div>
+                                                )}
                                                 <div className="col-span-2">
                                                     <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Required?</span>
                                                     <div className="flex gap-3">
@@ -377,6 +398,7 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                                                             {f.type==='select-year'&&f.options?.length>0&&<span className="text-xs text-cyan-500 bg-cyan-50 px-1.5 py-0.5 rounded-full">{f.options.length} yrs</span>}
                                                             {f.type==='select-country'&&f.options?.length>0&&<span className="text-xs text-lime-600 bg-lime-50 px-1.5 py-0.5 rounded-full">{f.options.length} countries</span>}
                                                             {f.type==='tax'&&f.linkedTax&&<span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-200">linked: {taxes.find(t=>t._id===f.linkedTax)?.name||'unknown'}</span>}
+                                                            {f.type==='sum'&&f.linkedFields?.length>0&&<span className="text-xs text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded-full border border-violet-200">Σ {f.linkedFields.length} fields</span>}
                                                         </div>
                                                     </div>
                                                 </div>

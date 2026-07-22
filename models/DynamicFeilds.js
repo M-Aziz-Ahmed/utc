@@ -10,6 +10,7 @@ const DynFeildsSchema = new mongoose.Schema({
     showOnCard: { type: Boolean, default: true },
     linkedTax:  { type: mongoose.Schema.Types.ObjectId, ref: 'Tax', default: null },
     linkedField:{ type: String, default: '' },
+    linkedFields: [{ type: String }],
 });
 
 export default mongoose.models.DynFeilds || mongoose.model('DynFeilds', DynFeildsSchema);

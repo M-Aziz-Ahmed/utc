@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import GetAllFields from "@/components/fields/GetAllFields";
 
-const FIELD_TYPES = ["text", "number", "boolean", "password", "email", "date", "file", "image", "dropdown", "select-year", "select-country", "tax"];
+const FIELD_TYPES = ["text", "number", "boolean", "password", "email", "date", "file", "image", "dropdown", "select-year", "select-country", "tax", "sum"];
 
 const Page = () => {
     const [label, setLabel] = useState("");
@@ -23,6 +23,7 @@ const Page = () => {
     const [taxes, setTaxes] = useState([]);
     const [linkedTax, setLinkedTax] = useState("");
     const [linkedField, setLinkedField] = useState("");
+    const [linkedFields, setLinkedFields] = useState([]);
     const [allFields, setAllFields] = useState([]);
 
     // Fetch unique forms from fields
@@ -134,6 +135,11 @@ const Page = () => {
                 fieldData.linkedTax = linkedTax;
                 fieldData.linkedField = linkedField;
             }
+
+            // Add linked fields if type is sum
+            if (type === 'sum' && linkedFields.length > 0) {
+                fieldData.linkedFields = linkedFields;
+            }
             
             const res = await fetch('/api/newField', {
                 method: 'POST',
@@ -151,6 +157,7 @@ const Page = () => {
             setNewOption('');
             setLinkedTax('');
             setLinkedField('');
+            setLinkedFields([]);
             setRefreshKey((k) => k + 1);
         } catch (err) {
             setMessage({ type: 'error', text: err.message });
@@ -355,6 +362,48 @@ const Page = () => {
                                             </option>
                                         ))}
                                     </select>
+                                </div>
+                            )}
+
+                            {/* Sum fields - Only show if type is sum */}
+                            {type === 'sum' && (
+                                <div style={{border:'1px solid #ddd6fe', borderRadius:'8px', padding:'12px', background:'rgba(238,242,255,0.5)'}}>
+                                    <label style={{display:'block', fontSize:'var(--text-xs)', fontWeight:600, color:'#5f6368', marginBottom:'8px', textTransform:'uppercase', letterSpacing:'0.05em'}}>
+                                        Fields to Sum
+                                    </label>
+                                    <p style={{fontSize:'var(--text-xs)', color:'#9aa0a6', marginBottom:'8px'}}>
+                                        Select the fields whose values should be added together.
+                                    </p>
+                                    <div style={{display:'flex', flexDirection:'column', gap:'4px', maxHeight:'180px', overflowY:'auto', padding:'4px', background:'#fff', borderRadius:'6px', border:'1px solid #e0e0e0'}}>
+                                        {allFields.filter(f => f.type === 'number' || f.type === 'text' || f.type === 'tax' || f.type === 'sum').map((f) => (
+                                            <label key={f._id} style={{display:'flex', alignItems:'center', gap:'6px', padding:'4px 8px', borderRadius:'4px', cursor:'pointer', fontSize:'12px', color:'#202124', background: linkedFields.includes(f.label) ? '#ede9fe' : 'transparent', border: linkedFields.includes(f.label) ? '1px solid #c4b5fd' : '1px solid transparent', transition:'all 0.15s'}}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={linkedFields.includes(f.label)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setLinkedFields(prev => [...prev, f.label]);
+                                                        } else {
+                                                            setLinkedFields(prev => prev.filter(l => l !== f.label));
+                                                        }
+                                                    }}
+                                                    style={{accentColor:'#7c3aed'}}
+                                                />
+                                                <span style={{fontWeight:500}}>{f.label}</span>
+                                                <span style={{fontSize:'10px', color:'#9aa0a6', marginLeft:'auto'}}>{f.type}{f.belongsto ? ` (${f.belongsto})` : ''}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    {linkedFields.length > 0 && (
+                                        <p style={{fontSize:'var(--text-xs)', color:'#7c3aed', marginTop:'6px', fontWeight:500}}>
+                                            Summing {linkedFields.length} field{linkedFields.length > 1 ? 's' : ''}: {linkedFields.join(' + ')}
+                                        </p>
+                                    )}
+                                    {allFields.filter(f => f.type === 'number' || f.type === 'text' || f.type === 'tax' || f.type === 'sum').length === 0 && (
+                                        <p style={{fontSize:'var(--text-xs)', color:'#9aa0a6', fontStyle:'italic'}}>
+                                            No numeric or text fields available. Create number/tax fields first.
+                                        </p>
+                                    )}
                                 </div>
                             )}
 

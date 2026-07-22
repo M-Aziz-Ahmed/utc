@@ -4,7 +4,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 
 // ── Shared field input ────────────────────────────────────────────────────────
-const FieldInput = ({ field, value, onChange }) => {
+const FieldInput = ({ field, value, onChange, allFields = [], allData = {} }) => {
     const base = { width: '100%', padding: '8px 11px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: '#fff' }
     const focus = e => { e.target.style.borderColor = '#1a73e8'; e.target.style.boxShadow = '0 0 0 3px rgba(26,115,232,0.1)' }
     const blur  = e => { e.target.style.borderColor = '#e0e0e0'; e.target.style.boxShadow = 'none' }
@@ -23,12 +23,27 @@ const FieldInput = ({ field, value, onChange }) => {
             ))}
         </div>
     )
+    if (field.type === 'sum') {
+        const linkedFieldLabels = field.linkedFields || []
+        let sum = 0
+        linkedFieldLabels.forEach(label => {
+            const src = allFields.find(f => f.label === label)
+            if (src) sum += parseFloat(allData[src._id]) || 0
+        })
+        const display = sum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        return (
+            <div style={{ position: 'relative' }}>
+                <input readOnly value={display} style={{ ...base, background: '#f5f3ff', border: '1px solid #c4b5fd', color: '#6d28d9', fontWeight: 700, fontSize: '14px', cursor: 'default' }} />
+                <span style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', fontSize: '9px', padding: '1px 5px', borderRadius: '6px', background: '#ede9fe', color: '#6d28d9', fontWeight: 600, pointerEvents: 'none' }}>Sum</span>
+            </div>
+        )
+    }
     return <input type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'} value={value ?? ''} onChange={e => onChange(e.target.value)} required={field.isRequired} placeholder={`Enter ${field.label.toLowerCase()}`} style={base} onFocus={focus} onBlur={blur} />
 }
 
 // ── Inline add-field form ─────────────────────────────────────────────────────
-const InlineAddFieldForm = ({ FIELD_TYPES, onDone, onCancel }) => {
-    const [field, setField] = useState({ label: '', type: 'text', isRequired: false, options: [] })
+const InlineAddFieldForm = ({ FIELD_TYPES, onDone, onCancel, existingFields = [] }) => {
+    const [field, setField] = useState({ label: '', type: 'text', isRequired: false, options: [], linkedFields: [] })
     const [optInput, setOptInput] = useState('')
     const [adding, setAdding] = useState(false)
     const [msg, setMsg] = useState(null)
@@ -47,6 +62,7 @@ const InlineAddFieldForm = ({ FIELD_TYPES, onDone, onCancel }) => {
             if (field.type === 'select-country') {
                 payload.options = ["Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda","Argentina","Armenia","Australia","Austria","Azerbaijan","Bahamas","Bahrain","Bangladesh","Barbados","Belarus","Belgium","Belize","Benin","Bhutan","Bolivia","Bosnia and Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cabo Verde","Cambodia","Cameroon","Canada","Central African Republic","Chad","Chile","China","Colombia","Comoros","Congo","Costa Rica","Croatia","Cuba","Cyprus","Czech Republic","Denmark","Djibouti","Dominica","Dominican Republic","Ecuador","Egypt","El Salvador","Equatorial Guinea","Eritrea","Estonia","Eswatini","Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea","Guinea-Bissau","Guyana","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kiribati","Kosovo","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania","Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Marshall Islands","Mauritania","Mauritius","Mexico","Micronesia","Moldova","Monaco","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nauru","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia","Norway","Oman","Pakistan","Palau","Palestine","Panama","Papua New Guinea","Paraguay","Peru","Philippines","Poland","Portugal","Qatar","Romania","Russia","Rwanda","Saint Kitts and Nevis","Saint Lucia","Saint Vincent and the Grenadines","Samoa","San Marino","Sao Tome and Principe","Saudi Arabia","Senegal","Serbia","Seychelles","Sierra Leone","Singapore","Slovakia","Slovenia","Solomon Islands","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Suriname","Sweden","Switzerland","Syria","Taiwan","Tajikistan","Tanzania","Thailand","Timor-Leste","Togo","Tonga","Trinidad and Tobago","Tunisia","Turkey","Turkmenistan","Tuvalu","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Vanuatu","Vatican City","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"].sort((a, b) => a.localeCompare(b))
             }
+            if (field.type === 'sum') payload.linkedFields = field.linkedFields
             const res = await fetch('/api/newField', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
             const data = await res.json()
             if (!res.ok) throw new Error(data.message || 'Failed')
@@ -58,8 +74,21 @@ const InlineAddFieldForm = ({ FIELD_TYPES, onDone, onCancel }) => {
             <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Label *</label>
                 <input autoFocus type="text" value={field.label} onChange={e => setField(f => ({ ...f, label: e.target.value }))} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g., Push Price" /></div>
             <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Type</label>
-                <select value={field.type} onChange={e => setField(f => ({ ...f, type: e.target.value, options: [] }))} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fff', boxSizing: 'border-box' }}>
+                <select value={field.type} onChange={e => setField(f => ({ ...f, type: e.target.value, options: [], linkedFields: [] }))} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fff', boxSizing: 'border-box' }}>
                     {FIELD_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+            {field.type === 'sum' && existingFields.length > 0 && (
+                <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '10px', padding: '12px' }}>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#6d28d9', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Source Fields to Sum</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '120px', overflowY: 'auto' }}>
+                        {existingFields.filter(f => f.type === 'number').map(f => (
+                            <label key={f._id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#374151', cursor: 'pointer', padding: '4px 8px', borderRadius: '6px', background: field.linkedFields.includes(f.label) ? '#ede9fe' : 'transparent' }}>
+                                <input type="checkbox" checked={field.linkedFields.includes(f.label)} onChange={() => setField(p => ({ ...p, linkedFields: p.linkedFields.includes(f.label) ? p.linkedFields.filter(l => l !== f.label) : [...p.linkedFields, f.label] }))} style={{ accentColor: '#6d28d9' }} />
+                                {f.label}
+                            </label>
+                        ))}
+                    </div>
+                </div>
+            )}
             {field.type === 'dropdown' && (
                 <div style={{ background: '#f8f9fa', border: '1px solid #e0e0e0', borderRadius: '10px', padding: '12px' }}>
                     <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Options</label>
@@ -120,7 +149,7 @@ const EditVehiclePage = () => {
     const [error, setError]                 = useState(null)
     const [saveMsg, setSaveMsg]             = useState(null)
     const [showAddAccountField, setShowAddAccountField] = useState(false)
-    const FIELD_TYPES = ['text', 'number', 'boolean', 'email', 'date', 'file', 'image', 'dropdown', 'select-year', 'select-country']
+    const FIELD_TYPES = ['text', 'number', 'boolean', 'email', 'date', 'file', 'image', 'dropdown', 'select-year', 'select-country', 'sum']
 
     useEffect(() => { fetchAll() }, [vehicleId])
 
@@ -346,7 +375,7 @@ const EditVehiclePage = () => {
                                         <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>
                                             {field.label}{field.isRequired && <span style={{ color: '#c5221f', marginLeft: '2px' }}>*</span>}
                                         </label>
-                                        <FieldInput field={field} value={formData[field._id]} onChange={v => setFormData(p => ({ ...p, [field._id]: v }))} />
+                                        <FieldInput field={field} value={formData[field._id]} onChange={v => setFormData(p => ({ ...p, [field._id]: v }))} allFields={[...vehicleFields, ...accountFields]} allData={{ ...formData, ...accountData }} />
                                     </div>
                                 ))}
                             </div>
@@ -435,7 +464,7 @@ const EditVehiclePage = () => {
                                             <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>
                                                 {field.label}{field.isRequired && <span style={{ color: '#c5221f', marginLeft: '2px' }}>*</span>}
                                             </label>
-                                            <FieldInput field={field} value={accountData[field._id]} onChange={v => setAccountData(p => ({ ...p, [field._id]: v }))} />
+                                            <FieldInput field={field} value={accountData[field._id]} onChange={v => setAccountData(p => ({ ...p, [field._id]: v }))} allFields={accountFields} allData={accountData} />
                                         </div>
                                     ))}
                                 </div>
@@ -478,7 +507,7 @@ const EditVehiclePage = () => {
                             </button>
                         </div>
                         <p style={{ fontSize: '12px', color: '#9aa0a6', margin: '0 0 16px' }}>Field will be added to the <strong style={{ color: '#5f6368' }}>accounts</strong> form.</p>
-                        <InlineAddFieldForm FIELD_TYPES={FIELD_TYPES} onDone={() => { fetchAccountFields(); setShowAddAccountField(false) }} onCancel={() => setShowAddAccountField(false)} />
+                        <InlineAddFieldForm FIELD_TYPES={FIELD_TYPES} onDone={() => { fetchAccountFields(); setShowAddAccountField(false) }} onCancel={() => setShowAddAccountField(false)} existingFields={accountFields} />
                     </div>
                 </div>
             )}

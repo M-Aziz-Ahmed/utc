@@ -410,7 +410,7 @@ function ModelModal({ data, fields, saving, onSave, onClose }) {
 
     // Fields eligible for defaults: exclude file/image/boolean
     const defaultableFields = fields.filter(f =>
-        !['file', 'image', 'boolean'].includes(f.type)
+        !['file', 'image', 'boolean', 'tax', 'sum'].includes(f.type)
         && f.belongsto === 'add-vehicles'
     )
 

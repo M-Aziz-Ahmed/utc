@@ -69,6 +69,26 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, accountFi
             </div>
         )
     }
+    if (field.type === 'sum') {
+        const linkedFieldLabels = field.linkedFields || []
+        let sum = 0
+        const parts = []
+        linkedFieldLabels.forEach(label => {
+            const src = accountFields?.find(f => f.label === label)
+            if (src) {
+                const val = parseFloat(accountData?.[src._id]) || 0
+                sum += val
+                if (val !== 0) parts.push({ label: src.label, val })
+            }
+        })
+        const display = sum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        return (
+            <div style={{ position: 'relative' }}>
+                <input readOnly value={display} style={{ ...base, background: '#f5f3ff', border: '1px solid #c4b5fd', color: '#6d28d9', fontWeight: 700, fontSize: '14px', cursor: 'default' }} />
+                <span style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', fontSize: '9px', padding: '1px 5px', borderRadius: '6px', background: '#ede9fe', color: '#6d28d9', fontWeight: 600, pointerEvents: 'none' }}>Sum</span>
+            </div>
+        )
+    }
     return <input type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'} value={value ?? ''} onChange={e => onChange(e.target.value)} required={field.isRequired} placeholder={`Enter ${field.label.toLowerCase()}`} style={base} onFocus={focus} onBlur={blur} />
 }
 
