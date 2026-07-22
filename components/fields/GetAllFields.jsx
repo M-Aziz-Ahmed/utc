@@ -53,7 +53,7 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
     const startEdit = (f) => {
         setEditing(f._id);
         setEditDraft({ label:f.label, type:f.type, isRequired:f.isRequired??false,
-            belongsto:f.belongsto??'', options:f.options||[], newOption:'', linkedTax:f.linkedTax||'', linkedField:f.linkedField||'', linkedFields:f.linkedFields||[] });
+            belongsto:f.belongsto??'', options:f.options||[], newOption:'', linkedTax:f.linkedTax||'', linkedField:f.linkedField||'', linkedFields:f.linkedFields||[], vehicleField:f.vehicleField||'' });
     };
     const cancelEdit = () => { setEditing(null); setEditDraft({}); };
 
@@ -82,6 +82,11 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
             }
             if (editDraft.type === 'sum') {
                 d.linkedFields = editDraft.linkedFields || [];
+            }
+            if (editDraft.vehicleField) {
+                d.vehicleField = editDraft.vehicleField;
+            } else {
+                d.vehicleField = '';
             }
             const res = await fetch(`/api/fields/${id}`, {
                 method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(d) });
@@ -355,6 +360,24 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                                                         {(editDraft.linkedFields||[]).length>0&&<p className="text-xs text-violet-600 mt-2 font-medium">Summing: {(editDraft.linkedFields||[]).join(' + ')}</p>}
                                                     </div>
                                                 )}
+                                                {editDraft.type!=='file'&&editDraft.type!=='image' && (
+                                                    <div className="col-span-2 border-2 border-green-200 rounded-lg p-3 bg-green-50">
+                                                        <label className="text-xs font-semibold text-green-700 uppercase tracking-wide block mb-2">Link to Vehicle DB Field</label>
+                                                        <p className="text-xs text-green-600 mb-2">Auto-fill from the vehicle's database value. Field will be read-only.</p>
+                                                        <select value={editDraft.vehicleField||''} onChange={e=>setEditDraft({...editDraft,vehicleField:e.target.value})}
+                                                            className="w-full border border-green-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-green-400 bg-white">
+                                                            <option value="">None (manual entry)</option>
+                                                            <option value="rikusoCompany">Rikuso Company</option>
+                                                            <option value="consignee">Consignee</option>
+                                                            <option value="allocation">Allocation</option>
+                                                            <option value="exportCountry">Export Country</option>
+                                                            <option value="manufacturer">Manufacturer</option>
+                                                            <option value="model">Model</option>
+                                                            <option value="auctionGroup">Auction Group</option>
+                                                            <option value="auctionVenue">Auction Venue</option>
+                                                        </select>
+                                                    </div>
+                                                )}
                                                 <div className="col-span-2">
                                                     <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Required?</span>
                                                     <div className="flex gap-3">
@@ -397,8 +420,9 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                                                             {f.type==='dropdown'&&f.options?.length>0&&<span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">{f.options.length} opts</span>}
                                                             {f.type==='select-year'&&f.options?.length>0&&<span className="text-xs text-cyan-500 bg-cyan-50 px-1.5 py-0.5 rounded-full">{f.options.length} yrs</span>}
                                                             {f.type==='select-country'&&f.options?.length>0&&<span className="text-xs text-lime-600 bg-lime-50 px-1.5 py-0.5 rounded-full">{f.options.length} countries</span>}
-                                                            {f.type==='tax'&&f.linkedTax&&<span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-200">linked: {taxes.find(t=>t._id===f.linkedTax)?.name||'unknown'}</span>}
-                                                            {f.type==='sum'&&f.linkedFields?.length>0&&<span className="text-xs text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded-full border border-violet-200">Σ {f.linkedFields.length} fields</span>}
+                                                             {f.type==='tax'&&f.linkedTax&&<span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-200">linked: {taxes.find(t=>t._id===f.linkedTax)?.name||'unknown'}</span>}
+                                                             {f.type==='sum'&&f.linkedFields?.length>0&&<span className="text-xs text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded-full border border-violet-200">Σ {f.linkedFields.length} fields</span>}
+                                                             {f.vehicleField&&<span className="text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full border border-green-200">→ {f.vehicleField}</span>}
                                                         </div>
                                                     </div>
                                                 </div>

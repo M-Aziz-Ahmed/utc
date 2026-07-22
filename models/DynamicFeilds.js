@@ -11,6 +11,7 @@ const DynFeildsSchema = new mongoose.Schema({
     linkedTax:  { type: mongoose.Schema.Types.ObjectId, ref: 'Tax', default: null },
     linkedField:{ type: String, default: '' },
     linkedFields: [{ type: String }],
+    vehicleField:{ type: String, default: '' },
 });
 
 export default mongoose.models.DynFeilds || mongoose.model('DynFeilds', DynFeildsSchema);

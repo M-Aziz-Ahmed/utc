@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 
 export const POST = async (req) => {
     const body = await req.json();
-    const { label, type, isRequired, belongsto, options, linkedTax, linkedField, linkedFields } = body;
+    const { label, type, isRequired, belongsto, options, linkedTax, linkedField, linkedFields, vehicleField } = body;
 
     if (!label || !type) {
         return NextResponse.json({ message: 'Label and type are required' }, { status: 400 });
@@ -34,6 +34,7 @@ export const POST = async (req) => {
         if (linkedTax) fieldData.linkedTax = linkedTax;
         if (linkedField) fieldData.linkedField = linkedField;
         if (linkedFields && Array.isArray(linkedFields)) fieldData.linkedFields = linkedFields;
+        if (vehicleField) fieldData.vehicleField = vehicleField;
 
         if (options && Array.isArray(options)) {
             fieldData.options = options;

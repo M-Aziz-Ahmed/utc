@@ -25,6 +25,7 @@ const Page = () => {
     const [linkedField, setLinkedField] = useState("");
     const [linkedFields, setLinkedFields] = useState([]);
     const [allFields, setAllFields] = useState([]);
+    const [vehicleField, setVehicleField] = useState("");
 
     // Fetch unique forms from fields
     useEffect(() => {
@@ -140,6 +141,11 @@ const Page = () => {
             if (type === 'sum' && linkedFields.length > 0) {
                 fieldData.linkedFields = linkedFields;
             }
+
+            // Add vehicle field linking
+            if (vehicleField) {
+                fieldData.vehicleField = vehicleField;
+            }
             
             const res = await fetch('/api/newField', {
                 method: 'POST',
@@ -158,6 +164,7 @@ const Page = () => {
             setLinkedTax('');
             setLinkedField('');
             setLinkedFields([]);
+            setVehicleField('');
             setRefreshKey((k) => k + 1);
         } catch (err) {
             setMessage({ type: 'error', text: err.message });
@@ -467,6 +474,34 @@ const Page = () => {
                                     ))}
                                 </select>
                             </div>
+
+                            {/* Link to Vehicle DB Field */}
+                            {type !== 'file' && type !== 'image' && (
+                                <div style={{border:'1px solid #d1fae5', borderRadius:'8px', padding:'12px', background:'rgba(209,250,229,0.3)'}}>
+                                    <label style={{display:'block', fontSize:'var(--text-xs)', fontWeight:600, color:'#5f6368', marginBottom:'8px', textTransform:'uppercase', letterSpacing:'0.05em'}}>
+                                        Link to Vehicle DB Field
+                                        <span style={{marginLeft:'4px', color:'#9aa0a6', fontWeight:400, textTransform:'none', letterSpacing:'normal'}}>(optional)</span>
+                                    </label>
+                                    <p style={{fontSize:'var(--text-xs)', color:'#9aa0a6', marginBottom:'8px'}}>
+                                        Auto-fill this field from the vehicle's database value. Field will be read-only.
+                                    </p>
+                                    <select
+                                        value={vehicleField}
+                                        onChange={(e) => setVehicleField(e.target.value)}
+                                        style={{width:'100%', padding:'7px 10px', border:'1px solid #86efac', borderRadius:'4px', fontSize:'13px', color:'#202124', outline:'none', background:'#fff'}}
+                                    >
+                                        <option value="">None (manual entry)</option>
+                                        <option value="rikusoCompany">Rikuso Company</option>
+                                        <option value="consignee">Consignee</option>
+                                        <option value="allocation">Allocation</option>
+                                        <option value="exportCountry">Export Country</option>
+                                        <option value="manufacturer">Manufacturer</option>
+                                        <option value="model">Model</option>
+                                        <option value="auctionGroup">Auction Group</option>
+                                        <option value="auctionVenue">Auction Venue</option>
+                                    </select>
+                                </div>
+                            )}
 
                             {/* Submit */}
                             <button
