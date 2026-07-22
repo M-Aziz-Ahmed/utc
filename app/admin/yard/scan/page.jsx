@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 
 const YardScanPage = () => {
@@ -10,8 +10,13 @@ const YardScanPage = () => {
     const [error, setError] = useState(null)
     const [loading, setLoading] = useState(true)
     const [recentScans, setRecentScans] = useState([])
-    const scannerRef = useRef(null)
+    const [cameraReady, setCameraReady] = useState(false)
     const html5QrCodeRef = useRef(null)
+    const yardsRef = useRef([])
+    const selectedYardRef = useRef('')
+
+    useEffect(() => { yardsRef.current = yards }, [yards])
+    useEffect(() => { selectedYardRef.current = selectedYard }, [selectedYard])
 
     useEffect(() => {
         fetch('/api/yard').then(r => r.ok ? r.json() : []).then(y => {
@@ -20,8 +25,11 @@ const YardScanPage = () => {
         }).catch(() => setLoading(false))
     }, [])
 
-    const handleScan = useCallback(async (decodedText) => {
-        if (!selectedYard) {
+    const processScan = async (decodedText) => {
+        const yardId = selectedYardRef.current
+        const currentYards = yardsRef.current
+
+        if (!yardId) {
             setError('Please select a yard first')
             return
         }
@@ -39,7 +47,7 @@ const YardScanPage = () => {
             const res = await fetch('/api/qr/scan', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ vehicleId: parsed.id, yardId: selectedYard }),
+                body: JSON.stringify({ vehicleId: parsed.id, yardId }),
             })
 
             const data = await res.json()
@@ -54,22 +62,23 @@ const YardScanPage = () => {
                 return
             }
 
+            const yardObj = currentYards.find(y => y._id === yardId)
             setResult({
                 vehicle: data.vehicle,
                 gatePass: data.gatePass,
-                yard: yards.find(y => y._id === selectedYard),
+                yard: yardObj,
             })
 
             setRecentScans(prev => [{
                 vehicle: data.vehicle,
                 gatePass: data.gatePass,
                 time: new Date(),
-                yard: yards.find(y => y._id === selectedYard),
+                yard: yardObj,
             }, ...prev].slice(0, 20))
         } catch (e) {
             setError('Failed to parse QR code data')
         }
-    }, [selectedYard, yards])
+    }
 
     const startScanner = async () => {
         if (!selectedYard) {
@@ -80,48 +89,75 @@ const YardScanPage = () => {
         setScanning(true)
         setResult(null)
         setError(null)
+        setCameraReady(false)
 
         try {
-            const { Html5Qrcode } = await import('html5-qrcode')
-
             if (html5QrCodeRef.current) {
                 try { await html5QrCodeRef.current.stop() } catch (e) {}
+                try { html5QrCodeRef.current.clear() } catch (e) {}
+                html5QrCodeRef.current = null
             }
+
+            const { Html5Qrcode } = await import('html5-qrcode')
 
             const html5QrCode = new Html5Qrcode('qr-reader')
             html5QrCodeRef.current = html5QrCode
 
             await html5QrCode.start(
                 { facingMode: 'environment' },
-                { fps: 10, qrbox: { width: 250, height: 250 } },
+                {
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 },
+                    aspectRatio: 1.0,
+                },
                 (decodedText) => {
-                    handleScan(decodedText)
-                    html5QrCode.stop().catch(() => {})
-                    setScanning(false)
+                    processScan(decodedText)
                 },
                 () => {}
             )
+            setCameraReady(true)
         } catch (e) {
-            setError('Camera access denied or not available. ' + e.message)
+            console.error('Scanner error:', e)
+            setError('Camera access denied or not available. Please allow camera access and try again.')
             setScanning(false)
+            setCameraReady(false)
         }
     }
 
     const stopScanner = async () => {
         if (html5QrCodeRef.current) {
             try { await html5QrCodeRef.current.stop() } catch (e) {}
+            try { html5QrCodeRef.current.clear() } catch (e) {}
             html5QrCodeRef.current = null
         }
         setScanning(false)
+        setCameraReady(false)
     }
 
     useEffect(() => {
-        return () => { if (html5QrCodeRef.current) { html5QrCodeRef.current.stop().catch(() => {}) } }
+        return () => {
+            if (html5QrCodeRef.current) {
+                try { html5QrCodeRef.current.stop() } catch (e) {}
+                try { html5QrCodeRef.current.clear() } catch (e) {}
+            }
+        }
     }, [])
 
     return (
-        <div style={{ padding: '20px 24px', minHeight: '100vh', background: '#f6f8fc' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+        <div style={{ padding: '16px', minHeight: '100vh', background: '#f6f8fc' }}>
+            <style>{`
+                #qr-reader { border: none !important; width: 100% !important; max-width: 340px; margin: 0 auto; }
+                #qr-reader video { border-radius: 12px !important; width: 100% !important; }
+                #qr-reader__scan_region { min-height: 200px; }
+                #qr-reader__dashboard { display: none !important; }
+                #qr-reader img[alt="Info icon"] { display: none !important; }
+                #qr-reader__header_message { display: none !important; }
+                @media (max-width: 768px) {
+                    .scan-grid { grid-template-columns: 1fr !important; }
+                }
+            `}</style>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
                 <Link href="/admin/yard" style={{ color: '#1a73e8', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <svg style={{ width: '12px', height: '12px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                     Yards
@@ -133,10 +169,11 @@ const YardScanPage = () => {
             <h1 style={{ fontSize: '18px', fontWeight: 500, color: '#202124', margin: '0 0 4px' }}>Yard Entry Scanner</h1>
             <p style={{ fontSize: '12px', color: '#5f6368', margin: '0 0 16px' }}>Scan a vehicle QR code to register entry into a yard</p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', alignItems: 'start' }}>
-                {/* Left: Scanner */}
+            <div className="scan-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', alignItems: 'start' }}>
+
+                {/* Scanner Card */}
                 <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e8eaed', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                    <div style={{ padding: '16px 20px', borderBottom: '1px solid #f0f4f8' }}>
+                    <div style={{ padding: '16px', borderBottom: '1px solid #f0f4f8' }}>
                         <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#202124', margin: '0 0 12px' }}>Select Yard & Scan</h3>
                         <div>
                             <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Yard *</label>
@@ -149,8 +186,15 @@ const YardScanPage = () => {
                         </div>
                     </div>
 
-                    <div style={{ padding: '20px', textAlign: 'center' }}>
-                        <div id="qr-reader" ref={scannerRef} style={{ width: '100%', maxWidth: '320px', margin: '0 auto' }} />
+                    <div style={{ padding: '16px', textAlign: 'center' }}>
+                        <div id="qr-reader" style={{ width: '100%', maxWidth: '340px', margin: '0 auto' }} />
+
+                        {scanning && !cameraReady && (
+                            <div style={{ padding: '20px', color: '#5f6368', fontSize: '12px' }}>
+                                <div style={{ width: '24px', height: '24px', border: '3px solid #e8f0fe', borderTopColor: '#1a73e8', borderRadius: '50%', animation: 'spin 0.7s linear infinite', margin: '0 auto 8px' }} />
+                                Starting camera...
+                            </div>
+                        )}
 
                         {!scanning ? (
                             <button onClick={startScanner} disabled={!selectedYard}
@@ -166,7 +210,6 @@ const YardScanPage = () => {
                             </button>
                         )}
 
-                        {/* Result */}
                         {result && (
                             <div style={{ marginTop: '16px', padding: '14px', background: '#f0fdf4', borderRadius: '10px', border: '1px solid #bbf7d0', textAlign: 'left' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
@@ -182,7 +225,6 @@ const YardScanPage = () => {
                             </div>
                         )}
 
-                        {/* Error */}
                         {error && (
                             <div style={{ marginTop: '16px', padding: '14px', background: '#fef2f2', borderRadius: '10px', border: '1px solid #fecaca', textAlign: 'left' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
@@ -195,9 +237,9 @@ const YardScanPage = () => {
                     </div>
                 </div>
 
-                {/* Right: Recent Scans */}
+                {/* Recent Scans */}
                 <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e8eaed', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                    <div style={{ padding: '16px 20px', borderBottom: '1px solid #f0f4f8' }}>
+                    <div style={{ padding: '16px', borderBottom: '1px solid #f0f4f8' }}>
                         <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#202124', margin: 0 }}>Recent Scans</h3>
                         <p style={{ fontSize: '11px', color: '#9aa0a6', margin: '2px 0 0' }}>{recentScans.length} vehicles checked in this session</p>
                     </div>
@@ -210,7 +252,7 @@ const YardScanPage = () => {
                     ) : (
                         <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
                             {recentScans.map((scan, i) => (
-                                <div key={i} style={{ padding: '12px 20px', borderBottom: '1px solid #f0f4f8', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div key={i} style={{ padding: '12px 16px', borderBottom: '1px solid #f0f4f8', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
                                     <div>
                                         <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>{scan.vehicle.manufacturer} {scan.vehicle.model}</div>
                                         <div style={{ fontSize: '11px', color: '#9aa0a6' }}>{scan.gatePass.gatePassNumber} • {scan.yard?.name}</div>
@@ -225,6 +267,8 @@ const YardScanPage = () => {
                     )}
                 </div>
             </div>
+
+            <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
         </div>
     )
 }

@@ -16,6 +16,7 @@ const setCookie = (name, value, days = 365) => {
 
 const Sidebar = () => {
     const [toggle, setToggle] = useState(true);
+    const [mobileOpen, setMobileOpen] = useState(false);
     const [openMenus, setOpenMenus] = useState({ 'Vehicles Management': true });
     const [mounted, setMounted] = useState(false)
 
@@ -24,6 +25,18 @@ const Sidebar = () => {
         const saved = getCookie('sidebar_open')
         if (saved !== null) setToggle(saved === 'true')
         setMounted(true)
+    }, [])
+
+    // Listen for mobile toggle events from Navbar
+    useEffect(() => {
+        const handler = () => setMobileOpen(prev => !prev)
+        window.addEventListener('toggle-sidebar-mobile', handler)
+        return () => window.removeEventListener('toggle-sidebar-mobile', handler)
+    }, [])
+
+    // Close mobile sidebar on navigation
+    useEffect(() => {
+        setMobileOpen(false)
     }, [])
 
     const handleToggle = () => {
@@ -251,8 +264,18 @@ const Sidebar = () => {
     const pathname = usePathname();
 
     return (
-        <div className={`h-screen transition-all duration-300 flex flex-col shrink-0 z-40 ${toggle ? 'w-64' : 'w-14'}`}
-            style={{ background: '#f0f4f9', borderRight: '1px solid #e0e0e0' }}>
+        <>
+            {/* Mobile overlay backdrop */}
+            {mobileOpen && (
+                <div className="fixed inset-0 bg-black/40 z-50 md:hidden" onClick={() => setMobileOpen(false)} />
+            )}
+
+            {/* Sidebar */}
+            <div className={`h-screen transition-all duration-300 flex flex-col shrink-0 z-50
+                fixed md:relative md:z-40
+                ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+                ${toggle ? 'w-64' : 'w-14'}`}
+                style={{ background: '#f0f4f9', borderRight: '1px solid #e0e0e0' }}>
             {/* Header Area */}
             <div className="flex items-center justify-between min-h-[56px] px-3" style={{ borderBottom: '1px solid #e0e0e0' }}>
                 {toggle && (
@@ -358,6 +381,7 @@ const Sidebar = () => {
                 })}
             </div>
         </div>
+        </>
     );
 };
 

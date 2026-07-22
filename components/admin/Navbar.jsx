@@ -63,6 +63,18 @@ const Navbar = ({ user }) => {
 
                     {/* Right side */}
                     <div className="flex items-center gap-1">
+                        {/* Mobile sidebar toggle */}
+                        <button
+                            onClick={() => window.dispatchEvent(new Event('toggle-sidebar-mobile'))}
+                            className="md:hidden p-2 rounded-full transition-colors"
+                            style={{color:'#5f6368'}}
+                            onMouseEnter={e => e.currentTarget.style.background='#f1f3f4'}
+                            onMouseLeave={e => e.currentTarget.style.background='transparent'}
+                        >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </button>
                         {/* Notifications */}
                         <button
                             className="p-2 rounded-full relative transition-colors"
@@ -140,51 +152,9 @@ const Navbar = ({ user }) => {
                                 </div>
                             )}
                         </div>
-
-                        {/* Mobile menu button */}
-                        <button
-                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                            className="md:hidden p-2 rounded-full transition-colors"
-                            style={{color:'#5f6368'}}
-                            onMouseEnter={e => e.currentTarget.style.background='#f1f3f4'}
-                            onMouseLeave={e => e.currentTarget.style.background='transparent'}
-                        >
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                {mobileMenuOpen ? (
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                ) : (
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                                )}
-                            </svg>
-                        </button>
                     </div>
                 </div>
             </div>
-
-            {/* Mobile Navigation */}
-            {mobileMenuOpen && (
-                <div className="md:hidden" style={{borderTop:'1px solid #e0e0e0', background:'#fff'}}>
-                    <div className="px-3 py-2 space-y-1">
-                        {navigation.map((item) => (
-                            <Link
-                                key={item.name}
-                                href={item.href}
-                                onClick={() => setMobileMenuOpen(false)}
-                                style={{
-                                    display:'flex', alignItems:'center', gap:'10px',
-                                    padding:'8px 12px', borderRadius:'20px',
-                                    fontSize:'var(--text-sm)', fontWeight:500,
-                                    color: isActive(item.href) ? '#1a73e8' : '#444746',
-                                    background: isActive(item.href) ? '#e8f0fe' : 'transparent',
-                                }}
-                            >
-                                {item.icon}
-                                {item.name}
-                            </Link>
-                        ))}
-                    </div>
-                </div>
-            )}
         </nav>
     )
 }
