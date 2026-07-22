@@ -96,7 +96,7 @@ export default function SetupPage() {
         const fData = fRes.ok ? await fRes.json() : []
         const mfgs = mData.filter(m => !m.isRikusoCompany).sort((a, b) => a.name.localeCompare(b.name))
         setManufacturers(mfgs)
-        setFields(fData.filter(f => f.belongsto === 'add-vehicles'))
+        setFields(fData.filter(f => f.belongsto === 'add-vehicles').sort((a, b) => (a.label || '').localeCompare(b.label || '')))
         if (mfgs.length > 0) setActiveMfg(prev => prev ? mfgs.find(m => m._id === prev._id) || mfgs[0] : mfgs[0])
         setLoading(false)
     }

@@ -326,7 +326,7 @@ const AddVehiclePage = () => {
         try {
             const res = await fetch('/api/fields', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ belongsto: 'add-vehicles' }) })
             const data = await res.json()
-            if (res.ok && Array.isArray(data)) setFields(data)
+            if (res.ok && Array.isArray(data)) setFields(data.sort((a, b) => (a.label || '').localeCompare(b.label || '')))
         } catch (e) { console.error(e) }
     }
     const fetchAccountFields = async () => {
