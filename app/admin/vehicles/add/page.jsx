@@ -123,6 +123,15 @@ const AddFieldForm = ({ belongsto, onDone, onCancel, FIELD_TYPES }) => {
         try {
             const payload = { ...field, belongsto }
             if (field.type === 'dropdown') payload.options = field.options.filter(o => o.trim())
+            if (field.type === 'select-year') {
+                const currentYear = new Date().getFullYear()
+                const years = []
+                for (let y = currentYear; y >= 1950; y--) years.push(String(y))
+                payload.options = years
+            }
+            if (field.type === 'select-country') {
+                payload.options = ["Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda","Argentina","Armenia","Australia","Austria","Azerbaijan","Bahamas","Bahrain","Bangladesh","Barbados","Belarus","Belgium","Belize","Benin","Bhutan","Bolivia","Bosnia and Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cabo Verde","Cambodia","Cameroon","Canada","Central African Republic","Chad","Chile","China","Colombia","Comoros","Congo","Costa Rica","Croatia","Cuba","Cyprus","Czech Republic","Denmark","Djibouti","Dominica","Dominican Republic","Ecuador","Egypt","El Salvador","Equatorial Guinea","Eritrea","Estonia","Eswatini","Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea","Guinea-Bissau","Guyana","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kiribati","Kosovo","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania","Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Marshall Islands","Mauritania","Mauritius","Mexico","Micronesia","Moldova","Monaco","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nauru","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia","Norway","Oman","Pakistan","Palau","Palestine","Panama","Papua New Guinea","Paraguay","Peru","Philippines","Poland","Portugal","Qatar","Romania","Russia","Rwanda","Saint Kitts and Nevis","Saint Lucia","Saint Vincent and the Grenadines","Samoa","San Marino","Sao Tome and Principe","Saudi Arabia","Senegal","Serbia","Seychelles","Sierra Leone","Singapore","Slovakia","Slovenia","Solomon Islands","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Suriname","Sweden","Switzerland","Syria","Taiwan","Tajikistan","Tanzania","Thailand","Timor-Leste","Togo","Tonga","Trinidad and Tobago","Tunisia","Turkey","Turkmenistan","Tuvalu","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Vanuatu","Vatican City","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"].sort((a, b) => a.localeCompare(b))
+            }
             const res = await fetch('/api/newField', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
             const data = await res.json()
             if (!res.ok) throw new Error(data.message || 'Failed')
@@ -165,6 +174,16 @@ const AddFieldForm = ({ belongsto, onDone, onCancel, FIELD_TYPES }) => {
                         <button type="button" onClick={() => { if (optionInput.trim()) { setField(f => ({ ...f, options: [...f.options, optionInput.trim()] })); setOptionInput('') } }}
                             style={{ padding: '6px 12px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>+ Add</button>
                     </div>
+                </div>
+            )}
+            {field.type === 'select-year' && (
+                <div style={{ background: '#ecfeff', border: '1px solid #a5f3fc', borderRadius: '10px', padding: '12px' }}>
+                    <p style={{ fontSize: '12px', color: '#0e7490' }}>Options will be years from <strong>{new Date().getFullYear()}</strong> down to <strong>1950</strong>. Generated automatically.</p>
+                </div>
+            )}
+            {field.type === 'select-country' && (
+                <div style={{ background: '#f7fee7', border: '1px solid #bef264', borderRadius: '10px', padding: '12px' }}>
+                    <p style={{ fontSize: '12px', color: '#4d7c0f' }}>Options will be <strong>195 countries</strong> sorted A-Z. Generated automatically.</p>
                 </div>
             )}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -266,9 +285,9 @@ const AddVehiclePage = () => {
     const [addingField, setAddingField] = useState(false)
     const [addFieldMsg, setAddFieldMsg] = useState(null)
 
-    const FIELD_TYPES = ['text', 'number', 'boolean', 'email', 'date', 'file', 'image', 'dropdown', 'tax']
+    const FIELD_TYPES = ['text', 'number', 'boolean', 'email', 'date', 'file', 'image', 'dropdown', 'select-year', 'select-country', 'tax']
     const [newManufacturer, setNewManufacturer] = useState({ name: '', country: '' })
-    const [newModel, setNewModel] = useState({ name: '', description: '' })
+    const [newModel, setNewModel] = useState({ name: '', description: '', defaults: {} })
     const [newVariant, setNewVariant] = useState('')
     const [saving, setSaving] = useState(false)
     const [taxes, setTaxes] = useState([])
@@ -341,9 +360,11 @@ const AddVehiclePage = () => {
         if (!newModel.name.trim() || !selectedManufacturer) return
         setSaving(true)
         try {
-            const updated = { ...selectedManufacturer, models: [...(selectedManufacturer.models || []), { ...newModel, variants: [] }] }
+            const cleanDefaults = Object.fromEntries(Object.entries(newModel.defaults || {}).filter(([, v]) => v !== '' && v !== null && v !== undefined))
+            const modelData = { name: newModel.name, description: newModel.description, dimensions: newModel.dimensions || {}, defaults: cleanDefaults }
+            const updated = { ...selectedManufacturer, models: [...(selectedManufacturer.models || []), modelData] }
             const res = await fetch(`/api/manufacturer/${selectedManufacturer._id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updated) })
-            if (res.ok) { const u = await res.json(); setManufacturers(prev => prev.map(m => m._id === u._id ? u : m)); setSelectedManufacturer(u); setSelectedModel(u.models[u.models.length - 1]); setShowAddModel(false); setNewModel({ name: '', description: '' }) }
+            if (res.ok) { const u = await res.json(); setManufacturers(prev => prev.map(m => m._id === u._id ? u : m)); setSelectedManufacturer(u); setSelectedModel(u.models[u.models.length - 1]); setShowAddModel(false); setNewModel({ name: '', description: '', defaults: {} }) }
         } finally { setSaving(false) }
     }
 
@@ -363,6 +384,15 @@ const AddVehiclePage = () => {
         try {
             const payload = { ...newField, belongsto: 'add-vehicles' }
             if (newField.type === 'dropdown') payload.options = newField.options.filter(o => o.trim())
+            if (newField.type === 'select-year') {
+                const currentYear = new Date().getFullYear()
+                const years = []
+                for (let y = currentYear; y >= 1950; y--) years.push(String(y))
+                payload.options = years
+            }
+            if (newField.type === 'select-country') {
+                payload.options = ["Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda","Argentina","Armenia","Australia","Austria","Azerbaijan","Bahamas","Bahrain","Bangladesh","Barbados","Belarus","Belgium","Belize","Benin","Bhutan","Bolivia","Bosnia and Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cabo Verde","Cambodia","Cameroon","Canada","Central African Republic","Chad","Chile","China","Colombia","Comoros","Congo","Costa Rica","Croatia","Cuba","Cyprus","Czech Republic","Denmark","Djibouti","Dominica","Dominican Republic","Ecuador","Egypt","El Salvador","Equatorial Guinea","Eritrea","Estonia","Eswatini","Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea","Guinea-Bissau","Guyana","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kiribati","Kosovo","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania","Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Marshall Islands","Mauritania","Mauritius","Mexico","Micronesia","Moldova","Monaco","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nauru","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia","Norway","Oman","Pakistan","Palau","Palestine","Panama","Papua New Guinea","Paraguay","Peru","Philippines","Poland","Portugal","Qatar","Romania","Russia","Rwanda","Saint Kitts and Nevis","Saint Lucia","Saint Vincent and the Grenadines","Samoa","San Marino","Sao Tome and Principe","Saudi Arabia","Senegal","Serbia","Seychelles","Sierra Leone","Singapore","Slovakia","Slovenia","Solomon Islands","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Suriname","Sweden","Switzerland","Syria","Taiwan","Tajikistan","Tanzania","Thailand","Timor-Leste","Togo","Tonga","Trinidad and Tobago","Tunisia","Turkey","Turkmenistan","Tuvalu","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Vanuatu","Vatican City","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"].sort((a, b) => a.localeCompare(b))
+            }
             const res = await fetch('/api/newField', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
             const data = await res.json()
             if (!res.ok) throw new Error(data.message || 'Failed to create field')
@@ -487,7 +517,7 @@ const AddVehiclePage = () => {
                 setFormData(prev => ({ ...prev, [field._id]: value }))
             }
         }
-        if (field.type === 'dropdown') return (
+        if (field.type === 'dropdown' || field.type === 'select-year' || field.type === 'select-country') return (
             <div>
                 <div className="flex gap-1.5">
                     <select required={field.isRequired} value={value} onChange={e => handleChange(field._id, e.target.value)}
@@ -495,8 +525,8 @@ const AddVehiclePage = () => {
                         <option value="">Select...</option>
                         {[...(field.options || [])].sort((a, b) => a.localeCompare(b)).map((o, i) => <option key={i} value={o}>{o}</option>)}
                     </select>
-                    <button type="button" onClick={() => { setInlineAddOption(inlineAddOption === field._id ? null : field._id); setInlineOptionValue('') }} title="Add new option"
-                        className={`px-3 rounded-lg border text-sm font-semibold transition ${inlineAddOption === field._id ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-400 hover:border-blue-400 hover:text-blue-600'}`}>+</button>
+                    {field.type === 'dropdown' && <button type="button" onClick={() => { setInlineAddOption(inlineAddOption === field._id ? null : field._id); setInlineOptionValue('') }} title="Add new option"
+                        className={`px-3 rounded-lg border text-sm font-semibold transition ${inlineAddOption === field._id ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-400 hover:border-blue-400 hover:text-blue-600'}`}>+</button>}
                 </div>
                 {inlineAddOption === field._id && (
                     <div className="flex gap-1.5 mt-1.5">
@@ -581,7 +611,7 @@ const AddVehiclePage = () => {
     // ── renderAccountInput — same as renderInput but uses accountData/handleAccountChange ──
     const renderAccountInput = (field) => {
         const value = accountData[field._id] ?? ''
-        if (field.type === 'dropdown') return (
+        if (field.type === 'dropdown' || field.type === 'select-year' || field.type === 'select-country') return (
                 <select required={field.isRequired} value={value} onChange={e => handleAccountChange(field._id, e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
                     <option value="">Select...</option>
                     {[...(field.options || [])].sort((a, b) => a.localeCompare(b)).map((o, i) => <option key={i} value={o}>{o}</option>)}
@@ -1019,42 +1049,79 @@ const AddVehiclePage = () => {
         {/* Add Model */}
         {showAddModel && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }} onClick={() => setShowAddModel(false)}>
-                <div className="modal-card" style={{ maxWidth: '520px' }} onClick={e => e.stopPropagation()}>
+                <div className="modal-card" style={{ maxWidth: '600px', width: '100%' }} onClick={e => e.stopPropagation()}>
                     <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#202124', margin: '0 0 4px' }}>Add Model</h3>
                     <p style={{ fontSize: '12px', color: '#9aa0a6', margin: '0 0 16px' }}>{selectedManufacturer?.name}</p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                             <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Model Name *</label>
                                 <input type="text" value={newModel.name} onChange={e => setNewModel({ ...newModel, name: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g., Camry" /></div>
                             <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Description</label>
                                 <input type="text" value={newModel.description} onChange={e => setNewModel({ ...newModel, description: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g., Sedan" /></div>
                         </div>
+
                         <div>
-                            <p style={{ fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Dimensions & Weight</p>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '8px' }}>
-                                <div><label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#9aa0a6', textTransform: 'uppercase', marginBottom: '3px' }}>Length</label>
-                                    <input type="number" value={newModel.dimensions?.length || ''} onChange={e => setNewModel({ ...newModel, dimensions: { ...newModel.dimensions, length: e.target.value } })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} placeholder="0" /></div>
-                                <div><label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#9aa0a6', textTransform: 'uppercase', marginBottom: '3px' }}>Width</label>
-                                    <input type="number" value={newModel.dimensions?.width || ''} onChange={e => setNewModel({ ...newModel, dimensions: { ...newModel.dimensions, width: e.target.value } })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} placeholder="0" /></div>
-                                <div><label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#9aa0a6', textTransform: 'uppercase', marginBottom: '3px' }}>Height</label>
-                                    <input type="number" value={newModel.dimensions?.height || ''} onChange={e => setNewModel({ ...newModel, dimensions: { ...newModel.dimensions, height: e.target.value } })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} placeholder="0" /></div>
-                                <div><label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#9aa0a6', textTransform: 'uppercase', marginBottom: '3px' }}>Unit Size</label>
-                                    <select value={newModel.dimensions?.unit_size || 'cm'} onChange={e => setNewModel({ ...newModel, dimensions: { ...newModel.dimensions, unit_size: e.target.value } })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', background: '#fff', boxSizing: 'border-box' }}>
-                                        {['cm','m','mm','in','ft'].map(u => <option key={u} value={u}>{u}</option>)}
-                                    </select></div>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>
+                                Default Field Values
+                                <span style={{ marginLeft: '6px', fontSize: '10px', color: '#9aa0a6', fontWeight: 400, textTransform: 'none' }}>— pre-filled when adding a vehicle with this model</span>
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px' }}>
-                                <div><label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#9aa0a6', textTransform: 'uppercase', marginBottom: '3px' }}>Weight</label>
-                                    <input type="number" value={newModel.dimensions?.weight || ''} onChange={e => setNewModel({ ...newModel, dimensions: { ...newModel.dimensions, weight: e.target.value } })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} placeholder="0" /></div>
-                                <div><label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#9aa0a6', textTransform: 'uppercase', marginBottom: '3px' }}>Unit Weight</label>
-                                    <select value={newModel.dimensions?.unit_weight || 'kg'} onChange={e => setNewModel({ ...newModel, dimensions: { ...newModel.dimensions, unit_weight: e.target.value } })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', background: '#fff', boxSizing: 'border-box' }}>
-                                        {['kg','g','lb','oz','t'].map(u => <option key={u} value={u}>{u}</option>)}
-                                    </select></div>
+                            {fields.filter(f => !['file', 'image', 'boolean'].includes(f.type) && f.belongsto === 'add-vehicles').length === 0 ? (
+                                <p style={{ fontSize: '12px', color: '#9aa0a6', fontStyle: 'italic' }}>No fields configured for "add-vehicles".</p>
+                            ) : (
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: '10px', background: '#f8f9fa', padding: '12px', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+                                    {fields.filter(f => !['file', 'image', 'boolean'].includes(f.type) && f.belongsto === 'add-vehicles').map(field => (
+                                        <div key={field._id}>
+                                            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
+                                                {field.label}
+                                                {newModel.defaults?.[field._id] !== undefined && newModel.defaults[field._id] !== '' && (
+                                                    <button onClick={() => setNewModel(p => { const d = { ...p.defaults }; delete d[field._id]; return { ...p, defaults: d } })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c5221f', fontSize: '9px', padding: '0 2px' }} title="Clear default">✕</button>
+                                                )}
+                                            </label>
+                                            {(field.type === 'dropdown' || field.type === 'select-year' || field.type === 'select-country') ? (
+                                                <select value={newModel.defaults?.[field._id] ?? ''} onChange={e => setNewModel(p => ({ ...p, defaults: { ...p.defaults, [field._id]: e.target.value } }))} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', background: '#fff', boxSizing: 'border-box' }}>
+                                                    <option value="">— no default —</option>
+                                                    {[...(field.options || [])].sort((a, b) => a.localeCompare(b)).map((o, i) => <option key={i} value={o}>{o}</option>)}
+                                                </select>
+                                            ) : field.type === 'number' ? (
+                                                <input type="number" value={newModel.defaults?.[field._id] ?? ''} onChange={e => setNewModel(p => ({ ...p, defaults: { ...p.defaults, [field._id]: e.target.value } }))} placeholder="Leave blank = no default" style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
+                                            ) : (
+                                                <input type="text" value={newModel.defaults?.[field._id] ?? ''} onChange={e => setNewModel(p => ({ ...p, defaults: { ...p.defaults, [field._id]: e.target.value } }))} placeholder="Leave blank = no default" style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div>
+                            <p style={{ fontSize: '11px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Dimensions & Weight</p>
+                            <div style={{ background: '#f8f9fa', padding: '12px', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '8px' }}>
+                                    <div><label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#9aa0a6', textTransform: 'uppercase', marginBottom: '3px' }}>Length</label>
+                                        <input type="number" value={newModel.dimensions?.length || ''} onChange={e => setNewModel({ ...newModel, dimensions: { ...newModel.dimensions, length: e.target.value } })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} placeholder="0" /></div>
+                                    <div><label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#9aa0a6', textTransform: 'uppercase', marginBottom: '3px' }}>Width</label>
+                                        <input type="number" value={newModel.dimensions?.width || ''} onChange={e => setNewModel({ ...newModel, dimensions: { ...newModel.dimensions, width: e.target.value } })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} placeholder="0" /></div>
+                                    <div><label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#9aa0a6', textTransform: 'uppercase', marginBottom: '3px' }}>Height</label>
+                                        <input type="number" value={newModel.dimensions?.height || ''} onChange={e => setNewModel({ ...newModel, dimensions: { ...newModel.dimensions, height: e.target.value } })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} placeholder="0" /></div>
+                                    <div><label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#9aa0a6', textTransform: 'uppercase', marginBottom: '3px' }}>Unit Size</label>
+                                        <select value={newModel.dimensions?.unit_size || 'cm'} onChange={e => setNewModel({ ...newModel, dimensions: { ...newModel.dimensions, unit_size: e.target.value } })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', background: '#fff', boxSizing: 'border-box' }}>
+                                            {['cm','m','mm','in','ft'].map(u => <option key={u} value={u}>{u}</option>)}
+                                        </select></div>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px' }}>
+                                    <div><label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#9aa0a6', textTransform: 'uppercase', marginBottom: '3px' }}>Weight</label>
+                                        <input type="number" value={newModel.dimensions?.weight || ''} onChange={e => setNewModel({ ...newModel, dimensions: { ...newModel.dimensions, weight: e.target.value } })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} placeholder="0" /></div>
+                                    <div><label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#9aa0a6', textTransform: 'uppercase', marginBottom: '3px' }}>Unit Weight</label>
+                                        <select value={newModel.dimensions?.unit_weight || 'kg'} onChange={e => setNewModel({ ...newModel, dimensions: { ...newModel.dimensions, unit_weight: e.target.value } })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', background: '#fff', boxSizing: 'border-box' }}>
+                                            {['kg','g','lb','oz','t'].map(u => <option key={u} value={u}>{u}</option>)}
+                                        </select></div>
+                                </div>
                             </div>
                         </div>
-                        <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                            <button onClick={() => setShowAddModel(false)} style={{ flex: 1, padding: '9px', border: '1px solid #e0e0e0', borderRadius: '24px', fontSize: '13px', cursor: 'pointer', background: '#fff', color: '#5f6368' }}>Cancel</button>
-                            <button onClick={handleAddModel} disabled={!newModel.name.trim() || saving} style={{ flex: 1, padding: '9px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '24px', fontSize: '13px', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Adding...' : 'Add'}</button>
+
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', paddingTop: '4px', borderTop: '1px solid #f1f3f4', marginTop: '4px' }}>
+                            <button onClick={() => setShowAddModel(false)} style={{ padding: '9px 20px', border: '1px solid #e0e0e0', borderRadius: '24px', fontSize: '13px', cursor: 'pointer', background: '#fff', color: '#5f6368' }}>Cancel</button>
+                            <button onClick={handleAddModel} disabled={!newModel.name.trim() || saving} style={{ padding: '9px 20px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '24px', fontSize: '13px', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Adding...' : 'Add Model'}</button>
                         </div>
                     </div>
                 </div>
@@ -1135,6 +1202,16 @@ const AddVehiclePage = () => {
                                         style={{ flex: 1, padding: '6px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none' }} placeholder="Type option, press Enter" />
                                     <button type="button" onClick={() => { if (newFieldOption.trim()) { setNewField(f => ({ ...f, options: [...f.options, newFieldOption.trim()] })); setNewFieldOption('') } }} style={{ padding: '6px 12px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>+ Add</button>
                                 </div>
+                            </div>
+                        )}
+                        {newField.type === 'select-year' && (
+                            <div style={{ background: '#ecfeff', border: '1px solid #a5f3fc', borderRadius: '10px', padding: '12px' }}>
+                                <p style={{ fontSize: '12px', color: '#0e7490' }}>Options will be years from <strong>{new Date().getFullYear()}</strong> down to <strong>1950</strong>. Generated automatically.</p>
+                            </div>
+                        )}
+                        {newField.type === 'select-country' && (
+                            <div style={{ background: '#f7fee7', border: '1px solid #bef264', borderRadius: '10px', padding: '12px' }}>
+                                <p style={{ fontSize: '12px', color: '#4d7c0f' }}>Options will be <strong>195 countries</strong> sorted A-Z. Generated automatically.</p>
                             </div>
                         )}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

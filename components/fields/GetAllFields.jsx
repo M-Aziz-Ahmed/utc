@@ -1,13 +1,15 @@
 'use client'
 import { useEffect, useState, useRef } from "react";
 
-const FIELD_TYPES = ["text","number","boolean","password","email","date","image","file","dropdown","tax"];
+const FIELD_TYPES = ["text","number","boolean","password","email","date","image","file","dropdown","select-year","select-country","tax"];
 const TYPE_COLORS = {
     text:'bg-blue-50 text-blue-700 border-blue-200', number:'bg-purple-50 text-purple-700 border-purple-200',
     boolean:'bg-yellow-50 text-yellow-700 border-yellow-200', password:'bg-red-50 text-red-700 border-red-200',
     email:'bg-teal-50 text-teal-700 border-teal-200', date:'bg-orange-50 text-orange-700 border-orange-200',
     image:'bg-pink-50 text-pink-700 border-pink-200', file:'bg-indigo-50 text-indigo-700 border-indigo-200',
     dropdown:'bg-green-50 text-green-700 border-green-200',
+    'select-year':'bg-cyan-50 text-cyan-700 border-cyan-200',
+    'select-country':'bg-lime-50 text-lime-700 border-lime-200',
     tax:'bg-amber-50 text-amber-700 border-amber-200',
 };
 
@@ -63,6 +65,15 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                 const v = (editDraft.options||[]).filter(o=>o.trim()!=='');
                 if (!v.length) { alert('Add at least one option'); setSaving(false); return; }
                 d.options = v;
+            }
+            if (editDraft.type === 'select-year') {
+                const currentYear = new Date().getFullYear();
+                const years = [];
+                for (let y = currentYear; y >= 1950; y--) years.push(String(y));
+                d.options = years;
+            }
+            if (editDraft.type === 'select-country') {
+                d.options = ["Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda","Argentina","Armenia","Australia","Austria","Azerbaijan","Bahamas","Bahrain","Bangladesh","Barbados","Belarus","Belgium","Belize","Benin","Bhutan","Bolivia","Bosnia and Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cabo Verde","Cambodia","Cameroon","Canada","Central African Republic","Chad","Chile","China","Colombia","Comoros","Congo","Costa Rica","Croatia","Cuba","Cyprus","Czech Republic","Denmark","Djibouti","Dominica","Dominican Republic","Ecuador","Egypt","El Salvador","Equatorial Guinea","Eritrea","Estonia","Eswatini","Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea","Guinea-Bissau","Guyana","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kiribati","Kosovo","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania","Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Marshall Islands","Mauritania","Mauritius","Mexico","Micronesia","Moldova","Monaco","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nauru","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia","Norway","Oman","Pakistan","Palau","Palestine","Panama","Papua New Guinea","Paraguay","Peru","Philippines","Poland","Portugal","Qatar","Romania","Russia","Rwanda","Saint Kitts and Nevis","Saint Lucia","Saint Vincent and the Grenadines","Samoa","San Marino","Sao Tome and Principe","Saudi Arabia","Senegal","Serbia","Seychelles","Sierra Leone","Singapore","Slovakia","Slovenia","Solomon Islands","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Suriname","Sweden","Switzerland","Syria","Taiwan","Tajikistan","Tanzania","Thailand","Timor-Leste","Togo","Tonga","Trinidad and Tobago","Tunisia","Turkey","Turkmenistan","Tuvalu","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Vanuatu","Vatican City","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"];
             }
             if (editDraft.type === 'tax') {
                 d.linkedTax = editDraft.linkedTax || null;
@@ -294,6 +305,18 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                                                         </div>
                                                     </div>
                                                 )}
+                                                {editDraft.type==='select-year' && (
+                                                    <div className="col-span-2 border-2 border-cyan-200 rounded-lg p-3 bg-cyan-50">
+                                                        <label className="text-xs font-semibold text-cyan-700 uppercase tracking-wide block mb-2">Auto-generated Years</label>
+                                                        <p className="text-xs text-cyan-600">Options are years from <strong>{new Date().getFullYear()}</strong> down to <strong>1950</strong>. Saved automatically on save.</p>
+                                                    </div>
+                                                )}
+                                                {editDraft.type==='select-country' && (
+                                                    <div className="col-span-2 border-2 border-lime-200 rounded-lg p-3 bg-lime-50">
+                                                        <label className="text-xs font-semibold text-lime-700 uppercase tracking-wide block mb-2">Auto-generated Countries</label>
+                                                        <p className="text-xs text-lime-600">Options are <strong>195 countries</strong> sorted A-Z. Saved automatically on save.</p>
+                                                    </div>
+                                                )}
                                                 {editDraft.type==='tax' && (
                                                     <div className="col-span-2 border-2 border-amber-200 rounded-lg p-3 bg-amber-50">
                                                         <label className="text-xs font-semibold text-amber-700 uppercase tracking-wide block mb-2">Linked Tax</label>
@@ -351,6 +374,8 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                                                             {f.isRequired && <span className="jp-badge jp-badge-red">REQ</span>}
                                                             <span className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded border ${TYPE_COLORS[f.type]||'bg-gray-100 text-gray-700 border-gray-200'}`}>{f.type}</span>
                                                             {f.type==='dropdown'&&f.options?.length>0&&<span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">{f.options.length} opts</span>}
+                                                            {f.type==='select-year'&&f.options?.length>0&&<span className="text-xs text-cyan-500 bg-cyan-50 px-1.5 py-0.5 rounded-full">{f.options.length} yrs</span>}
+                                                            {f.type==='select-country'&&f.options?.length>0&&<span className="text-xs text-lime-600 bg-lime-50 px-1.5 py-0.5 rounded-full">{f.options.length} countries</span>}
                                                             {f.type==='tax'&&f.linkedTax&&<span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-200">linked: {taxes.find(t=>t._id===f.linkedTax)?.name||'unknown'}</span>}
                                                         </div>
                                                     </div>
@@ -373,21 +398,21 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                                                 </div>
                                             </div>
                                             {/* options chips + quick-add */}
-                                            {f.type==='dropdown'&&(f.options?.length>0||quickAdd===f._id)&&(
+                                            {(f.type==='dropdown'||f.type==='select-year'||f.type==='select-country')&&(f.options?.length>0||quickAdd===f._id)&&(
                                                 <div className="border-t border-gray-100 px-3 py-2 bg-gray-50 rounded-b-xl">
                                                     {f.options?.length>0&&(
                                                         <div className="flex flex-wrap gap-1 mb-1.5">
-                                                            {f.options.map((opt,i)=>(
+                                                            {[...(f.options||[])].sort((a,b)=>a.localeCompare(b)).map((opt,i)=>(
                                                                 <span key={i} className="group/chip inline-flex items-center gap-1 bg-white border border-gray-200 text-gray-700 text-xs px-2 py-0.5 rounded-full">
                                                                     {opt}
-                                                                    <button onClick={()=>handleRemoveOption(f,i)} className="text-gray-300 hover:text-red-500 transition opacity-0 group-hover/chip:opacity-100">
+                                                                    {f.type==='dropdown'&&<button onClick={()=>handleRemoveOption(f,i)} className="text-gray-300 hover:text-red-500 transition opacity-0 group-hover/chip:opacity-100">
                                                                         <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/></svg>
-                                                                    </button>
+                                                                    </button>}
                                                                 </span>
                                                             ))}
                                                         </div>
                                                     )}
-                                                    {quickAdd===f._id?(
+                                                    {f.type==='dropdown'&&(quickAdd===f._id?(
                                                         <div className="flex gap-1.5">
                                                             <input autoFocus value={quickAddValue} onChange={e=>setQuickAddValue(e.target.value)}
                                                                 onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();handleQuickAddOption(f)}if(e.key==='Escape'){setQuickAdd(null);setQuickAddValue('')}}}
@@ -400,7 +425,7 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                                                             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
                                                             Add option
                                                         </button>
-                                                    )}
+                                                    ))}
                                                 </div>
                                             )}
                                         </div>

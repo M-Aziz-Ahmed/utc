@@ -8,7 +8,7 @@ const FieldInput = ({ field, value, onChange }) => {
     const base = { width: '100%', padding: '8px 11px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: '#fff' }
     const focus = e => { e.target.style.borderColor = '#1a73e8'; e.target.style.boxShadow = '0 0 0 3px rgba(26,115,232,0.1)' }
     const blur  = e => { e.target.style.borderColor = '#e0e0e0'; e.target.style.boxShadow = 'none' }
-    if (field.type === 'dropdown') return (
+    if (field.type === 'dropdown' || field.type === 'select-year' || field.type === 'select-country') return (
         <select value={value ?? ''} onChange={e => onChange(e.target.value)} required={field.isRequired} style={{ ...base }} onFocus={focus} onBlur={blur}>
             <option value="">Select...</option>
             {[...(field.options || [])].sort((a, b) => a.localeCompare(b)).map((o, i) => <option key={i} value={o}>{o}</option>)}
@@ -38,6 +38,15 @@ const InlineAddFieldForm = ({ FIELD_TYPES, onDone, onCancel }) => {
         try {
             const payload = { ...field, belongsto: 'accounts' }
             if (field.type === 'dropdown') payload.options = field.options.filter(o => o.trim())
+            if (field.type === 'select-year') {
+                const currentYear = new Date().getFullYear()
+                const years = []
+                for (let y = currentYear; y >= 1950; y--) years.push(String(y))
+                payload.options = years
+            }
+            if (field.type === 'select-country') {
+                payload.options = ["Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda","Argentina","Armenia","Australia","Austria","Azerbaijan","Bahamas","Bahrain","Bangladesh","Barbados","Belarus","Belgium","Belize","Benin","Bhutan","Bolivia","Bosnia and Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cabo Verde","Cambodia","Cameroon","Canada","Central African Republic","Chad","Chile","China","Colombia","Comoros","Congo","Costa Rica","Croatia","Cuba","Cyprus","Czech Republic","Denmark","Djibouti","Dominica","Dominican Republic","Ecuador","Egypt","El Salvador","Equatorial Guinea","Eritrea","Estonia","Eswatini","Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea","Guinea-Bissau","Guyana","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kiribati","Kosovo","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania","Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Marshall Islands","Mauritania","Mauritius","Mexico","Micronesia","Moldova","Monaco","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nauru","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia","Norway","Oman","Pakistan","Palau","Palestine","Panama","Papua New Guinea","Paraguay","Peru","Philippines","Poland","Portugal","Qatar","Romania","Russia","Rwanda","Saint Kitts and Nevis","Saint Lucia","Saint Vincent and the Grenadines","Samoa","San Marino","Sao Tome and Principe","Saudi Arabia","Senegal","Serbia","Seychelles","Sierra Leone","Singapore","Slovakia","Slovenia","Solomon Islands","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Suriname","Sweden","Switzerland","Syria","Taiwan","Tajikistan","Tanzania","Thailand","Timor-Leste","Togo","Tonga","Trinidad and Tobago","Tunisia","Turkey","Turkmenistan","Tuvalu","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Vanuatu","Vatican City","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"].sort((a, b) => a.localeCompare(b))
+            }
             const res = await fetch('/api/newField', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
             const data = await res.json()
             if (!res.ok) throw new Error(data.message || 'Failed')
@@ -64,6 +73,16 @@ const InlineAddFieldForm = ({ FIELD_TYPES, onDone, onCancel }) => {
                         <input type="text" value={optInput} onChange={e => setOptInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (optInput.trim()) { setField(f => ({ ...f, options: [...f.options, optInput.trim()] })); setOptInput('') } } }} style={{ flex: 1, padding: '6px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none' }} placeholder="Type option, press Enter" />
                         <button type="button" onClick={() => { if (optInput.trim()) { setField(f => ({ ...f, options: [...f.options, optInput.trim()] })); setOptInput('') } }} style={{ padding: '6px 12px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>+ Add</button>
                     </div>
+                </div>
+            )}
+            {field.type === 'select-year' && (
+                <div style={{ background: '#ecfeff', border: '1px solid #a5f3fc', borderRadius: '10px', padding: '12px' }}>
+                    <p style={{ fontSize: '12px', color: '#0e7490' }}>Options will be years from <strong>{new Date().getFullYear()}</strong> down to <strong>1950</strong>. Generated automatically.</p>
+                </div>
+            )}
+            {field.type === 'select-country' && (
+                <div style={{ background: '#f7fee7', border: '1px solid #bef264', borderRadius: '10px', padding: '12px' }}>
+                    <p style={{ fontSize: '12px', color: '#4d7c0f' }}>Options will be <strong>195 countries</strong> sorted A-Z. Generated automatically.</p>
                 </div>
             )}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -101,7 +120,7 @@ const EditVehiclePage = () => {
     const [error, setError]                 = useState(null)
     const [saveMsg, setSaveMsg]             = useState(null)
     const [showAddAccountField, setShowAddAccountField] = useState(false)
-    const FIELD_TYPES = ['text', 'number', 'boolean', 'email', 'date', 'file', 'image', 'dropdown']
+    const FIELD_TYPES = ['text', 'number', 'boolean', 'email', 'date', 'file', 'image', 'dropdown', 'select-year', 'select-country']
 
     useEffect(() => { fetchAll() }, [vehicleId])
 

@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import GetAllFields from "@/components/fields/GetAllFields";
 
-const FIELD_TYPES = ["text", "number", "boolean", "password", "email", "date", "file", "image", "dropdown", "tax"];
+const FIELD_TYPES = ["text", "number", "boolean", "password", "email", "date", "file", "image", "dropdown", "select-year", "select-country", "tax"];
 
 const Page = () => {
     const [label, setLabel] = useState("");
@@ -112,6 +112,21 @@ const Page = () => {
                     throw new Error('Please add at least one option for the dropdown');
                 }
                 fieldData.options = validOptions;
+            }
+
+            // Auto-generate options for select-year
+            if (type === 'select-year') {
+                const currentYear = new Date().getFullYear();
+                const years = [];
+                for (let y = currentYear; y >= 1950; y--) {
+                    years.push(String(y));
+                }
+                fieldData.options = years;
+            }
+
+            // Auto-generate options for select-country
+            if (type === 'select-country') {
+                fieldData.options = ["Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda","Argentina","Armenia","Australia","Austria","Azerbaijan","Bahamas","Bahrain","Bangladesh","Barbados","Belarus","Belgium","Belize","Benin","Bhutan","Bolivia","Bosnia and Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cabo Verde","Cambodia","Cameroon","Canada","Central African Republic","Chad","Chile","China","Colombia","Comoros","Congo","Costa Rica","Croatia","Cuba","Cyprus","Czech Republic","Denmark","Djibouti","Dominica","Dominican Republic","Ecuador","Egypt","El Salvador","Equatorial Guinea","Eritrea","Estonia","Eswatini","Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea","Guinea-Bissau","Guyana","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kiribati","Kosovo","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania","Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Marshall Islands","Mauritania","Mauritius","Mexico","Micronesia","Moldova","Monaco","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nauru","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia","Norway","Oman","Pakistan","Palau","Palestine","Panama","Papua New Guinea","Paraguay","Peru","Philippines","Poland","Portugal","Qatar","Romania","Russia","Rwanda","Saint Kitts and Nevis","Saint Lucia","Saint Vincent and the Grenadines","Samoa","San Marino","Sao Tome and Principe","Saudi Arabia","Senegal","Serbia","Seychelles","Sierra Leone","Singapore","Slovakia","Slovenia","Solomon Islands","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Suriname","Sweden","Switzerland","Syria","Taiwan","Tajikistan","Tanzania","Thailand","Timor-Leste","Togo","Tonga","Trinidad and Tobago","Tunisia","Turkey","Turkmenistan","Tuvalu","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Vanuatu","Vatican City","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"].sort((a, b) => a.localeCompare(b));
             }
 
             // Add linked tax if type is tax
@@ -268,6 +283,36 @@ const Page = () => {
 
                                     <p style={{fontSize:'var(--text-xs)', color:'#9aa0a6', marginTop:'6px', fontStyle:'italic'}}>
                                         Press Enter or click Add to add a new option
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Auto-generated years preview */}
+                            {type === 'select-year' && (
+                                <div style={{border:'1px solid #d2e3fc', borderRadius:'8px', padding:'12px', background:'rgba(232,240,254,0.3)'}}>
+                                    <label style={{display:'block', fontSize:'var(--text-xs)', fontWeight:600, color:'#5f6368', marginBottom:'8px', textTransform:'uppercase', letterSpacing:'0.05em'}}>
+                                        Auto-generated Years
+                                    </label>
+                                    <div style={{fontSize:'var(--text-xs)', color:'#5f6368'}}>
+                                        Options will be years from <strong>{new Date().getFullYear()}</strong> down to <strong>1950</strong> in descending order.
+                                    </div>
+                                    <p style={{fontSize:'var(--text-xs)', color:'#9aa0a6', marginTop:'6px', fontStyle:'italic'}}>
+                                        Options are generated automatically — no manual entry needed.
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Auto-generated countries preview */}
+                            {type === 'select-country' && (
+                                <div style={{border:'1px solid #d2e3fc', borderRadius:'8px', padding:'12px', background:'rgba(232,240,254,0.3)'}}>
+                                    <label style={{display:'block', fontSize:'var(--text-xs)', fontWeight:600, color:'#5f6368', marginBottom:'8px', textTransform:'uppercase', letterSpacing:'0.05em'}}>
+                                        Auto-generated Countries
+                                    </label>
+                                    <div style={{fontSize:'var(--text-xs)', color:'#5f6368'}}>
+                                        Options will include <strong>195 countries</strong> sorted alphabetically A-Z.
+                                    </div>
+                                    <p style={{fontSize:'var(--text-xs)', color:'#9aa0a6', marginTop:'6px', fontStyle:'italic'}}>
+                                        Options are generated automatically — no manual entry needed.
                                     </p>
                                 </div>
                             )}

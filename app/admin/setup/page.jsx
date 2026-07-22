@@ -284,7 +284,7 @@ function ModelsPanel({ manufacturer, fields, onAddModel, onEditModel, onDeleteMo
     )
 
     const models = (manufacturer.models || []).filter(m => m.name.toLowerCase().includes(search.toLowerCase()))
-    const dropdownFields = fields.filter(f => f.type === 'dropdown' || f.type === 'text' || f.type === 'number')
+    const dropdownFields = fields.filter(f => f.type === 'dropdown' || f.type === 'select-year' || f.type === 'select-country' || f.type === 'text' || f.type === 'number')
 
     return (
         <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
@@ -470,7 +470,7 @@ function ModelModal({ data, fields, saving, onSave, onClose }) {
                                             <button onClick={() => clearDefault(field._id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c5221f', fontSize: '9px', padding: '0 2px' }} title="Clear default">✕</button>
                                         )}
                                     </label>
-                                    {field.type === 'dropdown' ? (
+                                    {(field.type === 'dropdown' || field.type === 'select-year' || field.type === 'select-country') ? (
                                         <Select value={form.defaults[field._id] ?? ''} onChange={e => setDefault(field._id, e.target.value)}>
                                             <option value="">— no default —</option>
                                             {[...(field.options || [])].sort((a, b) => a.localeCompare(b)).map((o, i) => <option key={i} value={o}>{o}</option>)}
