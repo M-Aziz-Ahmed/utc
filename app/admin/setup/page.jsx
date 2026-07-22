@@ -67,6 +67,8 @@ const Select = ({ value, onChange, children, ...rest }) => (
     </select>
 )
 
+const COUNTRIES = ["Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda","Argentina","Armenia","Australia","Austria","Azerbaijan","Bahamas","Bahrain","Bangladesh","Barbados","Belarus","Belgium","Belize","Benin","Bhutan","Bolivia","Bosnia and Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cabo Verde","Cambodia","Cameroon","Canada","Central African Republic","Chad","Chile","China","Colombia","Comoros","Congo","Costa Rica","Croatia","Cuba","Cyprus","Czech Republic","Denmark","Djibouti","Dominica","Dominican Republic","Ecuador","Egypt","El Salvador","Equatorial Guinea","Eritrea","Estonia","Eswatini","Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea","Guinea-Bissau","Guyana","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kiribati","Kosovo","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania","Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Marshall Islands","Mauritania","Mauritius","Mexico","Micronesia","Moldova","Monaco","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nauru","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia","Norway","Oman","Pakistan","Palau","Palestine","Panama","Papua New Guinea","Paraguay","Peru","Philippines","Poland","Portugal","Qatar","Romania","Russia","Rwanda","Saint Kitts and Nevis","Saint Lucia","Saint Vincent and the Grenadines","Samoa","San Marino","Sao Tome and Principe","Saudi Arabia","Senegal","Serbia","Seychelles","Sierra Leone","Singapore","Slovakia","Slovenia","Solomon Islands","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Suriname","Sweden","Switzerland","Syria","Taiwan","Tajikistan","Tanzania","Thailand","Timor-Leste","Togo","Tonga","Trinidad and Tobago","Tunisia","Turkey","Turkmenistan","Tuvalu","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Vanuatu","Vatican City","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"]
+
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function SetupPage() {
     const [manufacturers, setManufacturers] = useState([])
@@ -132,11 +134,11 @@ export default function SetupPage() {
             let updatedModels
             if (data.modelIndex !== undefined) {
                 updatedModels = mfg.models.map((m, i) => i === data.modelIndex
-                    ? { ...m, name: data.name, description: data.description, defaults: data.defaults }
+                    ? { ...m, name: data.name, description: data.description, dimensions: data.dimensions || {}, defaults: data.defaults }
                     : m
                 )
             } else {
-                updatedModels = [...(mfg.models || []), { name: data.name, description: data.description, defaults: data.defaults, variants: [] }]
+                updatedModels = [...(mfg.models || []), { name: data.name, description: data.description, dimensions: data.dimensions || {}, defaults: data.defaults }]
             }
             const res = await fetch(`/api/manufacturer/${data.mfgId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ models: updatedModels }) })
             if (!res.ok) throw new Error('Failed')
@@ -358,17 +360,6 @@ function ModelsPanel({ manufacturer, fields, onAddModel, onEditModel, onDeleteMo
                                                 })}
                                             </div>
                                         )}
-                                        {/* Variants */}
-                                        {model.variants?.length > 0 && (
-                                            <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #f1f3f4' }}>
-                                                <div style={{ fontSize: '10px', fontWeight: 700, color: '#9aa0a6', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Variants</div>
-                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                                    {model.variants.map((v, i) => (
-                                                        <span key={i} style={{ fontSize: '10px', padding: '2px 7px', background: '#e8f0fe', color: '#1a73e8', borderRadius: '12px', fontWeight: 500 }}>{v}</span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
                             )
@@ -390,7 +381,10 @@ function MfgModal({ data, saving, onSave, onClose }) {
                     <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Toyota" />
                 </Field>
                 <Field label="Country">
-                    <Input value={form.country} onChange={e => setForm(p => ({ ...p, country: e.target.value }))} placeholder="e.g. Japan" />
+                    <Select value={form.country || ''} onChange={e => setForm(p => ({ ...p, country: e.target.value }))}>
+                        <option value="">Select country...</option>
+                        {COUNTRIES.sort((a, b) => a.localeCompare(b)).map(c => <option key={c} value={c}>{c}</option>)}
+                    </Select>
                 </Field>
                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
                     <Btn onClick={onClose}>Cancel</Btn>
@@ -410,10 +404,9 @@ function ModelModal({ data, fields, saving, onSave, onClose }) {
         modelIndex:  data.modelIndex,
         name:        data.name || '',
         description: data.description || '',
+        dimensions:  { ...(data.dimensions || {}) },
         defaults:    { ...(data.defaults || {}) },
     })
-    const [variantInput, setVariantInput] = useState('')
-    const [variants, setVariants] = useState(data.variants || [])
 
     // Fields eligible for defaults: exclude file/image/boolean
     const defaultableFields = fields.filter(f =>
@@ -433,21 +426,12 @@ function ModelModal({ data, fields, saving, onSave, onClose }) {
         })
     }
 
-    const addVariant = () => {
-        const v = variantInput.trim()
-        if (!v || variants.includes(v)) return
-        setVariants(prev => [...prev, v])
-        setVariantInput('')
-    }
-
-    const removeVariant = (v) => setVariants(prev => prev.filter(x => x !== v))
-
     const handleSave = () => {
         // Filter out empty string defaults
         const cleanDefaults = Object.fromEntries(
             Object.entries(form.defaults).filter(([, v]) => v !== '' && v !== null && v !== undefined)
         )
-        onSave({ ...form, defaults: cleanDefaults, variants })
+        onSave({ ...form, defaults: cleanDefaults, dimensions: form.dimensions })
     }
 
     return (
@@ -489,7 +473,7 @@ function ModelModal({ data, fields, saving, onSave, onClose }) {
                                     {field.type === 'dropdown' ? (
                                         <Select value={form.defaults[field._id] ?? ''} onChange={e => setDefault(field._id, e.target.value)}>
                                             <option value="">— no default —</option>
-                                            {field.options?.map((o, i) => <option key={i} value={o}>{o}</option>)}
+                                            {[...(field.options || [])].sort((a, b) => a.localeCompare(b)).map((o, i) => <option key={i} value={o}>{o}</option>)}
                                         </Select>
                                     ) : field.type === 'number' ? (
                                         <Input type="number" value={form.defaults[field._id] ?? ''} onChange={e => setDefault(field._id, e.target.value)} placeholder="Leave blank = no default" />
@@ -502,24 +486,36 @@ function ModelModal({ data, fields, saving, onSave, onClose }) {
                     )}
                 </div>
 
-                {/* Variants */}
+                {/* Dimensions & Weight */}
                 <div>
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Variants / Trims</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
-                        {variants.map(v => (
-                            <span key={v} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#e8f0fe', color: '#1a73e8', fontSize: '12px', padding: '3px 10px', borderRadius: '12px', fontWeight: 500 }}>
-                                {v}
-                                <button onClick={() => removeVariant(v)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1a73e8', padding: 0, fontSize: '12px', lineHeight: 1 }}>×</button>
-                            </span>
-                        ))}
-                        {variants.length === 0 && <span style={{ fontSize: '11px', color: '#c4c7c5', fontStyle: 'italic' }}>No variants yet</span>}
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                        <Input value={variantInput} onChange={e => setVariantInput(e.target.value)} placeholder="e.g. GLI, GLX, Hybrid"
-                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addVariant() } }}
-                            style={{ flex: 1, padding: '6px 10px', border: '1px solid #c4c7c5', borderRadius: '4px', fontSize: '12px', outline: 'none' }}
-                        />
-                        <Btn onClick={addVariant} disabled={!variantInput.trim()}>+ Add</Btn>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Dimensions & Weight</div>
+                    <div style={{ background: '#f8f9fa', padding: '12px', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '8px' }}>
+                            <Field label="Length">
+                                <Input type="number" value={form.dimensions?.length || ''} onChange={e => setForm(p => ({ ...p, dimensions: { ...p.dimensions, length: e.target.value } }))} placeholder="0" />
+                            </Field>
+                            <Field label="Width">
+                                <Input type="number" value={form.dimensions?.width || ''} onChange={e => setForm(p => ({ ...p, dimensions: { ...p.dimensions, width: e.target.value } }))} placeholder="0" />
+                            </Field>
+                            <Field label="Height">
+                                <Input type="number" value={form.dimensions?.height || ''} onChange={e => setForm(p => ({ ...p, dimensions: { ...p.dimensions, height: e.target.value } }))} placeholder="0" />
+                            </Field>
+                            <Field label="Unit Size">
+                                <Select value={form.dimensions?.unit_size || 'cm'} onChange={e => setForm(p => ({ ...p, dimensions: { ...p.dimensions, unit_size: e.target.value } }))}>
+                                    {['cm','m','mm','in','ft'].map(u => <option key={u} value={u}>{u}</option>)}
+                                </Select>
+                            </Field>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px' }}>
+                            <Field label="Weight">
+                                <Input type="number" value={form.dimensions?.weight || ''} onChange={e => setForm(p => ({ ...p, dimensions: { ...p.dimensions, weight: e.target.value } }))} placeholder="0" />
+                            </Field>
+                            <Field label="Unit Weight">
+                                <Select value={form.dimensions?.unit_weight || 'kg'} onChange={e => setForm(p => ({ ...p, dimensions: { ...p.dimensions, unit_weight: e.target.value } }))}>
+                                    {['kg','g','lb','oz','t'].map(u => <option key={u} value={u}>{u}</option>)}
+                                </Select>
+                            </Field>
+                        </div>
                     </div>
                 </div>
 

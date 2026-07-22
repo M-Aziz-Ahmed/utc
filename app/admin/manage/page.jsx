@@ -2,6 +2,8 @@
 import { useState, useEffect, useCallback } from "react";
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
+const COUNTRIES = ["Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda","Argentina","Armenia","Australia","Austria","Azerbaijan","Bahamas","Bahrain","Bangladesh","Barbados","Belarus","Belgium","Belize","Benin","Bhutan","Bolivia","Bosnia and Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cabo Verde","Cambodia","Cameroon","Canada","Central African Republic","Chad","Chile","China","Colombia","Comoros","Congo","Costa Rica","Croatia","Cuba","Cyprus","Czech Republic","Denmark","Djibouti","Dominica","Dominican Republic","Ecuador","Egypt","El Salvador","Equatorial Guinea","Eritrea","Estonia","Eswatini","Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea","Guinea-Bissau","Guyana","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kiribati","Kosovo","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania","Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Marshall Islands","Mauritania","Mauritius","Mexico","Micronesia","Moldova","Monaco","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nauru","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia","Norway","Oman","Pakistan","Palau","Palestine","Panama","Papua New Guinea","Paraguay","Peru","Philippines","Poland","Portugal","Qatar","Romania","Russia","Rwanda","Saint Kitts and Nevis","Saint Lucia","Saint Vincent and the Grenadines","Samoa","San Marino","Sao Tome and Principe","Saudi Arabia","Senegal","Serbia","Seychelles","Sierra Leone","Singapore","Slovakia","Slovenia","Solomon Islands","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Suriname","Sweden","Switzerland","Syria","Taiwan","Tajikistan","Tanzania","Thailand","Timor-Leste","Togo","Tonga","Trinidad and Tobago","Tunisia","Turkey","Turkmenistan","Tuvalu","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Vanuatu","Vatican City","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"]
+
 const inp = "border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition w-full";
 const F = ({ label, value, onChange, type = 'text', textarea = false }) => (
     <div className="flex flex-col gap-1">
@@ -26,6 +28,16 @@ const ConfirmDelete = ({ name, onConfirm, onCancel }) => (
                 <button onClick={onConfirm} className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-medium transition">Delete</button>
             </div>
         </div>
+    </div>
+);
+
+const CountrySelect = ({ value, onChange, label = 'Country' }) => (
+    <div className="flex flex-col gap-1">
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</label>
+        <select value={value || ''} onChange={onChange} className={inp + " bg-white"}>
+            <option value="">Select country...</option>
+            {COUNTRIES.sort((a, b) => a.localeCompare(b)).map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
     </div>
 );
 
@@ -174,7 +186,7 @@ const ManufacturerPanel = () => {
                 <form onSubmit={handleSave} className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <F label="Name *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-                        <F label="Country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
+                        <CountrySelect value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
                     </div>
                     <CarModelsEditor models={form.models} onChange={(models) => setForm({ ...form, models })} />
                     <div className="flex gap-2">
@@ -490,7 +502,7 @@ const ConsigneePanel = () => {
                         <F label="Phone"    value={form.phone}   onChange={set('phone')} />
                         <F label="VAT"      value={form.vat}     onChange={set('vat')} />
                         <F label="City"     value={form.city}    onChange={set('city')} />
-                        <F label="Country"  value={form.country} onChange={set('country')} />
+                        <CountrySelect value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
                         <F label="Address"  value={form.address} onChange={set('address')} />
                     </div>
                     <F label="Notes" value={form.notes} onChange={set('notes')} textarea />

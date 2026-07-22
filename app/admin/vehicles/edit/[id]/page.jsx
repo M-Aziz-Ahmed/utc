@@ -11,7 +11,7 @@ const FieldInput = ({ field, value, onChange }) => {
     if (field.type === 'dropdown') return (
         <select value={value ?? ''} onChange={e => onChange(e.target.value)} required={field.isRequired} style={{ ...base }} onFocus={focus} onBlur={blur}>
             <option value="">Select...</option>
-            {field.options?.map((o, i) => <option key={i} value={o}>{o}</option>)}
+            {[...(field.options || [])].sort((a, b) => a.localeCompare(b)).map((o, i) => <option key={i} value={o}>{o}</option>)}
         </select>
     )
     if (field.type === 'boolean') return (

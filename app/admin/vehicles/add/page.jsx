@@ -3,6 +3,8 @@ import { useState, useEffect, useMemo } from 'react'
 
 const LETTERS = ['All', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')]
 
+const COUNTRIES = ["Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda","Argentina","Armenia","Australia","Austria","Azerbaijan","Bahamas","Bahrain","Bangladesh","Barbados","Belarus","Belgium","Belize","Benin","Bhutan","Bolivia","Bosnia and Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cabo Verde","Cambodia","Cameroon","Canada","Central African Republic","Chad","Chile","China","Colombia","Comoros","Congo","Costa Rica","Croatia","Cuba","Cyprus","Czech Republic","Denmark","Djibouti","Dominica","Dominican Republic","Ecuador","Egypt","El Salvador","Equatorial Guinea","Eritrea","Estonia","Eswatini","Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea","Guinea-Bissau","Guyana","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kiribati","Kosovo","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania","Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Marshall Islands","Mauritania","Mauritius","Mexico","Micronesia","Moldova","Monaco","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nauru","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia","Norway","Oman","Pakistan","Palau","Palestine","Panama","Papua New Guinea","Paraguay","Peru","Philippines","Poland","Portugal","Qatar","Romania","Russia","Rwanda","Saint Kitts and Nevis","Saint Lucia","Saint Vincent and the Grenadines","Samoa","San Marino","Sao Tome and Principe","Saudi Arabia","Senegal","Serbia","Seychelles","Sierra Leone","Singapore","Slovakia","Slovenia","Solomon Islands","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Suriname","Sweden","Switzerland","Syria","Taiwan","Tajikistan","Tanzania","Thailand","Timor-Leste","Togo","Tonga","Trinidad and Tobago","Tunisia","Turkey","Turkmenistan","Tuvalu","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Vanuatu","Vatican City","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"]
+
 // ── Search input ───────────────────────────────────────────────────────────────
 const SearchBar = ({ value, onChange, placeholder = 'Search...' }) => (
     <div style={{ position: 'relative' }}>
@@ -253,6 +255,11 @@ const AddVehiclePage = () => {
     const [showAddModel, setShowAddModel] = useState(false)
     const [showAddVariant, setShowAddVariant] = useState(false)
     const [showAddField, setShowAddField] = useState(false)
+    const [showAddGroup, setShowAddGroup] = useState(false)
+    const [showAddVenue, setShowAddVenue] = useState(false)
+    const [newGroup, setNewGroup] = useState({ name: '', venues: [] })
+    const [newVenue, setNewVenue] = useState({ name: '', membership: '', tel: '', fax: '', email: '', postal: '', address: '' })
+    const [showVenueForm, setShowVenueForm] = useState(false)
     const [showAddAccountField, setShowAddAccountField] = useState(false)
     const [newField, setNewField] = useState({ label: '', type: 'text', isRequired: false, options: [] })
     const [newFieldOption, setNewFieldOption] = useState('')
@@ -301,6 +308,24 @@ const AddVehiclePage = () => {
             const res = await fetch('/api/tax')
             if (res.ok) setTaxes(await res.json())
         } catch (e) { console.error(e) }
+    }
+
+    const handleAddGroup = async () => {
+        if (!newGroup.name.trim()) return
+        setSaving(true)
+        try {
+            const res = await fetch('/api/auctionGroup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newGroup.name.trim(), options: newGroup.venues }) })
+            if (res.ok) { const data = await res.json(); setAuctionGroups(prev => [...prev, data.group]); setSelectedGroup(data.group); setShowAddGroup(false); setNewGroup({ name: '', venues: [] }) }
+        } finally { setSaving(false) }
+    }
+
+    const handleAddVenue = async () => {
+        if (!newVenue.name.trim() || !selectedGroup) return
+        setSaving(true)
+        try {
+            const res = await fetch('/api/auctionGroup', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: selectedGroup._id, options: [...(selectedGroup.options || []), newVenue] }) })
+            if (res.ok) { const data = await res.json(); const updated = data.group; setAuctionGroups(prev => prev.map(g => g._id === updated._id ? updated : g)); setSelectedGroup(updated); setShowAddVenue(false); setNewVenue({ name: '', membership: '', tel: '', fax: '', email: '', postal: '', address: '' }) }
+        } finally { setSaving(false) }
     }
 
     const handleAddManufacturer = async () => {
@@ -388,7 +413,6 @@ const AddVehiclePage = () => {
                 const descField = fields.find(f => f.label?.toLowerCase().trim() === 'description')
                 return (descField && formData[descField._id]) || selectedModel?.description || ''
             })(),
-            variant: selectedVariant || '',
             mainImageIndex: addMainImageUrl || '',
         }))
         fields.forEach(f => {
@@ -455,14 +479,21 @@ const AddVehiclePage = () => {
     }
 
     const renderInput = (field) => {
-        const value = formData[field._id] ?? ''
+        let value = formData[field._id] ?? ''
+        const isPurchaseDate = field.label?.toLowerCase().includes('purchase') && field.label?.toLowerCase().includes('date')
+        if (isPurchaseDate && value === '' && field.type === 'date') {
+            value = new Date().toISOString().split('T')[0]
+            if (formData[field._id] === undefined) {
+                setFormData(prev => ({ ...prev, [field._id]: value }))
+            }
+        }
         if (field.type === 'dropdown') return (
             <div>
                 <div className="flex gap-1.5">
                     <select required={field.isRequired} value={value} onChange={e => handleChange(field._id, e.target.value)}
                         className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
                         <option value="">Select...</option>
-                        {field.options?.map((o, i) => <option key={i} value={o}>{o}</option>)}
+                        {[...(field.options || [])].sort((a, b) => a.localeCompare(b)).map((o, i) => <option key={i} value={o}>{o}</option>)}
                     </select>
                     <button type="button" onClick={() => { setInlineAddOption(inlineAddOption === field._id ? null : field._id); setInlineOptionValue('') }} title="Add new option"
                         className={`px-3 rounded-lg border text-sm font-semibold transition ${inlineAddOption === field._id ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-400 hover:border-blue-400 hover:text-blue-600'}`}>+</button>
@@ -551,10 +582,10 @@ const AddVehiclePage = () => {
     const renderAccountInput = (field) => {
         const value = accountData[field._id] ?? ''
         if (field.type === 'dropdown') return (
-            <select required={field.isRequired} value={value} onChange={e => handleAccountChange(field._id, e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
-                <option value="">Select...</option>
-                {field.options?.map((o, i) => <option key={i} value={o}>{o}</option>)}
-            </select>
+                <select required={field.isRequired} value={value} onChange={e => handleAccountChange(field._id, e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                    <option value="">Select...</option>
+                    {[...(field.options || [])].sort((a, b) => a.localeCompare(b)).map((o, i) => <option key={i} value={o}>{o}</option>)}
+                </select>
         )
         if (field.type === 'boolean') return (
             <div className="flex gap-2">
@@ -721,6 +752,13 @@ const AddVehiclePage = () => {
                                     countLabel="groups"
                                     emptyMsg="No auction groups found"
                                     emptyAction={<a href="/admin/auctionDetails" style={{ fontSize: '12px', color: '#1a73e8' }}>Create one first →</a>}
+                                    extraAction={
+                                        <button onClick={() => setShowAddGroup(true)}
+                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600, color: '#1a73e8', border: '1px solid #d2e3fc', borderRadius: '20px', padding: '5px 12px', background: '#f0f4ff', cursor: 'pointer' }}>
+                                            <svg style={{ width: '11px', height: '11px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                            New
+                                        </button>
+                                    }
                                 />
                             )}
 
@@ -737,6 +775,13 @@ const AddVehiclePage = () => {
                                     emptyMsg="No venues in this group"
                                     emptyAction={<a href="/admin/auctionDetails" style={{ fontSize: '12px', color: '#1a73e8' }}>Add venues first →</a>}
                                     onBack={() => setCurrentStep(1)}
+                                    extraAction={
+                                        <button onClick={() => setShowAddVenue(true)}
+                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600, color: '#1a73e8', border: '1px solid #d2e3fc', borderRadius: '20px', padding: '5px 12px', background: '#f0f4ff', cursor: 'pointer' }}>
+                                            <svg style={{ width: '11px', height: '11px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                            New
+                                        </button>
+                                    }
                                 />
                             )}
 
@@ -837,17 +882,6 @@ const AddVehiclePage = () => {
                                 </div>
                             </div>
                             <form onSubmit={handleSubmit}>
-                                {/* Variant */}
-                                <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #f1f3f4' }}>
-                                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>
-                                        Subtitle / Variant
-                                        <span style={{ marginLeft: '6px', fontWeight: 400, color: '#9aa0a6', textTransform: 'none', letterSpacing: 'normal', fontSize: '11px' }}>shown below title on card</span>
-                                    </label>
-                                    <input type="text" value={selectedVariant} onChange={e => setSelectedVariant(e.target.value)}
-                                        placeholder="e.g. Hybrid, 4WD 2.0, Gli, Wagon 1.5"
-                                        style={{ width: '100%', maxWidth: '380px', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none' }} />
-                                </div>
-
                                 {/* Dynamic fields grid */}
                                 {fields.filter(f => f.type !== 'file' && f.type !== 'image' && f.label?.toLowerCase().trim() !== 'description').length > 0 && (
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '14px', marginBottom: '20px' }}>
@@ -939,17 +973,44 @@ const AddVehiclePage = () => {
         {/* Add Manufacturer */}
         {showAddManufacturer && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }} onClick={() => setShowAddManufacturer(false)}>
-                <div className="modal-card" onClick={e => e.stopPropagation()}>
+                <div className="modal-card" style={{ maxWidth: '520px' }} onClick={e => e.stopPropagation()}>
                     <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#202124', margin: '0 0 16px' }}>Add Manufacturer</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '60vh', overflowY: 'auto', paddingRight: '4px' }}>
                         <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Name *</label>
                             <input type="text" value={newManufacturer.name} onChange={e => setNewManufacturer({ ...newManufacturer, name: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g., Toyota" /></div>
                         <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Country</label>
-                            <input type="text" value={newManufacturer.country} onChange={e => setNewManufacturer({ ...newManufacturer, country: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g., Japan" /></div>
-                        <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                            <button onClick={() => setShowAddManufacturer(false)} style={{ flex: 1, padding: '9px', border: '1px solid #e0e0e0', borderRadius: '24px', fontSize: '13px', cursor: 'pointer', background: '#fff', color: '#5f6368' }}>Cancel</button>
-                            <button onClick={handleAddManufacturer} disabled={!newManufacturer.name.trim() || saving} style={{ flex: 1, padding: '9px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '24px', fontSize: '13px', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Adding...' : 'Add'}</button>
+                            <select value={newManufacturer.country || ''} onChange={e => setNewManufacturer({ ...newManufacturer, country: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fff', boxSizing: 'border-box' }}>
+                                <option value="">Select country...</option>
+                                {COUNTRIES.sort((a, b) => a.localeCompare(b)).map(c => <option key={c} value={c}>{c}</option>)}
+                            </select></div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                            <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Company Name</label>
+                                <input type="text" value={newManufacturer.companyName || ''} onChange={e => setNewManufacturer({ ...newManufacturer, companyName: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} /></div>
+                            <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Contact Person</label>
+                                <input type="text" value={newManufacturer.contactPerson || ''} onChange={e => setNewManufacturer({ ...newManufacturer, contactPerson: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} /></div>
+                            <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Tel</label>
+                                <input type="text" value={newManufacturer.tel || ''} onChange={e => setNewManufacturer({ ...newManufacturer, tel: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} /></div>
+                            <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Bank Name</label>
+                                <input type="text" value={newManufacturer.bankName || ''} onChange={e => setNewManufacturer({ ...newManufacturer, bankName: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} /></div>
+                            <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Account Title</label>
+                                <input type="text" value={newManufacturer.accountTitle || ''} onChange={e => setNewManufacturer({ ...newManufacturer, accountTitle: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} /></div>
+                            <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Account #</label>
+                                <input type="text" value={newManufacturer.accountNumber || ''} onChange={e => setNewManufacturer({ ...newManufacturer, accountNumber: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} /></div>
+                            <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Mob #</label>
+                                <input type="text" value={newManufacturer.mob || ''} onChange={e => setNewManufacturer({ ...newManufacturer, mob: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} /></div>
+                            <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Tel #</label>
+                                <input type="text" value={newManufacturer.telSharp || ''} onChange={e => setNewManufacturer({ ...newManufacturer, telSharp: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} /></div>
+                            <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Fax</label>
+                                <input type="text" value={newManufacturer.fax || ''} onChange={e => setNewManufacturer({ ...newManufacturer, fax: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} /></div>
+                            <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Email</label>
+                                <input type="email" value={newManufacturer.email || ''} onChange={e => setNewManufacturer({ ...newManufacturer, email: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} /></div>
                         </div>
+                        <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Address</label>
+                            <input type="text" value={newManufacturer.address || ''} onChange={e => setNewManufacturer({ ...newManufacturer, address: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} /></div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                        <button onClick={() => setShowAddManufacturer(false)} style={{ flex: 1, padding: '9px', border: '1px solid #e0e0e0', borderRadius: '24px', fontSize: '13px', cursor: 'pointer', background: '#fff', color: '#5f6368' }}>Cancel</button>
+                        <button onClick={handleAddManufacturer} disabled={!newManufacturer.name.trim() || saving} style={{ flex: 1, padding: '9px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '24px', fontSize: '13px', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Adding...' : 'Add'}</button>
                     </div>
                 </div>
             </div>
@@ -958,34 +1019,42 @@ const AddVehiclePage = () => {
         {/* Add Model */}
         {showAddModel && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }} onClick={() => setShowAddModel(false)}>
-                <div className="modal-card" onClick={e => e.stopPropagation()}>
-                    <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#202124', margin: '0 0 16px' }}>Add Model</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Name *</label>
-                            <input type="text" value={newModel.name} onChange={e => setNewModel({ ...newModel, name: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g., Camry" /></div>
-                        <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Description</label>
-                            <input type="text" value={newModel.description} onChange={e => setNewModel({ ...newModel, description: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g., Sedan" /></div>
+                <div className="modal-card" style={{ maxWidth: '520px' }} onClick={e => e.stopPropagation()}>
+                    <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#202124', margin: '0 0 4px' }}>Add Model</h3>
+                    <p style={{ fontSize: '12px', color: '#9aa0a6', margin: '0 0 16px' }}>{selectedManufacturer?.name}</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                            <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Model Name *</label>
+                                <input type="text" value={newModel.name} onChange={e => setNewModel({ ...newModel, name: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g., Camry" /></div>
+                            <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Description</label>
+                                <input type="text" value={newModel.description} onChange={e => setNewModel({ ...newModel, description: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g., Sedan" /></div>
+                        </div>
+                        <div>
+                            <p style={{ fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Dimensions & Weight</p>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '8px' }}>
+                                <div><label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#9aa0a6', textTransform: 'uppercase', marginBottom: '3px' }}>Length</label>
+                                    <input type="number" value={newModel.dimensions?.length || ''} onChange={e => setNewModel({ ...newModel, dimensions: { ...newModel.dimensions, length: e.target.value } })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} placeholder="0" /></div>
+                                <div><label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#9aa0a6', textTransform: 'uppercase', marginBottom: '3px' }}>Width</label>
+                                    <input type="number" value={newModel.dimensions?.width || ''} onChange={e => setNewModel({ ...newModel, dimensions: { ...newModel.dimensions, width: e.target.value } })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} placeholder="0" /></div>
+                                <div><label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#9aa0a6', textTransform: 'uppercase', marginBottom: '3px' }}>Height</label>
+                                    <input type="number" value={newModel.dimensions?.height || ''} onChange={e => setNewModel({ ...newModel, dimensions: { ...newModel.dimensions, height: e.target.value } })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} placeholder="0" /></div>
+                                <div><label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#9aa0a6', textTransform: 'uppercase', marginBottom: '3px' }}>Unit Size</label>
+                                    <select value={newModel.dimensions?.unit_size || 'cm'} onChange={e => setNewModel({ ...newModel, dimensions: { ...newModel.dimensions, unit_size: e.target.value } })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', background: '#fff', boxSizing: 'border-box' }}>
+                                        {['cm','m','mm','in','ft'].map(u => <option key={u} value={u}>{u}</option>)}
+                                    </select></div>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px' }}>
+                                <div><label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#9aa0a6', textTransform: 'uppercase', marginBottom: '3px' }}>Weight</label>
+                                    <input type="number" value={newModel.dimensions?.weight || ''} onChange={e => setNewModel({ ...newModel, dimensions: { ...newModel.dimensions, weight: e.target.value } })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} placeholder="0" /></div>
+                                <div><label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#9aa0a6', textTransform: 'uppercase', marginBottom: '3px' }}>Unit Weight</label>
+                                    <select value={newModel.dimensions?.unit_weight || 'kg'} onChange={e => setNewModel({ ...newModel, dimensions: { ...newModel.dimensions, unit_weight: e.target.value } })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', background: '#fff', boxSizing: 'border-box' }}>
+                                        {['kg','g','lb','oz','t'].map(u => <option key={u} value={u}>{u}</option>)}
+                                    </select></div>
+                            </div>
+                        </div>
                         <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
                             <button onClick={() => setShowAddModel(false)} style={{ flex: 1, padding: '9px', border: '1px solid #e0e0e0', borderRadius: '24px', fontSize: '13px', cursor: 'pointer', background: '#fff', color: '#5f6368' }}>Cancel</button>
                             <button onClick={handleAddModel} disabled={!newModel.name.trim() || saving} style={{ flex: 1, padding: '9px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '24px', fontSize: '13px', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Adding...' : 'Add'}</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        )}
-
-        {/* Add Variant */}
-        {showAddVariant && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }} onClick={() => setShowAddVariant(false)}>
-                <div className="modal-card" onClick={e => e.stopPropagation()}>
-                    <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#202124', margin: '0 0 4px' }}>Add Variant</h3>
-                    <p style={{ fontSize: '12px', color: '#9aa0a6', margin: '0 0 16px' }}>{selectedManufacturer?.name} · {selectedModel?.name}</p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Variant Name *</label>
-                            <input type="text" value={newVariant} onChange={e => setNewVariant(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g., GLI, GLX" /></div>
-                        <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                            <button onClick={() => setShowAddVariant(false)} style={{ flex: 1, padding: '9px', border: '1px solid #e0e0e0', borderRadius: '24px', fontSize: '13px', cursor: 'pointer', background: '#fff', color: '#5f6368' }}>Cancel</button>
-                            <button onClick={handleAddVariant} disabled={!newVariant.trim() || saving} style={{ flex: 1, padding: '9px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '24px', fontSize: '13px', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Adding...' : 'Add'}</button>
                         </div>
                     </div>
                 </div>
@@ -1108,6 +1177,95 @@ const AddVehiclePage = () => {
                         onCancel={() => setShowAddAccountField(false)}
                         FIELD_TYPES={FIELD_TYPES}
                     />
+                </div>
+            </div>
+        )}
+
+        {/* Add Auction Group */}
+        {showAddGroup && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }} onClick={() => { setShowAddGroup(false); setNewGroup({ name: '', venues: [] }); setShowVenueForm(false) }}>
+                <div className="modal-card" style={{ maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
+                    <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#202124', margin: '0 0 16px' }}>Add Auction Group</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Group Name *</label>
+                            <input type="text" value={newGroup.name} onChange={e => setNewGroup({ ...newGroup, name: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g., JP" /></div>
+                        <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                <label style={{ fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Venues / Sites</label>
+                                <button onClick={() => setShowVenueForm(p => !p)} style={{ fontSize: '12px', color: '#1a73e8', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>+ Add Venue</button>
+                            </div>
+                            {newGroup.venues.length > 0 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
+                                    {newGroup.venues.map((v, i) => (
+                                        <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#e8f0fe', borderRadius: '8px', padding: '6px 12px' }}>
+                                            <span style={{ fontSize: '12px', fontWeight: 600, color: '#202124' }}>{v.name}</span>
+                                            <button onClick={() => setNewGroup(p => ({ ...p, venues: p.venues.filter((_, j) => j !== i) }))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c5221f', fontSize: '12px' }}>✕</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {showVenueForm && (
+                                <div style={{ background: '#f8f9fa', border: '1px solid #e0e0e0', borderRadius: '10px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <div><label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', marginBottom: '3px' }}>Venue Name *</label>
+                                        <input type="text" value={newVenue.name} onChange={e => setNewVenue({ ...newVenue, name: e.target.value })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g., USS Tokyo" /></div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                        <div><label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', marginBottom: '3px' }}>Membership #</label>
+                                            <input type="text" value={newVenue.membership} onChange={e => setNewVenue({ ...newVenue, membership: e.target.value })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} /></div>
+                                        <div><label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', marginBottom: '3px' }}>TEL</label>
+                                            <input type="text" value={newVenue.tel} onChange={e => setNewVenue({ ...newVenue, tel: e.target.value })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} /></div>
+                                        <div><label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', marginBottom: '3px' }}>FAX</label>
+                                            <input type="text" value={newVenue.fax} onChange={e => setNewVenue({ ...newVenue, fax: e.target.value })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} /></div>
+                                        <div><label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', marginBottom: '3px' }}>Email</label>
+                                            <input type="text" value={newVenue.email} onChange={e => setNewVenue({ ...newVenue, email: e.target.value })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} /></div>
+                                        <div><label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', marginBottom: '3px' }}>Postal Code</label>
+                                            <input type="text" value={newVenue.postal} onChange={e => setNewVenue({ ...newVenue, postal: e.target.value })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} /></div>
+                                        <div><label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', marginBottom: '3px' }}>Address</label>
+                                            <input type="text" value={newVenue.address} onChange={e => setNewVenue({ ...newVenue, address: e.target.value })} style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} /></div>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '6px' }}>
+                                        <button onClick={() => { setShowVenueForm(false); setNewVenue({ name: '', membership: '', tel: '', fax: '', email: '', postal: '', address: '' }) }} style={{ flex: 1, padding: '7px', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '12px', cursor: 'pointer', background: '#fff', color: '#5f6368' }}>Cancel</button>
+                                        <button onClick={() => { if (!newVenue.name.trim()) return; setNewGroup(p => ({ ...p, venues: [...p.venues, newVenue] })); setNewVenue({ name: '', membership: '', tel: '', fax: '', email: '', postal: '', address: '' }); setShowVenueForm(false) }} disabled={!newVenue.name.trim()} style={{ flex: 1, padding: '7px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', opacity: newVenue.name.trim() ? 1 : 0.5 }}>Add Venue</button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                            <button onClick={() => { setShowAddGroup(false); setNewGroup({ name: '', venues: [] }); setShowVenueForm(false) }} style={{ flex: 1, padding: '9px', border: '1px solid #e0e0e0', borderRadius: '24px', fontSize: '13px', cursor: 'pointer', background: '#fff', color: '#5f6368' }}>Cancel</button>
+                            <button onClick={handleAddGroup} disabled={!newGroup.name.trim() || saving} style={{ flex: 1, padding: '9px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '24px', fontSize: '13px', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Saving...' : 'Save Group'}</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* Add Venue to existing group */}
+        {showAddVenue && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }} onClick={() => { setShowAddVenue(false); setNewVenue({ name: '', membership: '', tel: '', fax: '', email: '', postal: '', address: '' }) }}>
+                <div className="modal-card" style={{ maxWidth: '480px' }} onClick={e => e.stopPropagation()}>
+                    <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#202124', margin: '0 0 4px' }}>Add Venue</h3>
+                    <p style={{ fontSize: '12px', color: '#9aa0a6', margin: '0 0 16px' }}>Group: {selectedGroup?.name}</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Venue Name *</label>
+                            <input type="text" value={newVenue.name} onChange={e => setNewVenue({ ...newVenue, name: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g., USS Tokyo" /></div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                            <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Membership #</label>
+                                <input type="text" value={newVenue.membership} onChange={e => setNewVenue({ ...newVenue, membership: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} /></div>
+                            <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>TEL</label>
+                                <input type="text" value={newVenue.tel} onChange={e => setNewVenue({ ...newVenue, tel: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} /></div>
+                            <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>FAX</label>
+                                <input type="text" value={newVenue.fax} onChange={e => setNewVenue({ ...newVenue, fax: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} /></div>
+                            <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Email</label>
+                                <input type="text" value={newVenue.email} onChange={e => setNewVenue({ ...newVenue, email: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} /></div>
+                            <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Postal Code</label>
+                                <input type="text" value={newVenue.postal} onChange={e => setNewVenue({ ...newVenue, postal: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} /></div>
+                            <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Address</label>
+                                <input type="text" value={newVenue.address} onChange={e => setNewVenue({ ...newVenue, address: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} /></div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                            <button onClick={() => { setShowAddVenue(false); setNewVenue({ name: '', membership: '', tel: '', fax: '', email: '', postal: '', address: '' }) }} style={{ flex: 1, padding: '9px', border: '1px solid #e0e0e0', borderRadius: '24px', fontSize: '13px', cursor: 'pointer', background: '#fff', color: '#5f6368' }}>Cancel</button>
+                            <button onClick={handleAddVenue} disabled={!newVenue.name.trim() || saving} style={{ flex: 1, padding: '9px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '24px', fontSize: '13px', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Adding...' : 'Add Venue'}</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         )}
