@@ -159,6 +159,7 @@ export default function EditVehiclePage({ params }) {
     const [showAddAccountField, setShowAddAccountField] = useState(false)
     const [qrData, setQrData]               = useState(null)
     const [bgRemoving, setBgRemoving]       = useState({})
+    const [bgRemovingExist, setBgRemovingExist] = useState({})
 
     useEffect(() => {
         if (!vehicleId) return
@@ -223,6 +224,44 @@ export default function EditVehiclePage({ params }) {
             alert('Failed to remove background. Please try again.')
         } finally {
             setBgRemoving(prev => ({ ...prev, [key]: false }))
+        }
+    }
+
+    const handleRemoveBgExisting = async (fieldId, imgIdx) => {
+        const key = `${fieldId}:exist:${imgIdx}`
+        setBgRemovingExist(prev => ({ ...prev, [key]: true }))
+        try {
+            const existing = getExistingImages(vehicleFields.find(f => f._id === fieldId))
+            const imgUrl = existing[imgIdx]?.path
+            if (!imgUrl) return
+
+            const { removeBackground } = await import('@imgly/background-removal')
+            const resp = await fetch(imgUrl)
+            const imgBlob = await resp.blob()
+            const processed = await removeBackground(imgBlob)
+
+            const fd = new FormData()
+            const ext = processed.type?.includes('png') ? 'png' : 'webp'
+            const file = new File([processed], `bg-removed.${ext}`, { type: processed.type || 'image/png' })
+            fd.append('file', file)
+            const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd })
+            if (!uploadRes.ok) throw new Error('Upload failed')
+            const { url } = await uploadRes.json()
+
+            const updatedExisting = existing.map((f, i) => i === imgIdx ? { ...f, path: url } : f)
+            const field = vehicleFields.find(f => f._id === fieldId)
+            const fieldLabel = field?.label?.replace(/\./g, '') || fieldId
+            await fetch('/api/vehicles', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ vehicleId, [fieldLabel]: updatedExisting, [fieldId]: updatedExisting })
+            })
+            setVehicle(prev => ({ ...prev, [fieldLabel]: updatedExisting, [fieldId]: updatedExisting }))
+        } catch (err) {
+            console.error('Background removal failed:', err)
+            alert('Failed to remove background. Please try again.')
+        } finally {
+            setBgRemovingExist(prev => ({ ...prev, [key]: false }))
         }
     }
 
@@ -448,7 +487,7 @@ export default function EditVehiclePage({ params }) {
                                                         <p style={{ fontSize: '10px', color: '#9aa0a6', marginBottom: '6px', fontWeight: 600 }}>
                                                             {keptCount}/{existing.length} kept
                                                             {(deletedImages[field._id]?.size || 0) > 0 && <span style={{ color: '#ef4444', marginLeft: '6px' }}>· {deletedImages[field._id].size} to remove</span>}
-                                                            {' · '}★ = cover · × = remove
+                                                            {' · '}★ = cover · ☁ = remove bg · × = remove
                                                         </p>
                                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                                             {existing.map((f, idx) => {
@@ -458,6 +497,11 @@ export default function EditVehiclePage({ params }) {
                                                                     <div key={idx} style={{ position: 'relative', width: '80px', height: '62px', borderRadius: '8px', overflow: 'hidden', border: `2px solid ${isMain ? '#f59e0b' : deleted ? '#ef4444' : '#e5e7eb'}`, opacity: deleted ? 0.35 : 1, flexShrink: 0, transition: 'all 0.15s' }}>
                                                                         <img src={f.path} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                                                                         {!deleted && <button type="button" onClick={() => setMainImageUrl(isMain ? '' : f.path)} style={{ position: 'absolute', top: '2px', left: '2px', width: '18px', height: '18px', borderRadius: '50%', background: isMain ? '#f59e0b' : 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', fontSize: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>★</button>}
+                                                                        {!deleted && <button type="button" onClick={() => handleRemoveBgExisting(field._id, idx)} disabled={bgRemovingExist[`${field._id}:exist:${idx}`]} title={bgRemovingExist[`${field._id}:exist:${idx}`] ? 'Removing background...' : 'Remove background'} style={{ position: 'absolute', bottom: '2px', left: '2px', width: '18px', height: '18px', borderRadius: '50%', background: bgRemovingExist[`${field._id}:exist:${idx}`] ? '#6366f1' : 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', cursor: bgRemovingExist[`${field._id}:exist:${idx}`] ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                            {bgRemovingExist[`${field._id}:exist:${idx}`]
+                                                                                ? <svg style={{ width: '10px', height: '10px', animation: 'spin 0.8s linear infinite' }} fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" style={{ strokeDasharray: 50, strokeDashoffset: 20 }} /></svg>
+                                                                                : <svg style={{ width: '10px', height: '10px' }} viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" /></svg>}
+                                                                        </button>}
                                                                         <button type="button" onClick={() => toggleDeleteImage(field._id, idx)} style={{ position: 'absolute', top: '2px', right: '2px', width: '18px', height: '18px', borderRadius: '50%', background: deleted ? '#16a34a' : '#ef4444', border: 'none', color: '#fff', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>{deleted ? '↺' : '×'}</button>
                                                                     </div>
                                                                 )
