@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import BgEditorModal from '@/components/BgEditorModal'
 
 const LETTERS = ['All', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')]
 
@@ -315,7 +316,9 @@ const AddVehiclePage = () => {
     const [inlineOptionValue, setInlineOptionValue] = useState('')
     const [inlineAdding, setInlineAdding] = useState(false)
     const [addMainImageUrl, setAddMainImageUrl] = useState('')
-    const [bgRemoving, setBgRemoving] = useState({})
+    const [bgEditorOpen, setBgEditorOpen] = useState(false)
+    const [bgEditorSrc, setBgEditorSrc] = useState(null)
+    const [bgEditorMeta, setBgEditorMeta] = useState(null)
 
     useEffect(() => { fetchAuctionGroups(); fetchManufacturers(); fetchFields(); fetchAccountFields(); fetchTaxes() }, [])
 
@@ -491,24 +494,24 @@ const AddVehiclePage = () => {
         const files = Array.isArray(formData[fieldId]) ? formData[fieldId] : []
         const target = files[fileIdx]
         if (!target?.file?.type?.startsWith('image/')) return
-        const processingKey = `${fieldId}:${fileIdx}`
-        setBgRemoving(prev => ({ ...prev, [processingKey]: true }))
-        try {
-            const { removeBackground } = await import('@imgly/background-removal')
-            const blob = await removeBackground(target.file)
-            const ext = blob.type?.includes('png') ? 'png' : 'webp'
-            const newName = target.name.replace(/\.[^.]+$/, `.${ext}`)
-            const newFile = new File([blob], newName, { type: blob.type || 'image/png' })
-            const newPreview = URL.createObjectURL(newFile)
-            const updated = files.map((f, i) => i === fileIdx ? { ...f, file: newFile, preview: newPreview, name: newFile.name } : f)
-            setFormData(prev => ({ ...prev, [fieldId]: updated }))
-        } catch (err) {
-            console.error('Background removal failed:', err)
-            alert('Failed to remove background. Please try again.')
-        } finally {
-            setBgRemoving(prev => ({ ...prev, [processingKey]: false }))
-        }
+        setBgEditorMeta({ fieldId, fileIdx })
+        setBgEditorSrc(target.file)
+        setBgEditorOpen(true)
     }, [formData])
+
+    const handleBgEditorConfirm = useCallback((blob) => {
+        if (!bgEditorMeta) return
+        const { fieldId, fileIdx } = bgEditorMeta
+        const ext = blob.type?.includes('png') ? 'png' : 'webp'
+        const newFile = new File([blob], `bg-removed.${ext}`, { type: blob.type || 'image/png' })
+        const newPreview = URL.createObjectURL(newFile)
+        const files = Array.isArray(formData[fieldId]) ? formData[fieldId] : []
+        const updated = files.map((f, i) => i === fileIdx ? { ...f, file: newFile, preview: newPreview, name: newFile.name } : f)
+        setFormData(prev => ({ ...prev, [fieldId]: updated }))
+        setBgEditorOpen(false)
+        setBgEditorMeta(null)
+        setBgEditorSrc(null)
+    }, [bgEditorMeta, formData])
 
     const sortByName = (a, b) => (a.name || '').localeCompare(b.name || '')
 
@@ -658,9 +661,9 @@ const AddVehiclePage = () => {
                                         {f.preview ? <img src={f.preview} alt={f.name} className="w-full h-full object-contain bg-gray-50" /> : <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 text-xs">{f.name?.split('.').pop()}</div>}
                                         {f.preview && <button type="button" onClick={() => setAddMainImageUrl(isMain ? '' : key)} title={isMain ? 'Remove as main' : 'Set as main image'} className="absolute top-1 left-1 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs leading-none" style={{ background: isMain ? '#f59e0b' : 'rgba(0,0,0,0.45)' }}>★</button>}
                                         {f.preview && f.file?.type?.startsWith('image/') && (
-                                            <button type="button" onClick={() => handleRemoveBg(field._id, idx)} disabled={bgRemoving[key]} title={bgRemoving[key] ? 'Removing background...' : 'Remove background'}
-                                                className="absolute bottom-1 left-1 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs leading-none" style={{ background: bgRemoving[key] ? '#6366f1' : 'rgba(0,0,0,0.45)', cursor: bgRemoving[key] ? 'wait' : 'pointer' }}>
-                                                {bgRemoving[key] ? <svg style={{ width: '10px', height: '10px', animation: 'spin 0.8s linear infinite' }} fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" style={{ strokeDasharray: 50, strokeDashoffset: 20 }} /></svg> : <svg style={{ width: '10px', height: '10px' }} viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" /></svg>}
+                                            <button type="button" onClick={() => handleRemoveBg(field._id, idx)} title="Remove background"
+                                                className="absolute bottom-1 left-1 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs leading-none" style={{ background: 'rgba(0,0,0,0.45)', cursor: 'pointer' }}>
+                                                <svg style={{ width: '10px', height: '10px' }} viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" /></svg>
                                             </button>
                                         )}
                                         <button type="button" onClick={() => {
@@ -1476,6 +1479,11 @@ const AddVehiclePage = () => {
                     </div>
                 </div>
             </div>
+        )}
+
+        {/* Background Editor Modal */}
+        {bgEditorOpen && bgEditorSrc && (
+            <BgEditorModal src={bgEditorSrc} onConfirm={handleBgEditorConfirm} onClose={() => { setBgEditorOpen(false); setBgEditorMeta(null); setBgEditorSrc(null) }} />
         )}
 
         </>
