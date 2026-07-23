@@ -1,7 +1,8 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
+import { removeBackground, blobToFile } from '@/utils/removeBackground'
 
 // ── Shared field input ────────────────────────────────────────────────────────
 const FieldInput = ({ field, value, onChange, allFields = [], allData = {} }) => {
@@ -150,9 +151,28 @@ const EditVehiclePage = () => {
     const [saveMsg, setSaveMsg]             = useState(null)
     const [showAddAccountField, setShowAddAccountField] = useState(false)
     const [qrData, setQrData]               = useState(null)
+    const [bgRemoving, setBgRemoving]       = useState({})
     const FIELD_TYPES = ['text', 'number', 'boolean', 'email', 'date', 'file', 'image', 'dropdown', 'select-year', 'select-country', 'sum']
 
     useEffect(() => { fetchAll() }, [vehicleId])
+
+    const handleRemoveBg = useCallback(async (fieldId, fileIdx) => {
+        const files = newImages[fieldId]
+        if (!files?.[fileIdx]?.type?.startsWith('image/')) return
+        const key = `${fieldId}:${fileIdx}`
+        setBgRemoving(prev => ({ ...prev, [key]: true }))
+        try {
+            const blob = await removeBackground(files[fileIdx])
+            const newFile = blobToFile(blob, files[fileIdx].name)
+            const updated = files.map((f, i) => i === fileIdx ? newFile : f)
+            setNewImages(prev => ({ ...prev, [fieldId]: updated }))
+        } catch (err) {
+            console.error('Background removal failed:', err)
+            alert('Failed to remove background. Please try again.')
+        } finally {
+            setBgRemoving(prev => ({ ...prev, [key]: false }))
+        }
+    }, [newImages])
 
     const fetchAll = async () => {
         try {
@@ -437,9 +457,44 @@ const EditVehiclePage = () => {
                                                     </div>
                                                 )}
                                                 <input type="file" multiple accept={field.type === 'image' ? 'image/*' : '*'}
-                                                    onChange={e => setNewImages(prev => ({ ...prev, [field._id]: Array.from(e.target.files) }))}
+                                                    onChange={e => {
+                                                        const incoming = Array.from(e.target.files)
+                                                        const existing = newImages[field._id] || []
+                                                        setNewImages(prev => ({ ...prev, [field._id]: [...existing, ...incoming] }))
+                                                        e.target.value = ''
+                                                    }}
                                                     style={{ width: '100%', padding: '8px 10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '12px', boxSizing: 'border-box' }} />
-                                                {newImages[field._id]?.length > 0 && <p style={{ fontSize: '10px', color: '#1a73e8', marginTop: '4px', fontWeight: 600 }}>{newImages[field._id].length} new file{newImages[field._id].length > 1 ? 's' : ''} selected</p>}
+                                                {newImages[field._id]?.length > 0 && (
+                                                    <div style={{ marginTop: '6px' }}>
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '4px' }}>
+                                                            {newImages[field._id].map((file, idx) => {
+                                                                const key = `${field._id}:${idx}`
+                                                                const isImg = file.type?.startsWith('image/')
+                                                                const previewUrl = isImg ? URL.createObjectURL(file) : null
+                                                                const processing = bgRemoving[key]
+                                                                return (
+                                                                    <div key={idx} style={{ position: 'relative', width: '72px', height: '56px', borderRadius: '8px', overflow: 'hidden', border: '2px solid #e5e7eb', flexShrink: 0 }}>
+                                                                        {previewUrl
+                                                                            ? <img src={previewUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                                                            : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f3f4', fontSize: '10px', color: '#9aa0a6' }}>{file.name?.split('.').pop()}</div>}
+                                                                        {isImg && (
+                                                                            <button type="button" onClick={() => handleRemoveBg(field._id, idx)} disabled={processing}
+                                                                                title={processing ? 'Removing background...' : 'Remove background'}
+                                                                                style={{ position: 'absolute', bottom: '2px', left: '2px', width: '18px', height: '18px', borderRadius: '50%', background: processing ? '#6366f1' : 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', fontSize: '8px', cursor: processing ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                                {processing
+                                                                                    ? <svg style={{ width: '10px', height: '10px', animation: 'spin 0.8s linear infinite' }} fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" style={{ strokeDasharray: 50, strokeDashoffset: 20 }} /></svg>
+                                                                                    : <svg style={{ width: '10px', height: '10px' }} viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" /></svg>}
+                                                                            </button>
+                                                                        )}
+                                                                        <button type="button" onClick={() => setNewImages(prev => ({ ...prev, [field._id]: prev[field._id].filter((_, i) => i !== idx) }))}
+                                                                            style={{ position: 'absolute', top: '2px', right: '2px', width: '16px', height: '16px', borderRadius: '50%', background: '#ef4444', border: 'none', color: '#fff', fontSize: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>×</button>
+                                                                    </div>
+                                                                )
+                                                            })}
+                                                        </div>
+                                                        <p style={{ fontSize: '10px', color: '#9aa0a6' }}>☁ = remove bg · × = remove</p>
+                                                    </div>
+                                                )}
                                             </div>
                                         )
                                     })}

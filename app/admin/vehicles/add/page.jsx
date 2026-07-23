@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { removeBackground, blobToFile } from '@/utils/removeBackground'
 
 const LETTERS = ['All', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')]
 
@@ -315,8 +316,29 @@ const AddVehiclePage = () => {
     const [inlineOptionValue, setInlineOptionValue] = useState('')
     const [inlineAdding, setInlineAdding] = useState(false)
     const [addMainImageUrl, setAddMainImageUrl] = useState('')
+    const [bgRemoving, setBgRemoving] = useState({})
 
     useEffect(() => { fetchAuctionGroups(); fetchManufacturers(); fetchFields(); fetchAccountFields(); fetchTaxes() }, [])
+
+    const handleRemoveBg = useCallback(async (fieldId, fileIdx) => {
+        const files = Array.isArray(formData[fieldId]) ? formData[fieldId] : []
+        const target = files[fileIdx]
+        if (!target?.file?.type?.startsWith('image/')) return
+        const processingKey = `${fieldId}:${fileIdx}`
+        setBgRemoving(prev => ({ ...prev, [processingKey]: true }))
+        try {
+            const blob = await removeBackground(target.file)
+            const newFile = blobToFile(blob, target.name)
+            const newPreview = URL.createObjectURL(newFile)
+            const updated = files.map((f, i) => i === fileIdx ? { ...f, file: newFile, preview: newPreview, name: newFile.name } : f)
+            handleChange(fieldId, updated)
+        } catch (err) {
+            console.error('Background removal failed:', err)
+            alert('Failed to remove background. Please try again.')
+        } finally {
+            setBgRemoving(prev => ({ ...prev, [processingKey]: false }))
+        }
+    }, [formData, handleChange])
 
     const fetchAuctionGroups = async () => {
         try { const res = await fetch('/api/auctionGroup'); if (res.ok) setAuctionGroups((await res.json()) || []) } catch (e) { console.error(e) }
@@ -633,6 +655,12 @@ const AddVehiclePage = () => {
                                     <div key={f.id} className="relative shrink-0 rounded-lg overflow-hidden border-2 transition" style={{ width: '84px', height: '66px', borderColor: isMain ? '#f59e0b' : '#e5e7eb' }}>
                                         {f.preview ? <img src={f.preview} alt={f.name} className="w-full h-full object-contain bg-gray-50" /> : <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 text-xs">{f.name?.split('.').pop()}</div>}
                                         {f.preview && <button type="button" onClick={() => setAddMainImageUrl(isMain ? '' : key)} title={isMain ? 'Remove as main' : 'Set as main image'} className="absolute top-1 left-1 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs leading-none" style={{ background: isMain ? '#f59e0b' : 'rgba(0,0,0,0.45)' }}>★</button>}
+                                        {f.preview && f.file?.type?.startsWith('image/') && (
+                                            <button type="button" onClick={() => handleRemoveBg(field._id, idx)} disabled={bgRemoving[key]} title={bgRemoving[key] ? 'Removing background...' : 'Remove background'}
+                                                className="absolute bottom-1 left-1 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs leading-none" style={{ background: bgRemoving[key] ? '#6366f1' : 'rgba(0,0,0,0.45)', cursor: bgRemoving[key] ? 'wait' : 'pointer' }}>
+                                                {bgRemoving[key] ? <svg style={{ width: '10px', height: '10px', animation: 'spin 0.8s linear infinite' }} fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" style={{ strokeDasharray: 50, strokeDashoffset: 20 }} /></svg> : <svg style={{ width: '10px', height: '10px' }} viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" /></svg>}
+                                            </button>
+                                        )}
                                         <button type="button" onClick={() => {
                                             const updated = files.filter((_, i) => i !== idx)
                                             handleChange(field._id, updated)
@@ -643,7 +671,7 @@ const AddVehiclePage = () => {
                             })}
                         </div>
                     )}
-                    {files.length > 0 && <p className="text-[10px] text-gray-400">★ = set as cover · × = remove</p>}
+                    {files.length > 0 && <p className="text-[10px] text-gray-400">★ = cover · cloud = remove bg · × = remove</p>}
                     <input type="file" multiple accept={field.type === 'image' ? 'image/*' : '*'}
                         onChange={e => { const newFiles = Array.from(e.target.files).map(file => ({ file, id: Math.random().toString(36).substring(2), preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : null, name: file.name })); handleChange(field._id, [...files, ...newFiles]); e.target.value = '' }}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition" />
@@ -747,6 +775,7 @@ const AddVehiclePage = () => {
 
     return (
         <>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
         <div style={{ padding: '16px', minHeight: '100vh', background: '#f6f8fc' }}>
 
             {/* ── Page header ── */}
