@@ -1,6 +1,5 @@
 'use client'
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { removeBackground, blobToFile } from '@/utils/removeBackground'
 
 const LETTERS = ['All', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')]
 
@@ -319,26 +318,6 @@ const AddVehiclePage = () => {
     const [bgRemoving, setBgRemoving] = useState({})
 
     useEffect(() => { fetchAuctionGroups(); fetchManufacturers(); fetchFields(); fetchAccountFields(); fetchTaxes() }, [])
-
-    const handleRemoveBg = useCallback(async (fieldId, fileIdx) => {
-        const files = Array.isArray(formData[fieldId]) ? formData[fieldId] : []
-        const target = files[fileIdx]
-        if (!target?.file?.type?.startsWith('image/')) return
-        const processingKey = `${fieldId}:${fileIdx}`
-        setBgRemoving(prev => ({ ...prev, [processingKey]: true }))
-        try {
-            const blob = await removeBackground(target.file)
-            const newFile = blobToFile(blob, target.name)
-            const newPreview = URL.createObjectURL(newFile)
-            const updated = files.map((f, i) => i === fileIdx ? { ...f, file: newFile, preview: newPreview, name: newFile.name } : f)
-            handleChange(fieldId, updated)
-        } catch (err) {
-            console.error('Background removal failed:', err)
-            alert('Failed to remove background. Please try again.')
-        } finally {
-            setBgRemoving(prev => ({ ...prev, [processingKey]: false }))
-        }
-    }, [formData, handleChange])
 
     const fetchAuctionGroups = async () => {
         try { const res = await fetch('/api/auctionGroup'); if (res.ok) setAuctionGroups((await res.json()) || []) } catch (e) { console.error(e) }
