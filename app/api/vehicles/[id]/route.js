@@ -6,7 +6,13 @@ export const GET = async (req, { params }) => {
     try {
         await dbConnect()
         const { id } = await params
-        const vehicle = await Vehicle.findById(id).populate('rikusoCompany').lean()
+        let vehicle
+        try {
+            vehicle = await Vehicle.findById(id).populate('rikusoCompany').lean()
+        } catch (populateErr) {
+            // If populate fails (e.g. rikusoCompany holds a non-ObjectId), fetch without it
+            vehicle = await Vehicle.findById(id).lean()
+        }
         if (!vehicle) return NextResponse.json({ message: 'Vehicle not found' }, { status: 404 })
         return NextResponse.json(vehicle, { status: 200 })
     } catch (error) {
