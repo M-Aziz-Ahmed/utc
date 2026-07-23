@@ -2,7 +2,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
-import { removeBackground, blobToFile } from '@/utils/removeBackground'
 
 // ── Shared field input ────────────────────────────────────────────────────────
 const FieldInput = ({ field, value, onChange, allFields = [], allData = {} }) => {
@@ -162,8 +161,11 @@ const EditVehiclePage = () => {
         const key = `${fieldId}:${fileIdx}`
         setBgRemoving(prev => ({ ...prev, [key]: true }))
         try {
+            const { removeBackground } = await import('@imgly/background-removal')
             const blob = await removeBackground(files[fileIdx])
-            const newFile = blobToFile(blob, files[fileIdx].name)
+            const ext = blob.type?.includes('png') ? 'png' : 'webp'
+            const newName = files[fileIdx].name.replace(/\.[^.]+$/, `.${ext}`)
+            const newFile = new File([blob], newName, { type: blob.type || 'image/png' })
             const updated = files.map((f, i) => i === fileIdx ? newFile : f)
             setNewImages(prev => ({ ...prev, [fieldId]: updated }))
         } catch (err) {

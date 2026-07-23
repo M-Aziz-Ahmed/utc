@@ -487,6 +487,29 @@ const AddVehiclePage = () => {
     const handleChange = (id, value) => setFormData(prev => ({ ...prev, [id]: value }))
     const handleAccountChange = (id, value) => setAccountData(prev => ({ ...prev, [id]: value }))
 
+    const handleRemoveBg = useCallback(async (fieldId, fileIdx) => {
+        const files = Array.isArray(formData[fieldId]) ? formData[fieldId] : []
+        const target = files[fileIdx]
+        if (!target?.file?.type?.startsWith('image/')) return
+        const processingKey = `${fieldId}:${fileIdx}`
+        setBgRemoving(prev => ({ ...prev, [processingKey]: true }))
+        try {
+            const { removeBackground } = await import('@imgly/background-removal')
+            const blob = await removeBackground(target.file)
+            const ext = blob.type?.includes('png') ? 'png' : 'webp'
+            const newName = target.name.replace(/\.[^.]+$/, `.${ext}`)
+            const newFile = new File([blob], newName, { type: blob.type || 'image/png' })
+            const newPreview = URL.createObjectURL(newFile)
+            const updated = files.map((f, i) => i === fileIdx ? { ...f, file: newFile, preview: newPreview, name: newFile.name } : f)
+            setFormData(prev => ({ ...prev, [fieldId]: updated }))
+        } catch (err) {
+            console.error('Background removal failed:', err)
+            alert('Failed to remove background. Please try again.')
+        } finally {
+            setBgRemoving(prev => ({ ...prev, [processingKey]: false }))
+        }
+    }, [formData])
+
     const sortByName = (a, b) => (a.name || '').localeCompare(b.name || '')
 
     const filteredGroups = useMemo(() => {
