@@ -1,19 +1,29 @@
 'use client'
-import { useEffect, useState, useCallback, use } from 'react'
+import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
-// ── Shared field input ────────────────────────────────────────────────────────
+const FIELD_TYPES = ['text', 'number', 'boolean', 'email', 'date', 'file', 'image', 'dropdown', 'select-year', 'select-country', 'sum', 'tax']
+
+const COUNTRIES = ["Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda","Argentina","Armenia","Australia","Austria","Azerbaijan","Bahamas","Bahrain","Bangladesh","Barbados","Belarus","Belgium","Belize","Benin","Bhutan","Bolivia","Bosnia and Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cabo Verde","Cambodia","Cameroon","Canada","Central African Republic","Chad","Chile","China","Colombia","Comoros","Congo","Costa Rica","Croatia","Cuba","Cyprus","Czech Republic","Denmark","Djibouti","Dominica","Dominican Republic","Ecuador","Egypt","El Salvador","Equatorial Guinea","Eritrea","Estonia","Eswatini","Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea","Guinea-Bissau","Guyana","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kiribati","Kosovo","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania","Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Marshall Islands","Mauritania","Mauritius","Mexico","Micronesia","Moldova","Monaco","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nauru","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia","Norway","Oman","Pakistan","Palau","Palestine","Panama","Papua New Guinea","Paraguay","Peru","Philippines","Poland","Portugal","Qatar","Romania","Russia","Rwanda","Saint Kitts and Nevis","Saint Lucia","Saint Vincent and the Grenadines","Samoa","San Marino","Sao Tome and Principe","Saudi Arabia","Senegal","Serbia","Seychelles","Sierra Leone","Singapore","Slovakia","Slovenia","Solomon Islands","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Suriname","Sweden","Switzerland","Syria","Taiwan","Tajikistan","Tanzania","Thailand","Timor-Leste","Togo","Tonga","Trinidad and Tobago","Tunisia","Turkey","Turkmenistan","Tuvalu","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Vanuatu","Vatican City","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"]
+
 const FieldInput = ({ field, value, onChange, allFields = [], allData = {} }) => {
     const base = { width: '100%', padding: '8px 11px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: '#fff' }
     const focus = e => { e.target.style.borderColor = '#1a73e8'; e.target.style.boxShadow = '0 0 0 3px rgba(26,115,232,0.1)' }
     const blur  = e => { e.target.style.borderColor = '#e0e0e0'; e.target.style.boxShadow = 'none' }
-    if (field.type === 'dropdown' || field.type === 'select-year' || field.type === 'select-country') return (
-        <select value={value ?? ''} onChange={e => onChange(e.target.value)} required={field.isRequired} style={{ ...base }} onFocus={focus} onBlur={blur}>
-            <option value="">Select...</option>
-            {[...(field.options || [])].sort((a, b) => { const na = Number(a), nb = Number(b); if (!isNaN(na) && !isNaN(nb)) return na - nb; return a.localeCompare(b) }).map((o, i) => <option key={i} value={o}>{o}</option>)}
-        </select>
-    )
+
+    if (field.type === 'dropdown' || field.type === 'select-year' || field.type === 'select-country') {
+        const opts = field.type === 'select-country' ? COUNTRIES
+            : field.type === 'select-year' ? Array.from({ length: new Date().getFullYear() - 1949 }, (_, i) => String(new Date().getFullYear() - i))
+            : [...(field.options || [])]
+        return (
+            <select value={value ?? ''} onChange={e => onChange(e.target.value)} required={field.isRequired} style={base} onFocus={focus} onBlur={blur}>
+                <option value="">Select...</option>
+                {opts.sort((a, b) => { const na = Number(a), nb = Number(b); if (!isNaN(na) && !isNaN(nb)) return na - nb; return a.localeCompare(b) }).map((o, i) => <option key={i} value={o}>{o}</option>)}
+            </select>
+        )
+    }
+
     if (field.type === 'boolean') return (
         <div style={{ display: 'flex', gap: '6px' }}>
             {[{ label: 'Yes', val: true }, { label: 'No', val: false }].map(({ label, val }) => (
@@ -23,6 +33,16 @@ const FieldInput = ({ field, value, onChange, allFields = [], allData = {} }) =>
             ))}
         </div>
     )
+
+    if (field.type === 'tax') {
+        const linkedTax = allFields.find(f => f.type === 'tax' && f._id === field._id)
+        return (
+            <div style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid #fbbf24', background: '#fffbeb' }}>
+                <span style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tax Field</span>
+            </div>
+        )
+    }
+
     if (field.type === 'sum') {
         const linkedFieldLabels = field.linkedFields || []
         let sum = 0
@@ -30,38 +50,31 @@ const FieldInput = ({ field, value, onChange, allFields = [], allData = {} }) =>
             const src = allFields.find(f => f.label === label)
             if (src) sum += parseFloat(allData[src._id]) || 0
         })
-        const display = sum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
         return (
             <div style={{ position: 'relative' }}>
-                <input readOnly value={display} style={{ ...base, background: '#f5f3ff', border: '1px solid #c4b5fd', color: '#6d28d9', fontWeight: 700, fontSize: '14px', cursor: 'default' }} />
+                <input readOnly value={sum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} style={{ ...base, background: '#f5f3ff', border: '1px solid #c4b5fd', color: '#6d28d9', fontWeight: 700, fontSize: '14px', cursor: 'default' }} />
                 <span style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', fontSize: '9px', padding: '1px 5px', borderRadius: '6px', background: '#ede9fe', color: '#6d28d9', fontWeight: 600, pointerEvents: 'none' }}>Sum</span>
             </div>
         )
     }
+
     return <input type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'} value={value ?? ''} onChange={e => onChange(e.target.value)} required={field.isRequired} placeholder={`Enter ${field.label.toLowerCase()}`} style={base} onFocus={focus} onBlur={blur} />
 }
 
-// ── Inline add-field form ─────────────────────────────────────────────────────
-const InlineAddFieldForm = ({ FIELD_TYPES, onDone, onCancel, existingFields = [] }) => {
+const AddAccountFieldModal = ({ FIELD_TYPES, existingFields, onDone, onClose }) => {
     const [field, setField] = useState({ label: '', type: 'text', isRequired: false, options: [], linkedFields: [] })
     const [optInput, setOptInput] = useState('')
     const [adding, setAdding] = useState(false)
     const [msg, setMsg] = useState(null)
+
     const handleAdd = async () => {
         if (!field.label.trim()) return
         setAdding(true); setMsg(null)
         try {
             const payload = { ...field, belongsto: 'accounts' }
             if (field.type === 'dropdown') payload.options = field.options.filter(o => o.trim())
-            if (field.type === 'select-year') {
-                const currentYear = new Date().getFullYear()
-                const years = []
-                for (let y = currentYear; y >= 1950; y--) years.push(String(y))
-                payload.options = years
-            }
-            if (field.type === 'select-country') {
-                payload.options = ["Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda","Argentina","Armenia","Australia","Austria","Azerbaijan","Bahamas","Bahrain","Bangladesh","Barbados","Belarus","Belgium","Belize","Benin","Bhutan","Bolivia","Bosnia and Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cabo Verde","Cambodia","Cameroon","Canada","Central African Republic","Chad","Chile","China","Colombia","Comoros","Congo","Costa Rica","Croatia","Cuba","Cyprus","Czech Republic","Denmark","Djibouti","Dominica","Dominican Republic","Ecuador","Egypt","El Salvador","Equatorial Guinea","Eritrea","Estonia","Eswatini","Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea","Guinea-Bissau","Guyana","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kiribati","Kosovo","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania","Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Marshall Islands","Mauritania","Mauritius","Mexico","Micronesia","Moldova","Monaco","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nauru","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia","Norway","Oman","Pakistan","Palau","Palestine","Panama","Papua New Guinea","Paraguay","Peru","Philippines","Poland","Portugal","Qatar","Romania","Russia","Rwanda","Saint Kitts and Nevis","Saint Lucia","Saint Vincent and the Grenadines","Samoa","San Marino","Sao Tome and Principe","Saudi Arabia","Senegal","Serbia","Seychelles","Sierra Leone","Singapore","Slovakia","Slovenia","Solomon Islands","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Suriname","Sweden","Switzerland","Syria","Taiwan","Tajikistan","Tanzania","Thailand","Timor-Leste","Togo","Tonga","Trinidad and Tobago","Tunisia","Turkey","Turkmenistan","Tuvalu","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Vanuatu","Vatican City","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"].sort((a, b) => a.localeCompare(b))
-            }
+            if (field.type === 'select-year') { const y = []; for (let i = new Date().getFullYear(); i >= 1950; i--) y.push(String(i)); payload.options = y }
+            if (field.type === 'select-country') payload.options = COUNTRIES
             if (field.type === 'sum') payload.linkedFields = field.linkedFields
             const res = await fetch('/api/newField', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
             const data = await res.json()
@@ -69,80 +82,75 @@ const InlineAddFieldForm = ({ FIELD_TYPES, onDone, onCancel, existingFields = []
             onDone()
         } catch (err) { setMsg(err.message) } finally { setAdding(false) }
     }
+
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Label *</label>
-                <input autoFocus type="text" value={field.label} onChange={e => setField(f => ({ ...f, label: e.target.value }))} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g., Push Price" /></div>
-            <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Type</label>
-                <select value={field.type} onChange={e => setField(f => ({ ...f, type: e.target.value, options: [], linkedFields: [] }))} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fff', boxSizing: 'border-box' }}>
-                    {FIELD_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
-            {field.type === 'sum' && existingFields.length > 0 && (
-                <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '10px', padding: '12px' }}>
-                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#6d28d9', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Source Fields to Sum</label>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '120px', overflowY: 'auto' }}>
-                        {existingFields.filter(f => f.type === 'number').map(f => (
-                            <label key={f._id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#374151', cursor: 'pointer', padding: '4px 8px', borderRadius: '6px', background: field.linkedFields.includes(f.label) ? '#ede9fe' : 'transparent' }}>
-                                <input type="checkbox" checked={field.linkedFields.includes(f.label)} onChange={() => setField(p => ({ ...p, linkedFields: p.linkedFields.includes(f.label) ? p.linkedFields.filter(l => l !== f.label) : [...p.linkedFields, f.label] }))} style={{ accentColor: '#6d28d9' }} />
-                                {f.label}
-                            </label>
-                        ))}
-                    </div>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }} onClick={onClose}>
+            <div style={{ background: '#fff', borderRadius: '14px', padding: '24px', maxWidth: '420px', width: '100%', boxShadow: '0 16px 48px rgba(0,0,0,0.22)' }} onClick={e => e.stopPropagation()}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#202124', margin: 0 }}>Add Account Field</h3>
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9aa0a6', fontSize: '18px' }}>×</button>
                 </div>
-            )}
-            {field.type === 'dropdown' && (
-                <div style={{ background: '#f8f9fa', border: '1px solid #e0e0e0', borderRadius: '10px', padding: '12px' }}>
-                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Options</label>
-                    {field.options.map((opt, i) => (
-                        <div key={i} style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
-                            <input type="text" value={opt} onChange={e => setField(f => ({ ...f, options: f.options.map((o, j) => j === i ? e.target.value : o) }))} style={{ flex: 1, padding: '6px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none' }} placeholder={`Option ${i + 1}`} />
-                            <button type="button" onClick={() => setField(f => ({ ...f, options: f.options.filter((_, j) => j !== i) }))} style={{ padding: '4px 8px', background: 'none', border: 'none', cursor: 'pointer', color: '#c5221f' }}>✕</button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div>
+                        <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Label *</label>
+                        <input autoFocus type="text" value={field.label} onChange={e => setField(f => ({ ...f, label: e.target.value }))} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g., Push Price" />
+                    </div>
+                    <div>
+                        <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Type</label>
+                        <select value={field.type} onChange={e => setField(f => ({ ...f, type: e.target.value, options: [], linkedFields: [] }))} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fff', boxSizing: 'border-box' }}>
+                            {FIELD_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                    </div>
+                    {field.type === 'dropdown' && (
+                        <div style={{ background: '#f8f9fa', border: '1px solid #e0e0e0', borderRadius: '10px', padding: '12px' }}>
+                            <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Options</label>
+                            {field.options.map((opt, i) => (
+                                <div key={i} style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
+                                    <input type="text" value={opt} onChange={e => setField(f => ({ ...f, options: f.options.map((o, j) => j === i ? e.target.value : o) }))} style={{ flex: 1, padding: '6px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none' }} />
+                                    <button type="button" onClick={() => setField(f => ({ ...f, options: f.options.filter((_, j) => j !== i) }))} style={{ padding: '4px 8px', background: 'none', border: 'none', cursor: 'pointer', color: '#c5221f' }}>✕</button>
+                                </div>
+                            ))}
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                                <input type="text" value={optInput} onChange={e => setOptInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (optInput.trim()) { setField(f => ({ ...f, options: [...f.options, optInput.trim()] })); setOptInput('') } } }} style={{ flex: 1, padding: '6px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none' }} placeholder="Type option, press Enter" />
+                                <button type="button" onClick={() => { if (optInput.trim()) { setField(f => ({ ...f, options: [...f.options, optInput.trim()] })); setOptInput('') } }} style={{ padding: '6px 12px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>+ Add</button>
+                            </div>
                         </div>
-                    ))}
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                        <input type="text" value={optInput} onChange={e => setOptInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (optInput.trim()) { setField(f => ({ ...f, options: [...f.options, optInput.trim()] })); setOptInput('') } } }} style={{ flex: 1, padding: '6px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none' }} placeholder="Type option, press Enter" />
-                        <button type="button" onClick={() => { if (optInput.trim()) { setField(f => ({ ...f, options: [...f.options, optInput.trim()] })); setOptInput('') } }} style={{ padding: '6px 12px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>+ Add</button>
+                    )}
+                    {field.type === 'sum' && existingFields.length > 0 && (
+                        <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '10px', padding: '12px' }}>
+                            <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#6d28d9', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Source Fields to Sum</label>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '120px', overflowY: 'auto' }}>
+                                {existingFields.filter(f => f.type === 'number').map(f => (
+                                    <label key={f._id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#374151', cursor: 'pointer', padding: '4px 8px', borderRadius: '6px', background: field.linkedFields.includes(f.label) ? '#ede9fe' : 'transparent' }}>
+                                        <input type="checkbox" checked={field.linkedFields.includes(f.label)} onChange={() => setField(p => ({ ...p, linkedFields: p.linkedFields.includes(f.label) ? p.linkedFields.filter(l => l !== f.label) : [...p.linkedFields, f.label] }))} style={{ accentColor: '#6d28d9' }} />
+                                        {f.label}
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {msg && <div style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12px', background: '#fce8e6', color: '#c5221f', border: '1px solid #f5c6c2' }}>{msg}</div>}
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                        <button type="button" onClick={onClose} style={{ flex: 1, padding: '9px', border: '1px solid #e0e0e0', borderRadius: '24px', fontSize: '13px', cursor: 'pointer', background: '#fff', color: '#5f6368' }}>Cancel</button>
+                        <button type="button" onClick={handleAdd} disabled={!field.label.trim() || adding} style={{ flex: 1, padding: '9px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '24px', fontSize: '13px', fontWeight: 600, cursor: adding ? 'not-allowed' : 'pointer', opacity: adding ? 0.7 : 1 }}>{adding ? 'Adding...' : 'Add Field'}</button>
                     </div>
                 </div>
-            )}
-            {field.type === 'select-year' && (
-                <div style={{ background: '#ecfeff', border: '1px solid #a5f3fc', borderRadius: '10px', padding: '12px' }}>
-                    <p style={{ fontSize: '12px', color: '#0e7490' }}>Options will be years from <strong>{new Date().getFullYear()}</strong> down to <strong>1950</strong>. Generated automatically.</p>
-                </div>
-            )}
-            {field.type === 'select-country' && (
-                <div style={{ background: '#f7fee7', border: '1px solid #bef264', borderRadius: '10px', padding: '12px' }}>
-                    <p style={{ fontSize: '12px', color: '#4d7c0f' }}>Options will be <strong>195 countries</strong> sorted A-Z. Generated automatically.</p>
-                </div>
-            )}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Required?</span>
-                {[{ label: 'Yes', val: true }, { label: 'No', val: false }].map(({ label, val }) => (
-                    <label key={String(val)} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer', padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 500, border: field.isRequired === val ? '1px solid #1a73e8' : '1px solid #e0e0e0', background: field.isRequired === val ? '#e8f0fe' : '#fff', color: field.isRequired === val ? '#1a73e8' : '#5f6368' }}>
-                        <input type="radio" style={{ display: 'none' }} checked={field.isRequired === val} onChange={() => setField(f => ({ ...f, isRequired: val }))} /> {label}
-                    </label>
-                ))}
-            </div>
-            {msg && <div style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12px', background: '#fce8e6', color: '#c5221f', border: '1px solid #f5c6c2' }}>{msg}</div>}
-            <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                <button type="button" onClick={onCancel} style={{ flex: 1, padding: '9px', border: '1px solid #e0e0e0', borderRadius: '24px', fontSize: '13px', cursor: 'pointer', background: '#fff', color: '#5f6368' }}>Cancel</button>
-                <button type="button" onClick={handleAdd} disabled={!field.label.trim() || adding} style={{ flex: 1, padding: '9px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '24px', fontSize: '13px', fontWeight: 600, cursor: adding ? 'not-allowed' : 'pointer', opacity: adding ? 0.7 : 1 }}>{adding ? 'Adding...' : 'Add Field'}</button>
             </div>
         </div>
     )
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
-const EditVehiclePage = ({ params }) => {
-    const router = useRouter()
+export default function EditVehiclePage({ params }) {
     const { id: vehicleId } = use(params)
+    const router = useRouter()
 
     const [loading, setLoading]             = useState(true)
     const [submitting, setSubmitting]       = useState(false)
     const [vehicle, setVehicle]             = useState(null)
     const [vehicleFields, setVehicleFields] = useState([])
     const [accountFields, setAccountFields] = useState([])
-    const [formData, setFormData]           = useState({})     // vehicle fields
-    const [accountData, setAccountData]     = useState({})     // account fields
+    const [formData, setFormData]           = useState({})
+    const [accountData, setAccountData]     = useState({})
     const [newImages, setNewImages]         = useState({})
     const [deletedImages, setDeletedImages] = useState({})
     const [mainImageUrl, setMainImageUrl]   = useState('')
@@ -151,11 +159,54 @@ const EditVehiclePage = ({ params }) => {
     const [showAddAccountField, setShowAddAccountField] = useState(false)
     const [qrData, setQrData]               = useState(null)
     const [bgRemoving, setBgRemoving]       = useState({})
-    const FIELD_TYPES = ['text', 'number', 'boolean', 'email', 'date', 'file', 'image', 'dropdown', 'select-year', 'select-country', 'sum']
 
-    useEffect(() => { if (vehicleId) fetchAll() }, [vehicleId])
+    useEffect(() => {
+        if (!vehicleId) return
+        let cancelled = false
+        const run = async () => {
+            try {
+                setLoading(true); setError(null)
+                const [vRes, vfRes, afRes] = await Promise.all([
+                    fetch(`/api/vehicles/${vehicleId}`),
+                    fetch('/api/fields', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ belongsto: 'add-vehicles' }) }),
+                    fetch('/api/fields', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ belongsto: 'accounts' }) }),
+                ])
+                if (!vRes.ok) throw new Error('Vehicle not found')
+                if (cancelled) return
+                const v  = await vRes.json()
+                const vf = vfRes.ok ? (await vfRes.json()) : []
+                const af = afRes.ok ? (await afRes.json()) : []
 
-    const handleRemoveBg = useCallback(async (fieldId, fileIdx) => {
+                setVehicle(v)
+                setMainImageUrl(v.mainImageUrl || '')
+                fetch(`/api/qr/${vehicleId}`).then(r => r.ok ? r.json() : null).then(qr => { if (!cancelled && qr) setQrData(qr) }).catch(() => {})
+
+                const vFields = Array.isArray(vf) ? vf.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)) : []
+                setVehicleFields(vFields)
+                const vInit = {}
+                vFields.forEach(f => {
+                    const val = v[f._id] ?? v[f.label]
+                    if (val !== undefined && val !== null && !Array.isArray(val) && typeof val !== 'object')
+                        vInit[f._id] = f.type === 'date' && val ? String(val).split('T')[0] : val
+                })
+                setFormData(vInit)
+
+                const aFields = Array.isArray(af) ? af.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)) : []
+                setAccountFields(aFields)
+                const aInit = {}
+                aFields.forEach(f => {
+                    const val = v[f._id] ?? v[f.label]
+                    if (val !== undefined && val !== null) aInit[f._id] = val
+                })
+                setAccountData(aInit)
+            } catch (err) { if (!cancelled) setError(err.message) }
+            finally { if (!cancelled) setLoading(false) }
+        }
+        run()
+        return () => { cancelled = true }
+    }, [vehicleId])
+
+    const handleRemoveBg = async (fieldId, fileIdx) => {
         const files = newImages[fieldId]
         if (!files?.[fileIdx]?.type?.startsWith('image/')) return
         const key = `${fieldId}:${fileIdx}`
@@ -166,75 +217,19 @@ const EditVehiclePage = ({ params }) => {
             const ext = blob.type?.includes('png') ? 'png' : 'webp'
             const newName = files[fileIdx].name.replace(/\.[^.]+$/, `.${ext}`)
             const newFile = new File([blob], newName, { type: blob.type || 'image/png' })
-            const updated = files.map((f, i) => i === fileIdx ? newFile : f)
-            setNewImages(prev => ({ ...prev, [fieldId]: updated }))
+            setNewImages(prev => ({ ...prev, [fieldId]: prev[fieldId].map((f, i) => i === fileIdx ? newFile : f) }))
         } catch (err) {
             console.error('Background removal failed:', err)
             alert('Failed to remove background. Please try again.')
         } finally {
             setBgRemoving(prev => ({ ...prev, [key]: false }))
         }
-    }, [newImages])
-
-    const fetchWithRetry = async (url, opts = {}, retries = 2) => {
-        for (let i = 0; i <= retries; i++) {
-            try {
-                const res = await fetch(url, opts)
-                if (res.ok || i === retries) return res
-                await new Promise(r => setTimeout(r, 1000 * (i + 1)))
-            } catch (e) {
-                if (i === retries) throw e
-                await new Promise(r => setTimeout(r, 1000 * (i + 1)))
-            }
-        }
-    }
-
-    const fetchAll = async () => {
-        try {
-            setLoading(true)
-            const [vRes, vfRes, afRes] = await Promise.all([
-                fetchWithRetry(`/api/vehicles/${vehicleId}`),
-                fetch('/api/fields', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ belongsto: 'add-vehicles' }) }),
-                fetch('/api/fields', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ belongsto: 'accounts' }) }),
-            ])
-            if (!vRes.ok) throw new Error('Vehicle not found')
-            const v  = await vRes.json()
-            const vf = vfRes.ok ? (await vfRes.json()) : []
-            const af = afRes.ok ? (await afRes.json()) : []
-
-            setVehicle(v)
-            setMainImageUrl(v.mainImageUrl || '')
-            fetch(`/api/qr/${vehicleId}`).then(r => r.ok ? r.json() : null).then(qr => { if (qr) setQrData(qr) }).catch(() => {})
-
-            const vFields = Array.isArray(vf) ? vf.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)) : []
-            setVehicleFields(vFields)
-            const vInit = {}
-            vFields.forEach(f => {
-                const val = v[f._id] ?? v[f.label]
-                if (val !== undefined && val !== null && !Array.isArray(val) && typeof val !== 'object')
-                    vInit[f._id] = f.type === 'date' && val ? String(val).split('T')[0] : val
-            })
-            setFormData(vInit)
-
-            const aFields = Array.isArray(af) ? af.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)) : []
-            setAccountFields(aFields)
-            const aInit = {}
-            aFields.forEach(f => {
-                const val = v[f._id] ?? v[f.label]
-                if (val !== undefined && val !== null) aInit[f._id] = val
-            })
-            setAccountData(aInit)
-        } catch (err) { setError(err.message) }
-        finally { setLoading(false) }
     }
 
     const fetchAccountFields = async () => {
         const res = await fetch('/api/fields', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ belongsto: 'accounts' }) })
         const data = await res.json()
-        if (res.ok && Array.isArray(data)) {
-            const sorted = data.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-            setAccountFields(sorted)
-        }
+        if (res.ok && Array.isArray(data)) setAccountFields(data.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)))
     }
 
     const getExistingImages = (field) => {
@@ -266,21 +261,17 @@ const EditVehiclePage = ({ params }) => {
         setSubmitting(true); setSaveMsg(null)
         try {
             const payload = {}
-            // vehicle fields
             vehicleFields.forEach(f => {
                 if (f.type === 'file' || f.type === 'image') return
                 const val = formData[f._id]
                 if (val !== undefined && val !== '') { payload[f._id] = val; payload[f.label] = val }
             })
-            // variant field (special key)
             const variantVal = formData['__variant']
             if (variantVal !== undefined) { payload.variant = variantVal; payload.modelDescription = variantVal }
-            // account fields
             accountFields.forEach(f => {
                 const val = accountData[f._id]
                 if (val !== undefined) { payload[f._id] = val; payload[f.label] = val }
             })
-            // surviving images
             vehicleFields.filter(f => f.type === 'file' || f.type === 'image').forEach(field => {
                 const existing = getExistingImages(field)
                 if (existing.length > 0) {
@@ -313,12 +304,15 @@ const EditVehiclePage = ({ params }) => {
         } finally { setSubmitting(false) }
     }
 
+    const refreshFields = async () => { await fetchAccountFields() }
+
     if (loading) return (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
             <div style={{ width: '36px', height: '36px', borderRadius: '50%', border: '3px solid #e8f0fe', borderTopColor: '#1a73e8', animation: 'spin 0.8s linear infinite' }} />
             <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
         </div>
     )
+
     if (error || !vehicle) return (
         <div style={{ padding: '40px', textAlign: 'center' }}>
             <p style={{ color: '#c5221f', marginBottom: '12px' }}>{error || 'Vehicle not found'}</p>
@@ -326,11 +320,11 @@ const EditVehiclePage = ({ params }) => {
         </div>
     )
 
-    const nameLine       = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ').toUpperCase()
-    const subtitle       = vehicle.modelDescription || vehicle.variant || ''
-    const crumbs         = [vehicle.auctionGroup, vehicle.auctionVenue, vehicle.manufacturer, vehicle.model].filter(Boolean)
-    const textFields     = vehicleFields.filter(f => f.type !== 'file' && f.type !== 'image' && f.label?.toLowerCase().trim() !== 'description')
-    const imageFields    = vehicleFields.filter(f => f.type === 'file' || f.type === 'image')
+    const nameLine    = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ').toUpperCase()
+    const subtitle    = vehicle.modelDescription || vehicle.variant || ''
+    const crumbs      = [vehicle.auctionGroup, vehicle.auctionVenue, vehicle.manufacturer, vehicle.model].filter(Boolean)
+    const textFields  = vehicleFields.filter(f => f.type !== 'file' && f.type !== 'image' && f.label?.toLowerCase().trim() !== 'description')
+    const imageFields = vehicleFields.filter(f => f.type === 'file' || f.type === 'image')
 
     return (
         <div style={{ padding: '16px', minHeight: '100vh', background: '#f6f8fc' }}>
@@ -359,7 +353,7 @@ const EditVehiclePage = ({ params }) => {
             <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e8eaed', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                 <form onSubmit={handleSubmit} className="edit-form-grid" style={{ display: 'grid', gridTemplateColumns: '260px 1fr', minHeight: '560px' }}>
 
-                    {/* ── Left sidebar ── */}
+                    {/* Left sidebar */}
                     <div style={{ background: '#f8f9fa', borderRight: '1px solid #e8eaed', padding: '28px 20px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                         <p style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9aa0a6', margin: '0 0 10px' }}>Summary</p>
                         {[
@@ -399,7 +393,7 @@ const EditVehiclePage = ({ params }) => {
                         </Link>
                     </div>
 
-                    {/* ── Right panel ── */}
+                    {/* Right panel */}
                     <div style={{ padding: '28px 32px', overflowY: 'auto' }}>
 
                         {/* Subtitle / variant */}
@@ -575,29 +569,14 @@ const EditVehiclePage = ({ params }) => {
                                 {submitting ? 'Saving...' : 'Save Changes →'}
                             </button>
                         </div>
-
                     </div>
                 </form>
             </div>
 
             {/* Add Account Field Modal */}
             {showAddAccountField && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }} onClick={() => setShowAddAccountField(false)}>
-                    <div style={{ background: '#fff', borderRadius: '14px', padding: '24px', maxWidth: '420px', width: '100%', boxShadow: '0 16px 48px rgba(0,0,0,0.22)' }} onClick={e => e.stopPropagation()}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#202124', margin: 0 }}>Add Account Field</h3>
-                            <button onClick={() => setShowAddAccountField(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9aa0a6', padding: '2px', display: 'flex' }}>
-                                <svg style={{ width: '16px', height: '16px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                        </div>
-                        <p style={{ fontSize: '12px', color: '#9aa0a6', margin: '0 0 16px' }}>Field will be added to the <strong style={{ color: '#5f6368' }}>accounts</strong> form.</p>
-                        <InlineAddFieldForm FIELD_TYPES={FIELD_TYPES} onDone={() => { fetchAccountFields(); setShowAddAccountField(false) }} onCancel={() => setShowAddAccountField(false)} existingFields={accountFields} />
-                    </div>
-                </div>
+                <AddAccountFieldModal FIELD_TYPES={FIELD_TYPES} existingFields={accountFields} onDone={() => { setShowAddAccountField(false); refreshFields() }} onClose={() => setShowAddAccountField(false)} />
             )}
-
         </div>
     )
 }
-
-export default EditVehiclePage
