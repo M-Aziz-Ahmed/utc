@@ -1,6 +1,6 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useEffect, useState, useCallback, use } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 // ── Shared field input ────────────────────────────────────────────────────────
@@ -132,9 +132,9 @@ const InlineAddFieldForm = ({ FIELD_TYPES, onDone, onCancel, existingFields = []
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-const EditVehiclePage = () => {
+const EditVehiclePage = ({ params }) => {
     const router = useRouter()
-    const { id: vehicleId } = useParams()
+    const { id: vehicleId } = use(params)
 
     const [loading, setLoading]             = useState(true)
     const [submitting, setSubmitting]       = useState(false)
@@ -153,7 +153,7 @@ const EditVehiclePage = () => {
     const [bgRemoving, setBgRemoving]       = useState({})
     const FIELD_TYPES = ['text', 'number', 'boolean', 'email', 'date', 'file', 'image', 'dropdown', 'select-year', 'select-country', 'sum']
 
-    useEffect(() => { fetchAll() }, [vehicleId])
+    useEffect(() => { if (vehicleId) fetchAll() }, [vehicleId])
 
     const handleRemoveBg = useCallback(async (fieldId, fileIdx) => {
         const files = newImages[fieldId]
@@ -176,11 +176,24 @@ const EditVehiclePage = () => {
         }
     }, [newImages])
 
+    const fetchWithRetry = async (url, opts = {}, retries = 2) => {
+        for (let i = 0; i <= retries; i++) {
+            try {
+                const res = await fetch(url, opts)
+                if (res.ok || i === retries) return res
+                await new Promise(r => setTimeout(r, 1000 * (i + 1)))
+            } catch (e) {
+                if (i === retries) throw e
+                await new Promise(r => setTimeout(r, 1000 * (i + 1)))
+            }
+        }
+    }
+
     const fetchAll = async () => {
         try {
             setLoading(true)
             const [vRes, vfRes, afRes] = await Promise.all([
-                fetch(`/api/vehicles/${vehicleId}`),
+                fetchWithRetry(`/api/vehicles/${vehicleId}`),
                 fetch('/api/fields', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ belongsto: 'add-vehicles' }) }),
                 fetch('/api/fields', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ belongsto: 'accounts' }) }),
             ])
