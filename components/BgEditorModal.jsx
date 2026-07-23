@@ -8,6 +8,11 @@ const PRESET_COLORS = [
     '#795548', '#607d8b', '#000000',
 ]
 
+let overlayId = 0
+function makeOverlay(partial) {
+    return { id: ++overlayId, x: 100, y: 100, rotation: 0, ...partial }
+}
+
 export default function BgEditorModal({ src, onConfirm, onClose }) {
     const displayRef = useRef(null)
     const maskCanvasRef = useRef(null)
@@ -26,11 +31,16 @@ export default function BgEditorModal({ src, onConfirm, onClose }) {
     const [undoStack, setUndoStack] = useState([])
     const [redoStack, setRedoStack] = useState([])
     const [zoom, setZoom] = useState(1)
-    const [imgSize, setImgSize] = useState({ w: 0, h: 0 })
+
+    const [overlays, setOverlays] = useState([])
+    const [selectedOverlayId, setSelectedOverlayId] = useState(null)
+    const [overlayTool, setOverlayTool] = useState(null)
+    const [textInput, setTextInput] = useState('')
 
     const drawing = useRef(false)
     const lastPt = useRef(null)
     const bgImageObj = useRef(null)
+    const overlayDrag = useRef(null)
 
     const W = useRef(0)
     const H = useRef(0)
@@ -66,7 +76,6 @@ export default function BgEditorModal({ src, onConfirm, onClose }) {
         previewC.width = w; previewC.height = h
         previewCanvasRef.current = previewC
 
-        setImgSize({ w, h })
         setUndoStack([])
         setRedoStack([])
         setReady(true)
@@ -74,14 +83,30 @@ export default function BgEditorModal({ src, onConfirm, onClose }) {
 
     useEffect(() => { loadOriginal() }, [loadOriginal])
 
-    const compositeToPreview = useCallback(() => {
+    const redraw = useCallback(() => {
         const w = W.current, h = H.current
         const previewC = previewCanvasRef.current
+        const displayC = displayRef.current
         const origC = origCanvasRef.current
         const maskC = maskCanvasRef.current
-        if (!previewC || !origC || !maskC || !w) return
+        if (!previewC || !displayC || !origC || !maskC || !w) return
 
-        // Step 1: mask the original onto a temp canvas (original * mask alpha)
+        // --- Preview canvas: bg + masked original + overlays ---
+        const pCtx = previewC.getContext('2d')
+        pCtx.clearRect(0, 0, w, h)
+
+        // Background
+        if (bgMode === 'color') {
+            pCtx.fillStyle = bgColor
+            pCtx.fillRect(0, 0, w, h)
+        } else if (bgMode === 'image' && bgImageObj.current) {
+            const bi = bgImageObj.current
+            const scale = Math.max(w / bi.naturalWidth, h / bi.naturalHeight)
+            const dw = bi.naturalWidth * scale, dh = bi.naturalHeight * scale
+            pCtx.drawImage(bi, (w - dw) / 2, (h - dh) / 2, dw, dh)
+        }
+
+        // Masked original (temp canvas)
         const tmpC = document.createElement('canvas')
         tmpC.width = w; tmpC.height = h
         const tmpCtx = tmpC.getContext('2d')
@@ -89,66 +114,96 @@ export default function BgEditorModal({ src, onConfirm, onClose }) {
         tmpCtx.globalCompositeOperation = 'destination-in'
         tmpCtx.drawImage(maskC, 0, 0)
         tmpCtx.globalCompositeOperation = 'source-over'
+        pCtx.drawImage(tmpC, 0, 0)
 
-        // Step 2: draw background, then masked original on top
-        const ctx = previewC.getContext('2d')
-        ctx.clearRect(0, 0, w, h)
+        // Overlays
+        overlays.forEach(ov => {
+            pCtx.save()
+            pCtx.translate(ov.x + (ov.w || 0) / 2, ov.y + (ov.h || 0) / 2)
+            pCtx.rotate((ov.rotation || 0) * Math.PI / 180)
+            if (ov.type === 'image' && ov.imgObj) {
+                pCtx.drawImage(ov.imgObj, -(ov.w || 0) / 2, -(ov.h || 0) / 2, ov.w || 0, ov.h || 0)
+            } else if (ov.type === 'text') {
+                pCtx.font = `${ov.bold ? 'bold ' : ''}${ov.fontSize || 24}px ${ov.fontFamily || 'sans-serif'}`
+                pCtx.fillStyle = ov.color || '#ffffff'
+                pCtx.textAlign = 'center'
+                pCtx.textBaseline = 'middle'
+                if (ov.stroke) {
+                    pCtx.strokeStyle = ov.strokeColor || '#000000'
+                    pCtx.lineWidth = ov.strokeWidth || 2
+                    pCtx.strokeText(ov.text || '', 0, 0)
+                }
+                pCtx.fillText(ov.text || '', 0, 0)
+            }
+            pCtx.restore()
+        })
 
-        if (bgMode === 'color') {
-            ctx.fillStyle = bgColor
-            ctx.fillRect(0, 0, w, h)
-        } else if (bgMode === 'image' && bgImageObj.current) {
-            const bi = bgImageObj.current
-            const scale = Math.max(w / bi.naturalWidth, h / bi.naturalHeight)
-            const dw = bi.naturalWidth * scale, dh = bi.naturalHeight * scale
-            ctx.drawImage(bi, (w - dw) / 2, (h - dh) / 2, dw, dh)
+        // Selection handles on preview
+        const sel = overlays.find(o => o.id === selectedOverlayId)
+        if (sel && !showOriginal) {
+            pCtx.save()
+            pCtx.translate(sel.x + (sel.w || 0) / 2, sel.y + (sel.h || 0) / 2)
+            pCtx.rotate((sel.rotation || 0) * Math.PI / 180)
+            const hw = (sel.w || 0) / 2, hh = (sel.h || 0) / 2
+            pCtx.strokeStyle = '#818cf8'
+            pCtx.lineWidth = 2
+            pCtx.setLineDash([6, 4])
+            pCtx.strokeRect(-hw, -hh, hw * 2, hh * 2)
+            pCtx.setLineDash([])
+            // Resize handles
+            const hs = 8
+            ;[[-hw, -hh], [hw, -hh], [-hw, hh], [hw, hh]].forEach(([cx, cy]) => {
+                pCtx.fillStyle = '#fff'
+                pCtx.fillRect(cx - hs / 2, cy - hs / 2, hs, hs)
+                pCtx.strokeStyle = '#818cf8'
+                pCtx.strokeRect(cx - hs / 2, cy - hs / 2, hs, hs)
+            })
+            // Rotate handle
+            pCtx.beginPath()
+            pCtx.moveTo(0, -hh)
+            pCtx.lineTo(0, -hh - 28)
+            pCtx.strokeStyle = '#818cf8'
+            pCtx.lineWidth = 2
+            pCtx.stroke()
+            pCtx.beginPath()
+            pCtx.arc(0, -hh - 28, 6, 0, Math.PI * 2)
+            pCtx.fillStyle = '#818cf8'
+            pCtx.fill()
+            pCtx.restore()
         }
 
-        // Layer masked original on top (transparent bg shows through where mask = 0)
-        ctx.drawImage(tmpC, 0, 0)
-    }, [bgMode, bgColor])
-
-    const compositeToDisplay = useCallback(() => {
-        const displayC = displayRef.current
-        const previewC = previewCanvasRef.current
-        const w = W.current, h = H.current
-        if (!displayC || !previewC || !w) return
+        // --- Display canvas: checkerboard + preview ---
         displayC.width = w; displayC.height = h
-        const ctx = displayC.getContext('2d')
+        const dCtx = displayC.getContext('2d')
 
         if (showOriginal) {
-            ctx.drawImage(origCanvasRef.current, 0, 0)
+            dCtx.drawImage(origC, 0, 0)
             return
         }
 
         const sz = 10
         for (let y = 0; y < h; y += sz) {
             for (let x = 0; x < w; x += sz) {
-                ctx.fillStyle = ((x / sz + y / sz) % 2 === 0) ? '#888' : '#aaa'
-                ctx.fillRect(x, y, sz, sz)
+                dCtx.fillStyle = ((x / sz + y / sz) % 2 === 0) ? '#888' : '#aaa'
+                dCtx.fillRect(x, y, sz, sz)
             }
         }
+        dCtx.drawImage(previewC, 0, 0)
+    }, [bgMode, bgColor, overlays, selectedOverlayId, showOriginal])
 
-        ctx.drawImage(previewC, 0, 0)
-    }, [showOriginal])
-
-    useEffect(() => {
-        compositeToPreview()
-        compositeToDisplay()
-    }, [compositeToPreview, compositeToDisplay, ready])
+    useEffect(() => { redraw() }, [redraw, ready])
 
     useEffect(() => {
         if (bgMode === 'image' && bgImageFile) {
             const img = new Image()
             img.crossOrigin = 'anonymous'
             img.src = URL.createObjectURL(bgImageFile)
-            img.onload = () => { bgImageObj.current = img; compositeToPreview(); compositeToDisplay() }
+            img.onload = () => { bgImageObj.current = img; redraw() }
         } else {
             bgImageObj.current = null
-            compositeToPreview()
-            compositeToDisplay()
+            redraw()
         }
-    }, [bgMode, bgImageFile, compositeToPreview, compositeToDisplay])
+    }, [bgMode, bgImageFile, redraw])
 
     const saveMaskState = useCallback(() => {
         const maskC = maskCanvasRef.current
@@ -195,13 +250,9 @@ export default function BgEditorModal({ src, onConfirm, onClose }) {
                 if (dist > radius) continue
                 const norm = dist / radius
                 let strength
-                if (hard >= 0.99) {
-                    strength = 1
-                } else if (norm <= hard) {
-                    strength = 1
-                } else {
-                    strength = 1 - (norm - hard) / (1 - hard)
-                }
+                if (hard >= 0.99) strength = 1
+                else if (norm <= hard) strength = 1
+                else strength = 1 - (norm - hard) / (1 - hard)
 
                 const mi = (y * w + x) * 4 + 3
                 if (isErase) {
@@ -213,46 +264,211 @@ export default function BgEditorModal({ src, onConfirm, onClose }) {
             }
         }
         mCtx.putImageData(maskData, 0, 0)
-        compositeToPreview()
-        compositeToDisplay()
-    }, [tool, brushSize, hardness, compositeToPreview, compositeToDisplay])
+        redraw()
+    }, [tool, brushSize, hardness, redraw])
 
     const handlePointerDown = useCallback((e) => {
-        if (tool !== 'erase' && tool !== 'restore') return
-        drawing.current = true
-        lastPt.current = null
-        saveMaskState()
-        const pt = getCanvasPoint(e)
-        if (pt) {
-            stampBrush(pt.x, pt.y)
-            lastPt.current = pt
-        }
-    }, [tool, getCanvasPoint, stampBrush, saveMaskState])
-
-    const handlePointerMove = useCallback((e) => {
-        if (!drawing.current) return
+        if (e.button && e.button !== 0) return
         const pt = getCanvasPoint(e)
         if (!pt) return
-        if (lastPt.current) {
-            const dx = pt.x - lastPt.current.x
-            const dy = pt.y - lastPt.current.y
-            const dist = Math.sqrt(dx * dx + dy * dy)
-            const step = Math.max(1, brushSize * 0.15)
-            const steps = Math.ceil(dist / step)
-            for (let i = 1; i <= steps; i++) {
-                stampBrush(
-                    lastPt.current.x + (dx * i) / steps,
-                    lastPt.current.y + (dy * i) / steps
-                )
+
+        if (overlayTool === 'image' || overlayTool === 'text') {
+            if (overlayTool === 'text' && textInput.trim()) {
+                const ov = makeOverlay({
+                    type: 'text', text: textInput.trim(),
+                    x: pt.x - 60, y: pt.y - 15, w: 120, h: 30,
+                    fontSize: 24, color: '#ffffff', fontFamily: 'sans-serif',
+                    bold: false, stroke: true, strokeColor: '#000000', strokeWidth: 2,
+                })
+                setOverlays(prev => [...prev, ov])
+                setSelectedOverlayId(ov.id)
+                setOverlayTool(null)
+                setTextInput('')
+            }
+            return
+        }
+
+        if (tool === 'erase' || tool === 'restore') {
+            drawing.current = true
+            lastPt.current = null
+            saveMaskState()
+            stampBrush(pt.x, pt.y)
+            lastPt.current = pt
+            return
+        }
+
+        // Check if clicking on an overlay
+        const clickedOverlay = [...overlays].reverse().find(ov => {
+            const cx = ov.x + (ov.w || 0) / 2
+            const cy = ov.y + (ov.h || 0) / 2
+            const rad = -(ov.rotation || 0) * Math.PI / 180
+            const dx = pt.x - cx, dy = pt.y - cy
+            const rx = dx * Math.cos(rad) - dy * Math.sin(rad)
+            const ry = dx * Math.sin(rad) + dy * Math.cos(rad)
+            return Math.abs(rx) <= (ov.w || 0) / 2 && Math.abs(ry) <= (ov.h || 0) / 2
+        })
+
+        if (clickedOverlay) {
+            setSelectedOverlayId(clickedOverlay.id)
+
+            const cx = clickedOverlay.x + (clickedOverlay.w || 0) / 2
+            const cy = clickedOverlay.y + (clickedOverlay.h || 0) / 2
+            const rad = -(clickedOverlay.rotation || 0) * Math.PI / 180
+            const dx = pt.x - cx, dy = pt.y - cy
+            const rx = dx * Math.cos(rad) - dy * Math.sin(rad)
+            const ry = dx * Math.sin(rad) + dy * Math.cos(rad)
+            const hw = (clickedOverlay.w || 0) / 2, hh = (clickedOverlay.h || 0) / 2
+
+            // Check rotate handle (circle at top center)
+            const rotDx = rx, rotDy = ry + hh + 28
+            if (Math.sqrt(rotDx * rotDx + rotDy * rotDy) <= 12) {
+                overlayDrag.current = {
+                    id: clickedOverlay.id, mode: 'rotate',
+                    startAngle: Math.atan2(pt.x - cx, pt.y - cy),
+                    origRotation: clickedOverlay.rotation || 0,
+                }
+            }
+            // Check corner resize handles
+            else {
+                const corners = [[-1, -1], [1, -1], [-1, 1], [1, 1]]
+                const cornerNames = ['nw', 'ne', 'sw', 'se']
+                const hs = 8
+                let foundCorner = null
+                for (let i = 0; i < corners.length; i++) {
+                    const [sx, sy] = corners[i]
+                    const hx = sx * hw, hy = sy * hh
+                    if (Math.abs(rx - hx) <= hs && Math.abs(ry - hy) <= hs) {
+                        foundCorner = cornerNames[i]
+                        break
+                    }
+                }
+
+                if (foundCorner) {
+                    overlayDrag.current = {
+                        id: clickedOverlay.id, mode: 'resize-' + foundCorner,
+                        startX: pt.x, startY: pt.y,
+                        origW: clickedOverlay.w || 0, origH: clickedOverlay.h || 0,
+                        origX: clickedOverlay.x, origY: clickedOverlay.y,
+                        origRotation: clickedOverlay.rotation || 0,
+                    }
+                } else {
+                    overlayDrag.current = {
+                        id: clickedOverlay.id, mode: 'move',
+                        startX: pt.x, startY: pt.y,
+                        origX: clickedOverlay.x, origY: clickedOverlay.y,
+                    }
+                }
+            }
+        } else {
+            setSelectedOverlayId(null)
+        }
+    }, [tool, overlayTool, textInput, overlays, getCanvasPoint, saveMaskState, stampBrush])
+
+    const handlePointerMove = useCallback((e) => {
+        const pt = getCanvasPoint(e)
+        if (!pt) return
+
+        if (drawing.current) {
+            if (lastPt.current) {
+                const dx = pt.x - lastPt.current.x
+                const dy = pt.y - lastPt.current.y
+                const dist = Math.sqrt(dx * dx + dy * dy)
+                const step = Math.max(1, brushSize * 0.15)
+                const steps = Math.ceil(dist / step)
+                for (let i = 1; i <= steps; i++) {
+                    stampBrush(
+                        lastPt.current.x + (dx * i) / steps,
+                        lastPt.current.y + (dy * i) / steps
+                    )
+                }
+            }
+            lastPt.current = pt
+            return
+        }
+
+        if (overlayDrag.current) {
+            const d = overlayDrag.current
+            const dx = pt.x - d.startX
+            const dy = pt.y - d.startY
+
+            if (d.mode === 'move') {
+                setOverlays(prev => prev.map(o => o.id === d.id ? { ...o, x: d.origX + dx, y: d.origY + dy } : o))
+            } else if (d.mode === 'rotate') {
+                const ov = overlays.find(o => o.id === d.id)
+                if (!ov) return
+                const cx = ov.x + (ov.w || 0) / 2
+                const cy = ov.y + (ov.h || 0) / 2
+                const angle = Math.atan2(pt.x - cx, pt.y - cy)
+                const delta = ((angle - d.startAngle) * 180) / Math.PI
+                setOverlays(prev => prev.map(o => o.id === d.id ? { ...o, rotation: d.origRotation - delta } : o))
+            } else if (d.mode.startsWith('resize-')) {
+                const ov = overlays.find(o => o.id === d.id)
+                if (!ov) return
+                const cx = ov.x + (ov.w || 0) / 2
+                const cy = ov.y + (ov.h || 0) / 2
+                const rad = -(d.origRotation || 0) * Math.PI / 180
+                const rdx = dx * Math.cos(rad) - dy * Math.sin(rad)
+                const rdy = dx * Math.sin(rad) + dy * Math.cos(rad)
+
+                const corner = d.mode.replace('resize-', '')
+                const sx = corner.includes('e') ? 1 : -1
+                const sy = corner.includes('s') ? 1 : -1
+                const aspect = d.origW / d.origH
+                const deltaW = rdx * sx + rdy * sy
+                const newW = Math.max(20, d.origW + deltaW)
+                const newH = newW / aspect
+
+                // Adjust position: when dragging left/up, anchor the opposite corner
+                const newX = sx < 0 ? d.origX + (d.origW - newW) : d.origX
+                const newY = sy < 0 ? d.origY + (d.origH - newH) : d.origY
+
+                setOverlays(prev => prev.map(o => o.id === d.id ? { ...o, w: newW, h: newH, x: newX, y: newY } : o))
             }
         }
-        lastPt.current = pt
-    }, [getCanvasPoint, stampBrush, brushSize])
+    }, [getCanvasPoint, brushSize, stampBrush])
 
-    const handlePointerUp = useCallback(() => {
-        drawing.current = false
-        lastPt.current = null
+    const handlePointerUp = useCallback((e) => {
+        if (drawing.current) {
+            drawing.current = false
+            lastPt.current = null
+            return
+        }
+
+        if (overlayDrag.current) {
+            overlayDrag.current = null
+            return
+        }
     }, [])
+
+    const handleOverlayDoubleClick = useCallback((e) => {
+        const pt = getCanvasPoint(e)
+        if (!pt) return
+        const clicked = [...overlays].reverse().find(ov => {
+            const cx = ov.x + (ov.w || 0) / 2
+            const cy = ov.y + (ov.h || 0) / 2
+            const rad = -(ov.rotation || 0) * Math.PI / 180
+            const dx = pt.x - cx, dy = pt.y - cy
+            const rx = dx * Math.cos(rad) - dy * Math.sin(rad)
+            const ry = dx * Math.sin(rad) + dy * Math.cos(rad)
+            return Math.abs(rx) <= (ov.w || 0) / 2 && Math.abs(ry) <= (ov.h || 0) / 2
+        })
+        if (clicked && clicked.type === 'text') {
+            const newText = prompt('Edit text:', clicked.text)
+            if (newText !== null) {
+                setOverlays(prev => prev.map(o => o.id === clicked.id ? { ...o, text: newText } : o))
+            }
+        }
+    }, [overlays, getCanvasPoint])
+
+    const handlePointerWheel = useCallback((e) => {
+        if (!overlayDrag.current) return
+        e.preventDefault()
+        const d = overlayDrag.current
+        const ov = overlays.find(o => o.id === d.id)
+        if (!ov) return
+        const delta = e.deltaY > 0 ? -5 : 5
+        setOverlays(prev => prev.map(o => o.id === d.id ? { ...o, rotation: (o.rotation || 0) + delta } : o))
+    }, [overlays])
 
     const undo = useCallback(() => {
         setUndoStack(prev => {
@@ -261,11 +477,10 @@ export default function BgEditorModal({ src, onConfirm, onClose }) {
             const current = prev[prev.length - 1]
             setRedoStack(rp => [...rp, maskCanvasRef.current.getContext('2d').getImageData(0, 0, W.current, H.current)])
             maskCanvasRef.current.getContext('2d').putImageData(current, 0, 0)
-            compositeToPreview()
-            compositeToDisplay()
+            redraw()
             return next
         })
-    }, [compositeToPreview, compositeToDisplay])
+    }, [redraw])
 
     const redo = useCallback(() => {
         setRedoStack(prev => {
@@ -274,11 +489,10 @@ export default function BgEditorModal({ src, onConfirm, onClose }) {
             const current = prev[prev.length - 1]
             setUndoStack(up => [...up, maskCanvasRef.current.getContext('2d').getImageData(0, 0, W.current, H.current)])
             maskCanvasRef.current.getContext('2d').putImageData(current, 0, 0)
-            compositeToPreview()
-            compositeToDisplay()
+            redraw()
             return next
         })
-    }, [compositeToPreview, compositeToDisplay])
+    }, [redraw])
 
     const handleAutoRemove = useCallback(async () => {
         setProcessing(true)
@@ -301,33 +515,71 @@ export default function BgEditorModal({ src, onConfirm, onClose }) {
                 maskData.data[i + 3] = result.data[i + 3] > 127 ? 255 : 0
             }
             mCtx.putImageData(maskData, 0, 0)
-            compositeToPreview()
-            compositeToDisplay()
+            redraw()
         } catch (err) {
             console.error('Auto remove failed:', err)
             alert('Background removal failed. Try again.')
         } finally {
             setProcessing(false)
         }
-    }, [src, saveMaskState, compositeToPreview, compositeToDisplay])
+    }, [src, saveMaskState, redraw])
+
+    const handleAddImageOverlay = useCallback(() => {
+        const input = document.createElement('input')
+        input.type = 'file'
+        input.accept = 'image/*'
+        input.onchange = (e) => {
+            const file = e.target.files?.[0]
+            if (!file) return
+            const img = new Image()
+            img.src = URL.createObjectURL(file)
+            img.onload = () => {
+                const maxW = W.current * 0.5
+                const scale = img.naturalWidth > maxW ? maxW / img.naturalWidth : 1
+                const w = img.naturalWidth * scale
+                const h = img.naturalHeight * scale
+                const ov = makeOverlay({
+                    type: 'image', imgObj: img, imgSrc: img.src,
+                    x: (W.current - w) / 2, y: (H.current - h) / 2, w, h,
+                })
+                setOverlays(prev => [...prev, ov])
+                setSelectedOverlayId(ov.id)
+            }
+        }
+        input.click()
+    }, [])
 
     const handleExport = useCallback(() => {
         const w = W.current, h = H.current
-        compositeToPreview()
-        previewCanvasRef.current.toBlob((blob) => {
-            if (blob) onConfirm(blob)
-        }, 'image/png')
-    }, [onConfirm, compositeToPreview])
+        redraw()
+        setTimeout(() => {
+            previewCanvasRef.current.toBlob((blob) => {
+                if (blob) onConfirm(blob)
+            }, 'image/png')
+        }, 50)
+    }, [onConfirm, redraw])
+
+    const deleteSelectedOverlay = useCallback(() => {
+        if (!selectedOverlayId) return
+        setOverlays(prev => prev.filter(o => o.id !== selectedOverlayId))
+        setSelectedOverlayId(null)
+    }, [selectedOverlayId])
 
     useEffect(() => {
         const handler = (e) => {
             if (e.key === 'Escape') onClose()
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (selectedOverlayId && document.activeElement === document.body) {
+                    e.preventDefault()
+                    deleteSelectedOverlay()
+                }
+            }
             if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo() }
             if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo() }
         }
         window.addEventListener('keydown', handler)
         return () => window.removeEventListener('keydown', handler)
-    }, [onClose, undo, redo])
+    }, [onClose, undo, redo, selectedOverlayId, deleteSelectedOverlay])
 
     const isBrush = tool === 'erase' || tool === 'restore'
 
@@ -338,8 +590,8 @@ export default function BgEditorModal({ src, onConfirm, onClose }) {
             {/* Top toolbar */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '8px 14px', background: '#16161e', borderBottom: '1px solid #2a2a3a', flexWrap: 'wrap' }}>
                 <ToolBtn icon="auto" active={tool === 'auto'} onClick={handleAutoRemove} disabled={processing} label="Auto Remove" />
-                <ToolBtn icon="erase" active={tool === 'erase'} onClick={() => setTool('erase')} label="Erase" />
-                <ToolBtn icon="restore" active={tool === 'restore'} onClick={() => setTool('restore')} label="Restore" />
+                <ToolBtn icon="erase" active={tool === 'erase'} onClick={() => { setTool('erase'); setOverlayTool(null) }} label="Erase" />
+                <ToolBtn icon="restore" active={tool === 'restore'} onClick={() => { setTool('restore'); setOverlayTool(null) }} label="Restore" />
 
                 <Sep />
 
@@ -361,6 +613,18 @@ export default function BgEditorModal({ src, onConfirm, onClose }) {
                     </>
                 )}
 
+                <ToolBtn icon="plus" onClick={handleAddImageOverlay} label="Add Image" />
+                <ToolBtn icon="text" active={overlayTool === 'text'} onClick={() => { setOverlayTool(overlayTool === 'text' ? null : 'text'); setTool('select') }} label="Add Text" />
+
+                {selectedOverlayId && (
+                    <>
+                        <Sep />
+                        <ToolBtn icon="trash" onClick={deleteSelectedOverlay} label="Delete" />
+                    </>
+                )}
+
+                <Sep />
+
                 <ToolBtn icon="eye" active={showOriginal} onClick={() => setShowOriginal(s => !s)} label={showOriginal ? 'Original' : 'Preview'} />
                 <ToolBtn icon="undo" onClick={undo} disabled={undoStack.length === 0} label="Undo" />
                 <ToolBtn icon="redo" onClick={redo} disabled={redoStack.length === 0} label="Redo" />
@@ -370,9 +634,22 @@ export default function BgEditorModal({ src, onConfirm, onClose }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                     <ToolBtn icon="minus" onClick={() => setZoom(z => Math.max(0.1, z - 0.25))} />
                     <span style={{ color: '#bbb', fontSize: '11px', minWidth: '34px', textAlign: 'center' }}>{Math.round(zoom * 100)}%</span>
-                    <ToolBtn icon="plus" onClick={() => setZoom(z => Math.min(5, z + 0.25))} />
+                    <ToolBtn icon="plus2" onClick={() => setZoom(z => Math.min(5, z + 0.25))} />
                 </div>
             </div>
+
+            {/* Text input bar */}
+            {overlayTool === 'text' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 14px', background: '#1e1e2e', borderBottom: '1px solid #2a2a3a' }}>
+                    <span style={{ color: '#888', fontSize: '11px' }}>Type text, then click canvas to place:</span>
+                    <input type="text" value={textInput} onChange={e => setTextInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter' && textInput.trim()) { handlePointerDown(e) } }}
+                        autoFocus placeholder="Your text here..."
+                        style={{ flex: 1, maxWidth: '300px', padding: '5px 10px', borderRadius: '6px', border: '1px solid #333', background: '#222', color: '#fff', fontSize: '13px', outline: 'none' }} />
+                    <button onClick={() => { setOverlayTool(null); setTextInput('') }}
+                        style={{ padding: '4px 10px', borderRadius: '4px', border: 'none', background: '#333', color: '#888', fontSize: '11px', cursor: 'pointer' }}>Cancel</button>
+                </div>
+            )}
 
             {/* Canvas area */}
             <div style={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0d0d14', padding: '20px' }}>
@@ -386,12 +663,14 @@ export default function BgEditorModal({ src, onConfirm, onClose }) {
                         <canvas ref={displayRef} style={{
                             maxWidth: '80vw', maxHeight: 'calc(100vh - 180px)',
                             borderRadius: '4px',
-                            cursor: isBrush ? 'none' : 'default',
+                            cursor: isBrush ? 'none' : overlayTool === 'text' ? 'crosshair' : 'default',
                         }}
                             onPointerDown={handlePointerDown}
                             onPointerMove={handlePointerMove}
                             onPointerUp={handlePointerUp}
                             onPointerLeave={handlePointerUp}
+                            onDoubleClick={handleOverlayDoubleClick}
+                            onWheel={handlePointerWheel}
                         />
                         {isBrush && (
                             <BrushCursor canvasRef={displayRef} size={brushSize} tool={tool} />
@@ -402,7 +681,6 @@ export default function BgEditorModal({ src, onConfirm, onClose }) {
 
             {/* Bottom bar */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 14px', background: '#16161e', borderTop: '1px solid #2a2a3a', gap: '12px', flexWrap: 'wrap' }}>
-                {/* Background picker */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                     <span style={{ color: '#666', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>BG</span>
                     <BgSwatch active={bgMode === 'transparent'} onClick={() => setBgMode('transparent')} title="Transparent">
@@ -433,7 +711,6 @@ export default function BgEditorModal({ src, onConfirm, onClose }) {
                     )}
                 </div>
 
-                {/* Actions */}
                 <div style={{ display: 'flex', gap: '8px' }}>
                     <button onClick={onClose}
                         style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid #333', background: 'transparent', color: '#888', fontSize: '13px', cursor: 'pointer', fontWeight: 500 }}>Cancel</button>
@@ -490,7 +767,10 @@ function ToolBtn({ icon, active, disabled, onClick, label }) {
         undo: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 10h10a5 5 0 015 5v2"/><path d="M3 10l5-5M3 10l5 5"/></svg>,
         redo: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10H11a5 5 0 00-5 5v2"/><path d="M21 10l-5-5M21 10l-5 5"/></svg>,
         minus: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35M8 11h6"/></svg>,
-        plus: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35M11 8v6M8 11h6"/></svg>,
+        plus: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>,
+        plus2: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35M11 8v6M8 11h6"/></svg>,
+        text: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>,
+        trash: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>,
     }
     return (
         <button onClick={onClick} disabled={disabled} title={label}
