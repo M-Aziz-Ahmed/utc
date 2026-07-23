@@ -80,6 +80,17 @@ export default function BgEditorModal({ src, onConfirm, onClose }) {
         const origC = origCanvasRef.current
         const maskC = maskCanvasRef.current
         if (!previewC || !origC || !maskC || !w) return
+
+        // Step 1: mask the original onto a temp canvas (original * mask alpha)
+        const tmpC = document.createElement('canvas')
+        tmpC.width = w; tmpC.height = h
+        const tmpCtx = tmpC.getContext('2d')
+        tmpCtx.drawImage(origC, 0, 0)
+        tmpCtx.globalCompositeOperation = 'destination-in'
+        tmpCtx.drawImage(maskC, 0, 0)
+        tmpCtx.globalCompositeOperation = 'source-over'
+
+        // Step 2: draw background, then masked original on top
         const ctx = previewC.getContext('2d')
         ctx.clearRect(0, 0, w, h)
 
@@ -93,11 +104,8 @@ export default function BgEditorModal({ src, onConfirm, onClose }) {
             ctx.drawImage(bi, (w - dw) / 2, (h - dh) / 2, dw, dh)
         }
 
-        ctx.globalCompositeOperation = 'source-over'
-        ctx.drawImage(origC, 0, 0)
-        ctx.globalCompositeOperation = 'destination-in'
-        ctx.drawImage(maskC, 0, 0)
-        ctx.globalCompositeOperation = 'source-over'
+        // Layer masked original on top (transparent bg shows through where mask = 0)
+        ctx.drawImage(tmpC, 0, 0)
     }, [bgMode, bgColor])
 
     const compositeToDisplay = useCallback(() => {
