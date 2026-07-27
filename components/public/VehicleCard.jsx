@@ -21,6 +21,17 @@ export default function VehicleCard({ vehicle }) {
 
   const detailUrl = `/stock/${vehicle.slug || vehicle.vehicleId}`
 
+  const specs = [
+    { label: 'Model', value: vehicle.model || 'N/A' },
+    { label: 'Year', value: vehicle.year || 'N/A' },
+    { label: 'Fuel Type', value: vehicle.fuelType || 'N/A' },
+    { label: 'Transmission', value: vehicle.transmission || 'N/A' },
+    { label: 'Engine', value: vehicle.engine || 'N/A' },
+    { label: 'Doors', value: vehicle.doors || 'N/A' },
+    { label: 'Seats', value: vehicle.seats || 'N/A' },
+    { label: 'Mileage', value: formatMileage(vehicle.mileage) },
+  ]
+
   return (
     <div className="vehicle-card">
       <div className="vehicle-card-image">
@@ -55,18 +66,12 @@ export default function VehicleCard({ vehicle }) {
         <div className="vehicle-card-price">{formatPrice(vehicle.price)}</div>
 
         <div className="vehicle-card-specs">
-          <div className="vehicle-spec">
-            <span className="vehicle-spec-value">{formatMileage(vehicle.mileage)}</span>
-            <span className="vehicle-spec-label">Mileage</span>
-          </div>
-          <div className="vehicle-spec">
-            <span className="vehicle-spec-value">{vehicle.engine || 'N/A'}</span>
-            <span className="vehicle-spec-label">Engine</span>
-          </div>
-          <div className="vehicle-spec">
-            <span className="vehicle-spec-value">{vehicle.transmission || 'N/A'}</span>
-            <span className="vehicle-spec-label">Gearbox</span>
-          </div>
+          {specs.map((s) => (
+            <div key={s.label} className="vehicle-spec">
+              <span className="vehicle-spec-value">{s.value}</span>
+              <span className="vehicle-spec-label">{s.label}</span>
+            </div>
+          ))}
         </div>
       </div>
 

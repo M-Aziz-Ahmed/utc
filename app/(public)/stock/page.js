@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import VehicleCard from '@/components/public/VehicleCard'
+import VehicleRow from '@/components/public/VehicleRow'
 
 const SORT_OPTIONS = [
   { value: 'latest', label: 'Latest Arrivals' },
@@ -35,6 +36,12 @@ export default function StockPage() {
   const [loading, setLoading] = useState(true)
   const [filtersLoading, setFiltersLoading] = useState(true)
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false)
+  const [viewMode, setViewMode] = useState(() => {
+    if (typeof document !== 'undefined') {
+      return localStorage.getItem('stock_view') || 'grid'
+    }
+    return 'grid'
+  })
 
   const [filters, setFilters] = useState(() => {
     const initial = { ...DEFAULT_FILTERS }
@@ -115,6 +122,13 @@ export default function StockPage() {
   const handleSortChange = (e) => {
     setSort(e.target.value)
     setPage(1)
+  }
+
+  const switchView = (mode) => {
+    setViewMode(mode)
+    if (typeof document !== 'undefined') {
+      localStorage.setItem('stock_view', mode)
+    }
   }
 
   const renderPagination = () => {
@@ -312,12 +326,34 @@ export default function StockPage() {
                   Showing <strong>{vehicles.length}</strong> of <strong>{pagination.total}</strong> vehicles
                 </div>
               </div>
-              <div className="stock-sort">
-                <select value={sort} onChange={handleSortChange}>
-                  {SORT_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div className="stock-view-toggle">
+                  <button
+                    className={viewMode === 'grid' ? 'active' : ''}
+                    onClick={() => switchView('grid')}
+                    title="Grid View"
+                  >
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                    </svg>
+                  </button>
+                  <button
+                    className={viewMode === 'list' ? 'active' : ''}
+                    onClick={() => switchView('list')}
+                    title="List View"
+                  >
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                    </svg>
+                  </button>
+                </div>
+                <div className="stock-sort">
+                  <select value={sort} onChange={handleSortChange}>
+                    {SORT_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -349,11 +385,19 @@ export default function StockPage() {
               </div>
             ) : (
               <>
-                <div className="stock-grid">
-                  {vehicles.map(vehicle => (
-                    <VehicleCard key={vehicle.vehicleId} vehicle={vehicle} />
-                  ))}
-                </div>
+                {viewMode === 'grid' ? (
+                  <div className="stock-grid">
+                    {vehicles.map(vehicle => (
+                      <VehicleCard key={vehicle.vehicleId} vehicle={vehicle} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="stock-list">
+                    {vehicles.map(vehicle => (
+                      <VehicleRow key={vehicle.vehicleId} vehicle={vehicle} />
+                    ))}
+                  </div>
+                )}
                 {renderPagination()}
               </>
             )}
