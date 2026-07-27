@@ -1,4 +1,5 @@
 import "./globals.css"
+import "./public-site.css"
 
 export const metadata = {
   title: {
