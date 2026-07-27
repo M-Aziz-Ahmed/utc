@@ -661,11 +661,16 @@ const Page = () => {
     const [error, setError] = useState(null)
     const [search, setSearch] = useState('')
     const [selected, setSelected] = useState(null)
-    const [viewMode, setViewMode] = useState('grid') // 'grid' | 'list'
+    const [viewMode, setViewMode] = useState('grid')
     const [page, setPage] = useState(1)
+    const [showFilters, setShowFilters] = useState(false)
+    const [filters, setFilters] = useState({
+        make: '', model: '', yearFrom: '', yearTo: '',
+        minPrice: '', maxPrice: '', fuelType: '', transmission: '',
+        bodyType: '', driveType: '', allocation: '',
+    })
     const PAGE_SIZE = 25
 
-    // Restore view mode from cookie
     useEffect(() => {
         const saved = getCookie('vehicles_view')
         if (saved === 'list' || saved === 'grid') setViewMode(saved)
@@ -703,39 +708,99 @@ const Page = () => {
         }
     }
 
-    const filtered = vehicles.filter(v =>
-        !search || JSON.stringify(v).toLowerCase().includes(search.toLowerCase())
-    )
+    const getVVal = (v, label) => {
+        if (!label) return ''
+        const f = fields.find(fl => fl.label === label)
+        return f ? (v[f._id] || v[f.label] || '') : (v[label] || '')
+    }
 
-    // Reset to page 1 when search or view changes
-    React.useEffect(() => { setPage(1) }, [search, viewMode])
+    const filterOptions = useMemo(() => {
+        const makes = [...new Set(vehicles.map(v => v.manufacturer || v['Make']).filter(Boolean))].sort()
+        const models = [...new Set(vehicles.map(v => v.model || v['Model']).filter(Boolean))].sort()
+        const fuelTypes = [...new Set(vehicles.map(v => getVVal(v, 'Fuel Type')).filter(Boolean))].sort()
+        const transmissions = [...new Set(vehicles.map(v => getVVal(v, 'Gear Box Type')).filter(Boolean))].sort()
+        const bodyTypes = [...new Set(vehicles.map(v => getVVal(v, 'Body Type')).filter(Boolean))].sort()
+        const driveTypes = [...new Set(vehicles.map(v => getVVal(v, 'Drive Type')).filter(Boolean))].sort()
+        return { makes, models, fuelTypes, transmissions, bodyTypes, driveTypes }
+    }, [vehicles, fields])
+
+    const filtered = useMemo(() => {
+        return vehicles.filter(v => {
+            if (search && !JSON.stringify(v).toLowerCase().includes(search.toLowerCase())) return false
+            if (filters.make) {
+                const make = (v.manufacturer || v['Make'] || '').toLowerCase()
+                if (!make.includes(filters.make.toLowerCase())) return false
+            }
+            if (filters.model) {
+                const model = (v.model || v['Model'] || '').toLowerCase()
+                if (!model.includes(filters.model.toLowerCase())) return false
+            }
+            if (filters.yearFrom || filters.yearTo) {
+                const year = parseInt(getVVal(v, 'Year')) || 0
+                if (filters.yearFrom && year < parseInt(filters.yearFrom)) return false
+                if (filters.yearTo && year > parseInt(filters.yearTo)) return false
+            }
+            if (filters.minPrice || filters.maxPrice) {
+                const price = parseFloat(getVVal(v, 'Price')) || 0
+                if (filters.minPrice && price < parseFloat(filters.minPrice)) return false
+                if (filters.maxPrice && price > parseFloat(filters.maxPrice)) return false
+            }
+            if (filters.fuelType) {
+                const ft = (getVVal(v, 'Fuel Type')).toLowerCase()
+                if (!ft.includes(filters.fuelType.toLowerCase())) return false
+            }
+            if (filters.transmission) {
+                const tr = (getVVal(v, 'Gear Box Type')).toLowerCase()
+                if (!tr.includes(filters.transmission.toLowerCase())) return false
+            }
+            if (filters.bodyType) {
+                const bt = (getVVal(v, 'Body Type')).toLowerCase()
+                if (!bt.includes(filters.bodyType.toLowerCase())) return false
+            }
+            if (filters.driveType) {
+                const dt = (getVVal(v, 'Drive Type')).toLowerCase()
+                if (!dt.includes(filters.driveType.toLowerCase())) return false
+            }
+            if (filters.allocation) {
+                const alloc = (v.allocation || '').toLowerCase()
+                if (alloc !== filters.allocation.toLowerCase()) return false
+            }
+            return true
+        })
+    }, [vehicles, search, filters, fields])
+
+    const activeFilterCount = Object.values(filters).filter(Boolean).length
+
+    const clearFilters = () => setFilters({ make: '', model: '', yearFrom: '', yearTo: '', minPrice: '', maxPrice: '', fuelType: '', transmission: '', bodyType: '', driveType: '', allocation: '' })
+
+    const updateFilter = (key, value) => setFilters(prev => ({ ...prev, [key]: value }))
+
+    React.useEffect(() => { setPage(1) }, [search, viewMode, filters])
 
     const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
     const paginated  = filtered.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE)
 
-    const btnStyle = (active) => ({
-        width:'32px', height:'32px', borderRadius:'6px', border: active ? '1px solid var(--accent)' : '1px solid #e2e8f0',
-        background: active ? 'var(--accent-light)' : '#fff', color: active ? 'var(--accent)' : '#6b7280',
-        cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s'
-    })
+    const inputStyle = { height: 34, fontSize: 12, borderRadius: 6, border: '1px solid #D1D5DB', padding: '0 10px', background: '#fff', width: '100%' }
+    const selectStyle = { ...inputStyle, cursor: 'pointer', appearance: 'auto' }
+    const labelStyle = { fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4, display: 'block' }
 
     return (
         <div className="px-3 md:px-5 py-5">
             {/* Toolbar */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
                 <div className="flex items-center gap-3">
-                    <h1 className="font-medium" style={{fontSize:'var(--text-2xl)', color:'#202124'}}>Vehicle Management</h1>
-                    <span style={{fontSize:'var(--text-xs)', color:'#5f6368'}}>
-                        {loading ? '…' : `${filtered.length} vehicles`}
+                    <h1 className="font-bold" style={{fontSize:'var(--text-2xl)', color:'#111827'}}>Vehicle Management</h1>
+                    <span style={{fontSize:'var(--text-xs)', color:'#6B7280'}}>
+                        {loading ? '…' : `${filtered.length} of ${vehicles.length} vehicles`}
                     </span>
                 </div>
                 <div className="flex items-center gap-2">
                     {/* View toggle */}
-                    <div style={{display:'flex', gap:'2px', padding:'2px', background:'#f1f3f4', borderRadius:'8px'}}>
+                    <div style={{display:'flex', gap:'2px', padding:'2px', background:'#F3F4F6', borderRadius:8}}>
                         <button onClick={() => switchView('grid')} title="Grid view"
-                            style={{width:'30px', height:'30px', borderRadius:'6px', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s',
+                            style={{width:'30px', height:'30px', borderRadius:6, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s',
                                 background: viewMode==='grid' ? '#fff' : 'transparent',
-                                color: viewMode==='grid' ? '#1a73e8' : '#5f6368',
+                                color: viewMode==='grid' ? '#DC2626' : '#6B7280',
                                 boxShadow: viewMode==='grid' ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
                             }}>
                             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -743,9 +808,9 @@ const Page = () => {
                             </svg>
                         </button>
                         <button onClick={() => switchView('list')} title="List view"
-                            style={{width:'30px', height:'30px', borderRadius:'6px', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s',
+                            style={{width:'30px', height:'30px', borderRadius:6, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s',
                                 background: viewMode==='list' ? '#fff' : 'transparent',
-                                color: viewMode==='list' ? '#1a73e8' : '#5f6368',
+                                color: viewMode==='list' ? '#DC2626' : '#6B7280',
                                 boxShadow: viewMode==='list' ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
                             }}>
                             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -755,20 +820,132 @@ const Page = () => {
                     </div>
                     <Link href="/admin/vehicles/add"
                         className="flex items-center gap-1.5"
-                        style={{padding:'8px 16px', borderRadius:'20px', background:'var(--accent)', color:'#fff', fontSize:'var(--text-sm)', fontWeight:500, textDecoration:'none'}}>
+                        style={{padding:'8px 16px', borderRadius:8, background:'#DC2626', color:'#fff', fontSize:13, fontWeight:600, textDecoration:'none'}}>
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                         Add Vehicle
                     </Link>
                 </div>
             </div>
 
-            {/* Search */}
-            <div className="relative mb-4 max-w-xs">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{color:'#9aa0a6'}}>
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input type="text" placeholder="Search vehicles..." value={search} onChange={e => setSearch(e.target.value)}
-                    style={{paddingLeft:'32px', fontSize:'var(--text-sm)'}} />
+            {/* Filter Bar */}
+            <div style={{background:'#fff', borderRadius:10, border:'1px solid #E5E7EB', marginBottom:16, overflow:'hidden'}}>
+                {/* Filter header row */}
+                <div className="flex items-center justify-between px-4 py-2.5" style={{borderBottom: showFilters ? '1px solid #F3F4F6' : 'none'}}>
+                    <div className="flex items-center gap-3">
+                        <button onClick={() => setShowFilters(!showFilters)}
+                            className="flex items-center gap-2 font-semibold transition-colors"
+                            style={{fontSize:13, color:'#111827', background:'none', border:'none', padding:0}}>
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{transform: showFilters ? 'rotate(180deg)' : 'none', transition:'transform 0.2s'}}>
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                            </svg>
+                            Filters
+                            {activeFilterCount > 0 && (
+                                <span style={{fontSize:10, fontWeight:700, background:'#DC2626', color:'#fff', padding:'1px 6px', borderRadius:999}}>
+                                    {activeFilterCount}
+                                </span>
+                            )}
+                        </button>
+                        {activeFilterCount > 0 && (
+                            <button onClick={clearFilters}
+                                style={{fontSize:12, color:'#DC2626', background:'none', border:'none', fontWeight:600, cursor:'pointer'}}>
+                                Clear all
+                            </button>
+                        )}
+                    </div>
+                    <div className="relative" style={{width:280}}>
+                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{color:'#9CA3AF'}}>
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <input type="text" placeholder="Search vehicles, chassis, LOT..." value={search} onChange={e => setSearch(e.target.value)}
+                            style={{...inputStyle, paddingLeft:34}} />
+                    </div>
+                </div>
+
+                {/* Filter panel */}
+                {showFilters && (
+                    <div className="px-4 py-3" style={{background:'#FAFBFC', borderTop:'1px solid #F3F4F6'}}>
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                            {/* Make */}
+                            <div>
+                                <label style={labelStyle}>Make</label>
+                                <select value={filters.make} onChange={e => updateFilter('make', e.target.value)} style={selectStyle}>
+                                    <option value="">All Makes</option>
+                                    {filterOptions.makes.map(m => <option key={m} value={m}>{m}</option>)}
+                                </select>
+                            </div>
+                            {/* Model */}
+                            <div>
+                                <label style={labelStyle}>Model</label>
+                                <select value={filters.model} onChange={e => updateFilter('model', e.target.value)} style={selectStyle}>
+                                    <option value="">All Models</option>
+                                    {filterOptions.models.map(m => <option key={m} value={m}>{m}</option>)}
+                                </select>
+                            </div>
+                            {/* Allocation */}
+                            <div>
+                                <label style={labelStyle}>Status</label>
+                                <select value={filters.allocation} onChange={e => updateFilter('allocation', e.target.value)} style={selectStyle}>
+                                    <option value="">All Status</option>
+                                    <option value="export">Export</option>
+                                    <option value="khitai">Khitai</option>
+                                    <option value="resale-to-auction">Resale to Auction</option>
+                                </select>
+                            </div>
+                            {/* Year From */}
+                            <div>
+                                <label style={labelStyle}>Year From</label>
+                                <input type="number" placeholder="e.g. 2015" value={filters.yearFrom} onChange={e => updateFilter('yearFrom', e.target.value)} style={inputStyle} />
+                            </div>
+                            {/* Year To */}
+                            <div>
+                                <label style={labelStyle}>Year To</label>
+                                <input type="number" placeholder="e.g. 2024" value={filters.yearTo} onChange={e => updateFilter('yearTo', e.target.value)} style={inputStyle} />
+                            </div>
+                            {/* Fuel Type */}
+                            <div>
+                                <label style={labelStyle}>Fuel Type</label>
+                                <select value={filters.fuelType} onChange={e => updateFilter('fuelType', e.target.value)} style={selectStyle}>
+                                    <option value="">All Fuels</option>
+                                    {filterOptions.fuelTypes.map(f => <option key={f} value={f}>{f}</option>)}
+                                </select>
+                            </div>
+                            {/* Transmission */}
+                            <div>
+                                <label style={labelStyle}>Transmission</label>
+                                <select value={filters.transmission} onChange={e => updateFilter('transmission', e.target.value)} style={selectStyle}>
+                                    <option value="">All Types</option>
+                                    {filterOptions.transmissions.map(t => <option key={t} value={t}>{t}</option>)}
+                                </select>
+                            </div>
+                            {/* Body Type */}
+                            <div>
+                                <label style={labelStyle}>Body Type</label>
+                                <select value={filters.bodyType} onChange={e => updateFilter('bodyType', e.target.value)} style={selectStyle}>
+                                    <option value="">All Bodies</option>
+                                    {filterOptions.bodyTypes.map(b => <option key={b} value={b}>{b}</option>)}
+                                </select>
+                            </div>
+                            {/* Drive Type */}
+                            <div>
+                                <label style={labelStyle}>Drive Type</label>
+                                <select value={filters.driveType} onChange={e => updateFilter('driveType', e.target.value)} style={selectStyle}>
+                                    <option value="">All Drives</option>
+                                    {filterOptions.driveTypes.map(d => <option key={d} value={d}>{d}</option>)}
+                                </select>
+                            </div>
+                            {/* Min Price */}
+                            <div>
+                                <label style={labelStyle}>Min Price</label>
+                                <input type="number" placeholder="$0" value={filters.minPrice} onChange={e => updateFilter('minPrice', e.target.value)} style={inputStyle} />
+                            </div>
+                            {/* Max Price */}
+                            <div>
+                                <label style={labelStyle}>Max Price</label>
+                                <input type="number" placeholder="$99999" value={filters.maxPrice} onChange={e => updateFilter('maxPrice', e.target.value)} style={inputStyle} />
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {loading ? (
