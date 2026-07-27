@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 
 const getVehicleImages = (vehicle) => {
@@ -27,23 +27,37 @@ const getVehicleImages = (vehicle) => {
 
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—'
 
+const SPEC_FIELDS = [
+    { key: 'model',        label: 'Model',            get: (v, fv) => v.model || v['Model'] || '' },
+    { key: 'year',         label: 'Year',             get: (v, fv) => fv('Year') },
+    { key: 'fuelType',     label: 'Fuel Type',        get: (v, fv) => fv('Fuel Type') },
+    { key: 'transmission', label: 'Transmission',     get: (v, fv) => fv('Gear Box Type') },
+    { key: 'engine',       label: 'Engine Capacity',  get: (v, fv) => fv('Engine Capacity') },
+    { key: 'doors',        label: 'Doors',            get: (v, fv) => fv('Doors') },
+    { key: 'seats',        label: 'Seating Capacity',  get: (v, fv) => fv('Seats') || fv('Seating Capacity') },
+    { key: 'mileage',      label: 'Mileage',          get: (v, fv) => fv('KM') || fv('Mileage') },
+]
+
+const getSpecs = (vehicle, fields) => {
+    const fv = (label) => {
+        const f = fields.find(fl => fl.label === label)
+        return f ? (vehicle[f._id] || vehicle[f.label] || '') : (vehicle[label] || '')
+    }
+    return SPEC_FIELDS.map(s => ({ label: s.label, value: s.get(vehicle, fv) })).filter(s => s.value)
+}
+
+const maskChassis = (val) => {
+    if (!val || val.length < 6) return '***'
+    return val.slice(0, 3) + '*'.repeat(val.length - 6) + val.slice(-3)
+}
+
 // ── Vehicle card ───────────────────────────────────────────────────────────────
-const VehicleCard = ({ vehicle, fields, onView, onDelete }) => {
+const VehicleCard = ({ vehicle, fields, onView, onDelete, showChassis }) => {
     const [imgIdx, setImgIdx] = useState(0)
     const [hov, setHov] = useState(false)
     const imgs = getVehicleImages(vehicle)
 
-    const cardFields = fields
-        .filter(f => f.showOnCard !== false && f.belongsto === 'add-vehicles')
-        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-
-    const entries = cardFields.map(f => {
-        let val = vehicle[f._id]
-        if (val === undefined || val === '' || val === null) val = vehicle[f.label]
-        if (val === undefined || val === '' || val === null) return null
-        if (Array.isArray(val) || (typeof val === 'object' && val !== null)) return null
-        return { label: f.label, value: String(val) }
-    }).filter(Boolean)
+    const specs = getSpecs(vehicle, fields)
 
     const lotField   = fields.find(f => f.label?.toLowerCase().includes('lot'))
     const lotVal     = lotField ? (vehicle[lotField._id] || vehicle[lotField.label]) : null
@@ -51,6 +65,9 @@ const VehicleCard = ({ vehicle, fields, onView, onDelete }) => {
     const nameLine   = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ').toUpperCase()
     const descLine = vehicle.modelDescription || vehicle.variant || vehicle['Description'] || vehicle['description'] || ''
     const isPreSold  = vehicle.allocationStatus === true
+
+    const chassisField = fields.find(f => f.label?.toLowerCase().includes('chassis'))
+    const chassisVal   = chassisField ? (vehicle[chassisField._id] || vehicle[chassisField.label]) : ''
 
     const pDateField = fields.find(f => f.label?.toLowerCase().includes('purchase') && f.label?.toLowerCase().includes('date'))
     const pDateVal   = pDateField ? (vehicle[pDateField._id] || vehicle[pDateField.label]) : null
@@ -163,17 +180,23 @@ const VehicleCard = ({ vehicle, fields, onView, onDelete }) => {
             {/* specs */}
             <div style={{padding:'10px 14px 8px', flex:1, borderBottom:'1px solid #f0f4f8'}}>
                 <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0px 16px'}}>
-                    {entries.slice(0, 10).map((e, i) => (
+                    {specs.map((s, i) => (
                         <div key={i} style={{
                             padding:'5px 0',
                             borderBottom:'1px solid #f4f4f4',
                         }}>
-                            <div style={{fontSize:'10px', fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.05em', lineHeight:1.2}}>{e.label}</div>
-                            <div style={{fontSize:'12.5px', fontWeight:600, color:'#1e293b', marginTop:'2px',textTransform:'uppercase', lineHeight:1.3}}>{e.value}</div>
+                            <div style={{fontSize:'10px', fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.05em', lineHeight:1.2}}>{s.label}</div>
+                            <div style={{fontSize:'12.5px', fontWeight:600, color:'#1e293b', marginTop:'2px', textTransform:'uppercase', lineHeight:1.3}}>{s.value}</div>
                         </div>
                     ))}
+                    {showChassis && chassisVal && (
+                        <div style={{padding:'5px 0', borderBottom:'1px solid #f4f4f4'}}>
+                            <div style={{fontSize:'10px', fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.05em', lineHeight:1.2}}>Chassis No</div>
+                            <div style={{fontSize:'12.5px', fontWeight:600, color:'#1e293b', marginTop:'2px', lineHeight:1.3, fontFamily:'monospace'}}>{chassisVal}</div>
+                        </div>
+                    )}
                 </div>
-                {entries.length === 0 && <p style={{fontSize:'11px',color:'#cbd5e1',margin:0,fontStyle:'italic'}}>No details</p>}
+                {specs.length === 0 && <p style={{fontSize:'11px',color:'#cbd5e1',margin:0,fontStyle:'italic'}}>No details</p>}
             </div>
 
             {/* status dots */}
@@ -536,7 +559,7 @@ const setCookie = (n, v) => {
 }
 
 // ── Compact list row (table-style) ────────────────────────────────────────────
-const VehicleRow = ({ vehicle, fields, onView, onDelete }) => {
+const VehicleRow = ({ vehicle, fields, onView, onDelete, showChassis }) => {
     const imgs    = getVehicleImages(vehicle)
     const alloc   = (vehicle.allocation || '').toLowerCase()
     const rikuso  = !!vehicle.rikusoStatus
@@ -547,16 +570,10 @@ const VehicleRow = ({ vehicle, fields, onView, onDelete }) => {
     const headerLine = [vehicle.auctionGroup, vehicle.auctionVenue, lotVal || null].filter(Boolean).join(' / ')
     const nameLine   = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ')
 
-    const cardFields = fields
-        .filter(f => f.showOnCard !== false && f.belongsto === 'add-vehicles')
-        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-    const entries = cardFields.map(f => {
-        let val = vehicle[f._id]
-        if (val === undefined || val === '' || val === null) val = vehicle[f.label]
-        if (val === undefined || val === '' || val === null) return null
-        if (Array.isArray(val) || (typeof val === 'object' && val !== null)) return null
-        return { label: f.label, value: String(val) }
-    }).filter(Boolean)
+    const specs = getSpecs(vehicle, fields)
+
+    const chassisField = fields.find(f => f.label?.toLowerCase().includes('chassis'))
+    const chassisVal   = chassisField ? (vehicle[chassisField._id] || vehicle[chassisField.label]) : ''
 
     const pDateField = fields.find(f => f.label?.toLowerCase().includes('purchase') && f.label?.toLowerCase().includes('date'))
     const pDateVal   = pDateField ? (vehicle[pDateField._id] || vehicle[pDateField.label]) : null
@@ -596,24 +613,23 @@ const VehicleRow = ({ vehicle, fields, onView, onDelete }) => {
                     </div>
                 )}
             </td>
-            {/* Dynamic fields — all fields with showOnCard enabled */}
-            {entries.map((e, i) => {
-                // Don't normalize chassis/lot/code fields — keep them uppercase
-                const isCodeField = /chassis|lot\s*no|vin|frame/i.test(e.label)
-                const isAllCaps = !isCodeField && e.value === e.value.toUpperCase() && /[A-Z]{2,}/.test(e.value)
-                const display = isAllCaps
-                    ? e.value.charAt(0).toUpperCase() + e.value.slice(1).toLowerCase()
-                    : e.value
-                return (
-                    <td key={i} style={{padding:'5px 8px', minWidth:'70px'}}>
-                        <div style={{fontSize:'11px', fontWeight:600, color:'#1e293b', whiteSpace:'nowrap'}} className='uppercase'>{display}</div>
-                    </td>
-                )
-            })}
-            {/* Pad missing cells */}
-            {entries.length < 5 && Array.from({length: 5 - entries.length}).map((_, i) => (
+            {/* 8 Spec columns */}
+            {specs.map((s, i) => (
+                <td key={i} style={{padding:'5px 8px', minWidth:'80px'}}>
+                    <div style={{fontSize:'11px', fontWeight:600, color:'#1e293b', whiteSpace:'nowrap'}}>{s.value}</div>
+                </td>
+            ))}
+            {/* Pad missing spec cells to always show 8 columns */}
+            {specs.length < 8 && Array.from({length: 8 - specs.length}).map((_, i) => (
                 <td key={`pad-${i}`} style={{padding:'5px 8px'}} />
-            ))}            {/* Status */}
+            ))}
+            {/* Chassis No — only for registered users */}
+            {showChassis && (
+                <td style={{padding:'5px 8px', minWidth:'100px'}}>
+                    <div style={{fontSize:'11px', fontWeight:600, color:'#1e293b', whiteSpace:'nowrap', fontFamily:'monospace'}}>{chassisVal || '—'}</div>
+                </td>
+            )}
+            {/* Status */}
             <td style={{padding:'5px 8px', width:'72px'}}>
                 <div style={{display:'flex', flexDirection:'column', gap:'1px'}}>
                     {activeAlloc && <span style={{fontSize:'9px', fontWeight:700, color:'#dc2626', background:'#fff1f1', padding:'1px 5px', borderRadius:'999px', display:'inline-block'}}>{activeAlloc}</span>}
@@ -664,12 +680,15 @@ const Page = () => {
     const [viewMode, setViewMode] = useState('grid')
     const [page, setPage] = useState(1)
     const [showFilters, setShowFilters] = useState(false)
+    const [user, setUser] = useState(null)
     const [filters, setFilters] = useState({
         make: '', model: '', yearFrom: '', yearTo: '',
         minPrice: '', maxPrice: '', fuelType: '', transmission: '',
         bodyType: '', driveType: '', allocation: '',
     })
     const PAGE_SIZE = 25
+
+    const showChassis = !!user
 
     useEffect(() => {
         const saved = getCookie('vehicles_view')
@@ -690,6 +709,12 @@ const Page = () => {
             setFields(Array.isArray(f) ? f : [])
         }).catch(e => setError(e.message))
         .finally(() => setLoading(false))
+    }, [])
+
+    useEffect(() => {
+        fetch('/api/public/auth/me').then(r => r.json()).then(d => {
+            if (d.user) setUser(d.user)
+        }).catch(() => {})
     }, [])
 
     const handleDelete = async (vehicleId) => {
@@ -968,7 +993,7 @@ const Page = () => {
             ) : viewMode === 'grid' ? (
                 <div className="grid gap-4" style={{gridTemplateColumns:'repeat(auto-fill, minmax(300px, 1fr))'}}>
                     {filtered.map(v => (
-                        <VehicleCard key={v._id} vehicle={v} fields={fields} onView={setSelected} onDelete={handleDelete} />
+                        <VehicleCard key={v._id} vehicle={v} fields={fields} onView={setSelected} onDelete={handleDelete} showChassis={showChassis} />
                     ))}
                 </div>
             ) : (
@@ -982,9 +1007,10 @@ const Page = () => {
                                     <th style={{padding:'7px 8px', width:'48px'}}></th>
                                     <th style={{padding:'7px 8px', textAlign:'left', fontSize:'11px', fontWeight:600, color:'#64748b'}}>Group / Venue</th>
                                     <th style={{padding:'7px 8px', textAlign:'left', fontSize:'11px', fontWeight:600, color:'#64748b'}}>Vehicle</th>
-                                    {fields.filter(f => f.showOnCard !== false && f.belongsto === 'add-vehicles').sort((a,b)=>(a.order??0)-(b.order??0)).map(f => (
-                                        <th key={f._id} style={{padding:'7px 8px', textAlign:'left', fontSize:'11px', fontWeight:600, color:'#64748b', whiteSpace:'nowrap'}}>{f.label}</th>
+                                    {SPEC_FIELDS.map(s => (
+                                        <th key={s.key} style={{padding:'7px 8px', textAlign:'left', fontSize:'11px', fontWeight:600, color:'#64748b', whiteSpace:'nowrap'}}>{s.label}</th>
                                     ))}
+                                    {showChassis && <th style={{padding:'7px 8px', textAlign:'left', fontSize:'11px', fontWeight:600, color:'#64748b', whiteSpace:'nowrap'}}>Chassis No</th>}
                                     <th style={{padding:'7px 8px', textAlign:'left', fontSize:'11px', fontWeight:600, color:'#64748b'}}>Status</th>
                                     <th style={{padding:'7px 8px', textAlign:'left', fontSize:'11px', fontWeight:600, color:'#64748b'}}>Date</th>
                                     <th style={{padding:'7px 8px', width:'60px'}}></th>
@@ -992,7 +1018,7 @@ const Page = () => {
                             </thead>
                             <tbody>
                                 {paginated.map(v => (
-                                    <VehicleRow key={v._id} vehicle={v} fields={fields} onView={setSelected} onDelete={handleDelete} />
+                                    <VehicleRow key={v._id} vehicle={v} fields={fields} onView={setSelected} onDelete={handleDelete} showChassis={showChassis} />
                                 ))}
                             </tbody>
                         </table>
