@@ -4,7 +4,7 @@ import Me from '@/app/hooks/Me'
 import { redirect } from 'next/navigation'
 
 export const metadata = {
-    title: 'Admin Portal - Vehicle Management System',
+    title: 'Admin Portal - Universal Trading Co.',
     description: 'Admin portal for managing vehicles and system settings',
 }
 
@@ -16,12 +16,9 @@ export default async function AdminLayout({ children }) {
     }
 
     return (
-        <div className="flex h-screen overflow-hidden">
-            {/* Sidebar — fixed height, never scrolls */}
+        <div className="flex h-screen overflow-hidden" style={{background:'#F8F9FB'}}>
             <Sidebar />
-
-            {/* Main area — takes remaining width, scrolls vertically */}
-            <div className="flex flex-col flex-1 min-w-0 overflow-y-auto" style={{background:'#f6f8fc'}}>
+            <div className="flex flex-col flex-1 min-w-0 overflow-y-auto" style={{background:'#F8F9FB'}}>
                 <Navbar user={user} />
                 <main className="flex-1">
                     {children}
