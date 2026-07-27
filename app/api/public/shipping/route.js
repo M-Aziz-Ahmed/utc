@@ -14,6 +14,11 @@ const SHIPPING_RATES = {
   'Canada': { roro: 1900, container: 3800, insurance: 240 },
 }
 
+export async function GET() {
+  const countries = Object.keys(SHIPPING_RATES).filter(k => k !== 'default')
+  return NextResponse.json({ countries, rates: SHIPPING_RATES }, { status: 200 })
+}
+
 export async function POST(req) {
   try {
     const body = await req.json()

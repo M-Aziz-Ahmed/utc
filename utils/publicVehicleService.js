@@ -161,82 +161,120 @@ export async function getPublicVehicles({
   sort = 'latest',
   filters = {},
 } = {}) {
-  await dbConnect()
+  try {
+    await dbConnect()
 
-  const query = buildFilterQuery(filters)
-  const sortQuery = buildSortQuery(sort)
-  const skip = (parseInt(page) - 1) * parseInt(limit)
+    const query = buildFilterQuery(filters)
+    const sortQuery = buildSortQuery(sort)
+    const skip = (parseInt(page) - 1) * parseInt(limit)
 
-  const [vehicles, total] = await Promise.all([
-    Vehicle.find(query).sort(sortQuery).skip(skip).limit(parseInt(limit)).lean(),
-    Vehicle.countDocuments(query),
-  ])
+    const [vehicles, total] = await Promise.all([
+      Vehicle.find(query).sort(sortQuery).skip(skip).limit(parseInt(limit)).lean(),
+      Vehicle.countDocuments(query),
+    ])
 
-  return {
-    vehicles: vehicles.map(mapVehicleToPublic),
-    pagination: {
-      page: parseInt(page),
-      limit: parseInt(limit),
-      total,
-      totalPages: Math.ceil(total / parseInt(limit)),
-    },
+    return {
+      vehicles: vehicles.map(mapVehicleToPublic),
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        totalPages: Math.ceil(total / parseInt(limit)),
+      },
+    }
+  } catch (error) {
+    console.error('getPublicVehicles error:', error.message)
+    return {
+      vehicles: [],
+      pagination: { page: parseInt(page), limit: parseInt(limit), total: 0, totalPages: 0 },
+    }
   }
 }
 
 export async function getPublicVehicleById(id) {
-  await dbConnect()
-  const vehicle = await Vehicle.findById(id).lean()
-  if (!vehicle) return null
-  return mapVehicleToPublic(vehicle)
+  try {
+    await dbConnect()
+    const vehicle = await Vehicle.findById(id).lean()
+    if (!vehicle) return null
+    return mapVehicleToPublic(vehicle)
+  } catch (error) {
+    console.error('getPublicVehicleById error:', error.message)
+    return null
+  }
 }
 
 export async function getPublicVehicleBySlug(slug) {
-  await dbConnect()
-  const vehicles = await Vehicle.find({}).lean()
-  const mapped = vehicles.map(mapVehicleToPublic)
-  return mapped.find(v => v.slug === slug) || null
+  try {
+    await dbConnect()
+    const vehicles = await Vehicle.find({}).lean()
+    const mapped = vehicles.map(mapVehicleToPublic)
+    return mapped.find(v => v.slug === slug) || null
+  } catch (error) {
+    console.error('getPublicVehicleBySlug error:', error.message)
+    return null
+  }
 }
 
 export async function getVehicleCount() {
-  await dbConnect()
-  return await Vehicle.countDocuments({ exportStatus: PUBLIC_VEHICLE_STATUS })
+  try {
+    await dbConnect()
+    return await Vehicle.countDocuments({ exportStatus: PUBLIC_VEHICLE_STATUS })
+  } catch (error) {
+    console.error('getVehicleCount error:', error.message)
+    return 0
+  }
 }
 
 export async function getFeaturedVehicles(limit = 8) {
-  await dbConnect()
-  const vehicles = await Vehicle.find({ exportStatus: PUBLIC_VEHICLE_STATUS })
-    .sort({ createdAt: -1 })
-    .limit(parseInt(limit))
-    .lean()
-  return vehicles.map(mapVehicleToPublic)
+  try {
+    await dbConnect()
+    const vehicles = await Vehicle.find({ exportStatus: PUBLIC_VEHICLE_STATUS })
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .lean()
+    return vehicles.map(mapVehicleToPublic)
+  } catch (error) {
+    console.error('getFeaturedVehicles error:', error.message)
+    return []
+  }
 }
 
 export async function getNewArrivals(limit = 8) {
-  await dbConnect()
-  const twoWeeksAgo = new Date()
-  twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
-  const vehicles = await Vehicle.find({
-    exportStatus: PUBLIC_VEHICLE_STATUS,
-    createdAt: { $gte: twoWeeksAgo }
-  }).sort({ createdAt: -1 }).limit(parseInt(limit)).lean()
-  return vehicles.map(mapVehicleToPublic)
+  try {
+    await dbConnect()
+    const twoWeeksAgo = new Date()
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
+    const vehicles = await Vehicle.find({
+      exportStatus: PUBLIC_VEHICLE_STATUS,
+      createdAt: { $gte: twoWeeksAgo }
+    }).sort({ createdAt: -1 }).limit(parseInt(limit)).lean()
+    return vehicles.map(mapVehicleToPublic)
+  } catch (error) {
+    console.error('getNewArrivals error:', error.message)
+    return []
+  }
 }
 
 export async function getFilterOptions() {
-  await dbConnect()
-  const vehicles = await Vehicle.find({ exportStatus: PUBLIC_VEHICLE_STATUS }).lean()
+  try {
+    await dbConnect()
+    const vehicles = await Vehicle.find({ exportStatus: PUBLIC_VEHICLE_STATUS }).lean()
 
-  const makes = [...new Set(vehicles.map(v => v['Make']).filter(Boolean))].sort()
-  const fuelTypes = [...new Set(vehicles.map(v => v['Fuel Type']).filter(Boolean))].sort()
-  const transmissions = [...new Set(vehicles.map(v => v['Gear Box Type']).filter(Boolean))].sort()
-  const bodyTypes = [...new Set(vehicles.map(v => v['Body Type']).filter(Boolean))].sort()
-  const driveTypes = [...new Set(vehicles.map(v => v['Drive Type']).filter(Boolean))].sort()
-  const years = vehicles.map(v => parseInt(v['Year'])).filter(Boolean)
-  const minYear = years.length ? Math.min(...years) : 2000
-  const maxYear = years.length ? Math.max(...years) : new Date().getFullYear()
-  const prices = vehicles.map(v => parseFloat(v['Price'])).filter(Boolean)
-  const minPrice = prices.length ? Math.min(...prices) : 0
-  const maxPrice = prices.length ? Math.max(...prices) : 100000
+    const makes = [...new Set(vehicles.map(v => v['Make']).filter(Boolean))].sort()
+    const fuelTypes = [...new Set(vehicles.map(v => v['Fuel Type']).filter(Boolean))].sort()
+    const transmissions = [...new Set(vehicles.map(v => v['Gear Box Type']).filter(Boolean))].sort()
+    const bodyTypes = [...new Set(vehicles.map(v => v['Body Type']).filter(Boolean))].sort()
+    const driveTypes = [...new Set(vehicles.map(v => v['Drive Type']).filter(Boolean))].sort()
+    const years = vehicles.map(v => parseInt(v['Year'])).filter(Boolean)
+    const minYear = years.length ? Math.min(...years) : 2000
+    const maxYear = years.length ? Math.max(...years) : new Date().getFullYear()
+    const prices = vehicles.map(v => parseFloat(v['Price'])).filter(Boolean)
+    const minPrice = prices.length ? Math.min(...prices) : 0
+    const maxPrice = prices.length ? Math.max(...prices) : 100000
 
-  return { makes, fuelTypes, transmissions, bodyTypes, driveTypes, minYear, maxYear, minPrice, maxPrice }
+    return { makes, fuelTypes, transmissions, bodyTypes, driveTypes, minYear, maxYear, minPrice, maxPrice }
+  } catch (error) {
+    console.error('getFilterOptions error:', error.message)
+    return { makes: [], fuelTypes: [], transmissions: [], bodyTypes: [], driveTypes: [], minYear: 2000, maxYear: new Date().getFullYear(), minPrice: 0, maxPrice: 100000 }
+  }
 }
