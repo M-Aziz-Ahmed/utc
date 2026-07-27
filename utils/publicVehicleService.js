@@ -1,13 +1,13 @@
 import dbConnect from './dbConnection'
 import Vehicle from '@/models/Vehicle'
 
-const PUBLIC_VEHICLE_STATUS = process.env.PUBLIC_VEHICLE_STATUS || 'EXPORTED'
+const PUBLIC_VEHICLE_STATUS = process.env.PUBLIC_VEHICLE_STATUS || 'export'
 
 const FIELD_MAPPING = {
   vehicleId: '_id',
   stockId: 'stockId',
-  make: 'Make',
-  model: 'Model',
+  make: 'manufacturer',
+  model: 'model',
   year: 'Year',
   price: 'Price',
   mileage: 'Mileage',
@@ -29,7 +29,6 @@ const FIELD_MAPPING = {
   thumbnailImage: 'Thumbnail Image',
   allocation: 'allocation',
   allocationStatus: 'allocationStatus',
-  exportStatus: 'exportStatus',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
 }
@@ -97,16 +96,16 @@ function buildFilterQuery(filters = {}) {
   const query = {}
 
   if (filters.status) {
-    query.exportStatus = filters.status
+    query.allocation = filters.status
   } else {
-    query.exportStatus = PUBLIC_VEHICLE_STATUS
+    query.allocation = PUBLIC_VEHICLE_STATUS
   }
 
   if (filters.make) {
-    query['Make'] = { $regex: filters.make, $options: 'i' }
+    query['manufacturer'] = { $regex: filters.make, $options: 'i' }
   }
   if (filters.model) {
-    query['Model'] = { $regex: filters.model, $options: 'i' }
+    query['model'] = { $regex: filters.model, $options: 'i' }
   }
   if (filters.yearFrom || filters.yearTo) {
     const yearFilter = {}
@@ -218,7 +217,7 @@ export async function getPublicVehicleBySlug(slug) {
 export async function getVehicleCount() {
   try {
     await dbConnect()
-    return await Vehicle.countDocuments({ exportStatus: PUBLIC_VEHICLE_STATUS })
+    return await Vehicle.countDocuments({ allocation: PUBLIC_VEHICLE_STATUS })
   } catch (error) {
     console.error('getVehicleCount error:', error.message)
     return 0
@@ -228,7 +227,7 @@ export async function getVehicleCount() {
 export async function getFeaturedVehicles(limit = 8) {
   try {
     await dbConnect()
-    const vehicles = await Vehicle.find({ exportStatus: PUBLIC_VEHICLE_STATUS })
+    const vehicles = await Vehicle.find({ allocation: PUBLIC_VEHICLE_STATUS })
       .sort({ createdAt: -1 })
       .limit(parseInt(limit))
       .lean()
@@ -245,7 +244,7 @@ export async function getNewArrivals(limit = 8) {
     const twoWeeksAgo = new Date()
     twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
     const vehicles = await Vehicle.find({
-      exportStatus: PUBLIC_VEHICLE_STATUS,
+      allocation: PUBLIC_VEHICLE_STATUS,
       createdAt: { $gte: twoWeeksAgo }
     }).sort({ createdAt: -1 }).limit(parseInt(limit)).lean()
     return vehicles.map(mapVehicleToPublic)
@@ -258,9 +257,9 @@ export async function getNewArrivals(limit = 8) {
 export async function getFilterOptions() {
   try {
     await dbConnect()
-    const vehicles = await Vehicle.find({ exportStatus: PUBLIC_VEHICLE_STATUS }).lean()
+    const vehicles = await Vehicle.find({ allocation: PUBLIC_VEHICLE_STATUS }).lean()
 
-    const makes = [...new Set(vehicles.map(v => v['Make']).filter(Boolean))].sort()
+    const makes = [...new Set(vehicles.map(v => v['manufacturer'] || v['Make']).filter(Boolean))].sort()
     const fuelTypes = [...new Set(vehicles.map(v => v['Fuel Type']).filter(Boolean))].sort()
     const transmissions = [...new Set(vehicles.map(v => v['Gear Box Type']).filter(Boolean))].sort()
     const bodyTypes = [...new Set(vehicles.map(v => v['Body Type']).filter(Boolean))].sort()
