@@ -1,20 +1,22 @@
-import "./globals.css";
+import "./globals.css"
 
 export const metadata = {
-  title: "UTC Admin Portal",
-  description: "Universal Trading Co. — Vehicle Management System",
-};
+  title: {
+    default: "Universal Trading Co. - Premium Japanese Vehicle Exports",
+    template: "%s | Universal Trading Co."
+  },
+  description: "Universal Trading Co. (UTC) - Premium Japanese vehicle export company.",
+}
 
 export const viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-};
+}
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className="h-full">
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en">
+      <body>{children}</body>
     </html>
-  );
+  )
 }
