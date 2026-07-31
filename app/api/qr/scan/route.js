@@ -34,8 +34,12 @@ export const POST = async (req) => {
             }, { status: 409 })
         }
 
-        const count = await GatePass.countDocuments({ type: 'IGP' })
-        const gatePassNumber = `IGP-${String(count + 1).padStart(4, '0')}`
+        const counter = await GatePass.db.collection('counters').findOneAndUpdate(
+            { _id: 'gatePass_IGP' },
+            { $inc: { seq: 1 } },
+            { upsert: true, returnDocument: 'after' }
+        );
+        const gatePassNumber = `IGP-${String(counter.seq).padStart(4, '0')}`;
 
         const gatePass = await GatePass.create({
             vehicle: vehicleId,

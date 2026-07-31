@@ -7,7 +7,23 @@ if (!MONGODB_URI) {
 
 let cached = global.mongoose;
 if (!cached) {
-    cached = global.mongoose = { conn: null, promise: null };
+    cached = global.mongoose = { conn: null, promise: null, indexed: false };
+}
+
+async function ensureIndexes(db) {
+    if (cached.indexed) return;
+    try {
+        const vehicleCol = db.collection('vehicles');
+        await vehicleCol.createIndex({ yard: 1 }, { sparse: true });
+        await vehicleCol.createIndex({ physicalIn: 1 }, { sparse: true });
+        await vehicleCol.createIndex({ physicalOut: 1 }, { sparse: true });
+        await vehicleCol.createIndex({ exportCountry: 1 }, { sparse: true });
+        await vehicleCol.createIndex({ manufacturer: 1 }, { sparse: true });
+        await vehicleCol.createIndex({ allocation: 1, physicalIn: 1, physicalOut: 1 });
+        cached.indexed = true;
+    } catch (err) {
+        console.error('Index creation failed:', err.message);
+    }
 }
 
 async function dbConnect() {
@@ -31,6 +47,7 @@ async function dbConnect() {
     }
 
     cached.conn = await cached.promise;
+    await ensureIndexes(cached.conn.db);
     return cached.conn;
 }
 

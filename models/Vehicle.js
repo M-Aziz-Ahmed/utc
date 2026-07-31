@@ -22,4 +22,16 @@ const vehicleSchema = new mongoose.Schema({
     timestamps: true 
 });
 
+vehicleSchema.index({ allocation: 1, allocationStatus: 1 });
+vehicleSchema.index({ rikusoStatus: 1 });
+vehicleSchema.index({ createdBy: 1 });
+vehicleSchema.index({ consignee: 1 });
+vehicleSchema.index({ rikusoCompany: 1 });
+
+vehicleSchema.virtual('id').get(function () {
+    return this._id.toHexString();
+});
+
+vehicleSchema.set('toJSON', { virtuals: true });
+
 export default mongoose.models.Vehicle || mongoose.model('Vehicle', vehicleSchema);

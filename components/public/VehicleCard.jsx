@@ -22,7 +22,6 @@ export default function VehicleCard({ vehicle }) {
   const detailUrl = `/stock/${vehicle.slug || vehicle.vehicleId}`
 
   const specs = [
-    { label: 'Model', value: vehicle.model || 'N/A' },
     { label: 'Year', value: vehicle.year || 'N/A' },
     { label: 'Fuel Type', value: vehicle.fuelType || 'N/A' },
     { label: 'Transmission', value: vehicle.transmission || 'N/A' },

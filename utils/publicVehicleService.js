@@ -33,8 +33,35 @@ const FIELD_MAPPING = {
   updatedAt: 'updatedAt',
 }
 
+const FIELD_ALIASES = {
+  year: ['Year', 'Year Make', 'Year of Registration', 'Model Year', 'Manufacture Year'],
+  mileage: ['Mileage', 'Millage', 'KM', 'Odometer'],
+  transmission: ['Gear Box Type', 'Transmission', 'Gearbox', 'Trans'],
+  fuelType: ['Fuel Type', 'Fuel', 'Engine Type'],
+  engine: ['Engine Capacity', 'Engine', 'Engine CC', 'Displacement'],
+  seats: ['Seats', 'Seating Capacity', 'Seat Count'],
+  doors: ['Doors', 'Door Count'],
+  bodyType: ['Body Type', 'Body'],
+  driveType: ['Drive Type', 'Drive', 'Drivetrain'],
+  chassisNumber: ['Chassis No.', 'Chassis No', 'Chassis Number', 'VIN'],
+  color: ['Color', 'Colour'],
+  condition: ['Condition'],
+  grade: ['Category / Grade', 'Grade', 'Auction Grade'],
+  location: ['Car Location', 'Location', 'Yard Location'],
+}
+
 function mapVehicleToPublic(vehicle) {
-  const get = (fieldName) => vehicle[FIELD_MAPPING[fieldName]] || vehicle[fieldName] || ''
+  const get = (fieldName) => {
+    const primary = FIELD_MAPPING[fieldName]
+    if (primary && vehicle[primary]) return vehicle[primary]
+    const aliases = FIELD_ALIASES[fieldName]
+    if (aliases) {
+      for (const alias of aliases) {
+        if (vehicle[alias]) return vehicle[alias]
+      }
+    }
+    return vehicle[fieldName] || ''
+  }
 
   const images = vehicle[FIELD_MAPPING.images] || vehicle['Vehicle Images'] || []
   const thumbnail = vehicle[FIELD_MAPPING.thumbnailImage] || vehicle['Thumbnail Image'] || ''
@@ -94,6 +121,7 @@ function mapVehicleToPublic(vehicle) {
 
 function buildFilterQuery(filters = {}) {
   const query = {}
+  const orParts = []
 
   if (filters.status) {
     query.allocation = filters.status
@@ -111,7 +139,7 @@ function buildFilterQuery(filters = {}) {
     const yearFilter = {}
     if (filters.yearFrom) yearFilter.$gte = parseInt(filters.yearFrom)
     if (filters.yearTo) yearFilter.$lte = parseInt(filters.yearTo)
-    query['Year'] = yearFilter
+    orParts.push(...FIELD_ALIASES.year.map(a => ({ [a]: yearFilter })))
   }
   if (filters.minPrice || filters.maxPrice) {
     const priceFilter = {}
@@ -120,10 +148,10 @@ function buildFilterQuery(filters = {}) {
     query['Price'] = priceFilter
   }
   if (filters.fuelType) {
-    query['Fuel Type'] = { $regex: filters.fuelType, $options: 'i' }
+    orParts.push(...FIELD_ALIASES.fuelType.map(a => ({ [a]: { $regex: filters.fuelType, $options: 'i' } })))
   }
   if (filters.transmission) {
-    query['Gear Box Type'] = { $regex: filters.transmission, $options: 'i' }
+    orParts.push(...FIELD_ALIASES.transmission.map(a => ({ [a]: { $regex: filters.transmission, $options: 'i' } })))
   }
   if (filters.bodyType) {
     query['Body Type'] = { $regex: filters.bodyType, $options: 'i' }
@@ -136,6 +164,10 @@ function buildFilterQuery(filters = {}) {
   }
   if (filters.location) {
     query['Car Location'] = { $regex: filters.location, $options: 'i' }
+  }
+
+  if (orParts.length > 0) {
+    query.$or = orParts
   }
 
   return query
@@ -254,17 +286,24 @@ export async function getNewArrivals(limit = 8) {
   }
 }
 
+function getAnyField(vehicle, aliases) {
+  for (const alias of aliases) {
+    if (vehicle[alias]) return vehicle[alias]
+  }
+  return ''
+}
+
 export async function getFilterOptions() {
   try {
     await dbConnect()
     const vehicles = await Vehicle.find({ allocation: PUBLIC_VEHICLE_STATUS }).lean()
 
     const makes = [...new Set(vehicles.map(v => v['manufacturer'] || v['Make']).filter(Boolean))].sort()
-    const fuelTypes = [...new Set(vehicles.map(v => v['Fuel Type']).filter(Boolean))].sort()
-    const transmissions = [...new Set(vehicles.map(v => v['Gear Box Type']).filter(Boolean))].sort()
-    const bodyTypes = [...new Set(vehicles.map(v => v['Body Type']).filter(Boolean))].sort()
-    const driveTypes = [...new Set(vehicles.map(v => v['Drive Type']).filter(Boolean))].sort()
-    const years = vehicles.map(v => parseInt(v['Year'])).filter(Boolean)
+    const fuelTypes = [...new Set(vehicles.map(v => getAnyField(v, FIELD_ALIASES.fuelType)).filter(Boolean))].sort()
+    const transmissions = [...new Set(vehicles.map(v => getAnyField(v, FIELD_ALIASES.transmission)).filter(Boolean))].sort()
+    const bodyTypes = [...new Set(vehicles.map(v => getAnyField(v, FIELD_ALIASES.bodyType)).filter(Boolean))].sort()
+    const driveTypes = [...new Set(vehicles.map(v => getAnyField(v, FIELD_ALIASES.driveType)).filter(Boolean))].sort()
+    const years = vehicles.map(v => parseInt(getAnyField(v, FIELD_ALIASES.year))).filter(Boolean)
     const minYear = years.length ? Math.min(...years) : 2000
     const maxYear = years.length ? Math.max(...years) : new Date().getFullYear()
     const prices = vehicles.map(v => parseFloat(v['Price'])).filter(Boolean)

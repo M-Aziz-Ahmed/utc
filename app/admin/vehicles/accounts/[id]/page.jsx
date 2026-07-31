@@ -32,10 +32,19 @@ const getAllImages = (vehicle) => {
 }
 
 // ── Shared field input ────────────────────────────────────────────────────────
-const FieldInput = ({ field, value, onChange, taxes = [], accountData, accountFields, allFields, vehicle }) => {
+const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleData, accountFields, vehicleFields, allFields, vehicle }) => {
     const base = { width: '100%', padding: '8px 11px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: '#fff' }
     const focus = e => { e.target.style.borderColor = '#1a73e8'; e.target.style.boxShadow = '0 0 0 3px rgba(26,115,232,0.1)' }
     const blur  = e => { e.target.style.borderColor = '#e0e0e0'; e.target.style.boxShadow = 'none' }
+
+    const getSourceValue = (sourceFieldLabel) => {
+        const src = (allFields || []).find(f => f.label === sourceFieldLabel)
+        if (!src) return 0
+        if (src.belongsto === 'add-vehicles') {
+            return parseFloat(vehicleData?.[src._id]) || 0
+        }
+        return parseFloat(accountData?.[src._id]) || 0
+    }
 
     if (field.vehicleField && vehicle) {
         const rawVal = vehicle[field.vehicleField]
@@ -67,9 +76,7 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, accountFi
     )
     if (field.type === 'tax') {
         const linkedTax = taxes.find(t => t._id === field.linkedTax)
-        const fieldsToSearch = allFields || accountFields
-        const sourceField = fieldsToSearch?.find(f => f.label === field.linkedField)
-        const sourceVal = sourceField ? parseFloat(accountData?.[sourceField._id]) || 0 : 0
+        const sourceVal = getSourceValue(field.linkedField)
         let taxAmount = 0
         if (linkedTax && sourceVal > 0) {
             taxAmount = linkedTax.type === 'percentage'
@@ -88,14 +95,10 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, accountFi
         const linkedFieldLabels = field.linkedFields || []
         let sum = 0
         const parts = []
-        const fieldsToSearch = allFields || accountFields
         linkedFieldLabels.forEach(label => {
-            const src = fieldsToSearch?.find(f => f.label === label)
-            if (src) {
-                const val = parseFloat(accountData?.[src._id]) || 0
-                sum += val
-                if (val !== 0) parts.push({ label: src.label, val })
-            }
+            const val = getSourceValue(label)
+            sum += val
+            if (val !== 0) parts.push({ label, val })
         })
         const display = sum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
         return (
@@ -311,7 +314,7 @@ const VehicleAccountPage = ({ params }) => {
                                             <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>
                                                 {field.label}{field.isRequired && <span style={{ color: '#c5221f', marginLeft: '2px' }}>*</span>}
                                             </label>
-                                            <FieldInput field={field} value={formData[field._id]} onChange={v => setFormData(p => ({ ...p, [field._id]: v }))} taxes={taxes} accountData={formData} accountFields={vehicleFields} allFields={allFields} vehicle={vehicle} />
+                                            <FieldInput field={field} value={formData[field._id]} onChange={v => setFormData(p => ({ ...p, [field._id]: v }))} taxes={taxes} vehicleData={formData} accountData={accountData} vehicleFields={vehicleFields} accountFields={accountFields} allFields={allFields} vehicle={vehicle} />
                                         </div>
                                     ))}
                                 </div>
@@ -382,7 +385,7 @@ const VehicleAccountPage = ({ params }) => {
                                     {accountFields.filter(f => f.type !== 'file' && f.type !== 'image').map(field => (
                                         <div key={field._id} style={field.type === 'boolean' ? { gridColumn: 'span 2' } : {}}>
                                             <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>{field.label}{field.isRequired && <span style={{ color: '#c5221f', marginLeft: '2px' }}>*</span>}</label>
-                                            <FieldInput field={field} value={accountData[field._id]} onChange={v => setAccountData(p => ({ ...p, [field._id]: v }))} taxes={taxes} accountData={accountData} accountFields={accountFields} allFields={allFields} vehicle={vehicle} />
+                                            <FieldInput field={field} value={accountData[field._id]} onChange={v => setAccountData(p => ({ ...p, [field._id]: v }))} taxes={taxes} vehicleData={formData} accountData={accountData} vehicleFields={vehicleFields} accountFields={accountFields} allFields={allFields} vehicle={vehicle} />
                                         </div>
                                     ))}
                                 </div>
@@ -393,6 +396,11 @@ const VehicleAccountPage = ({ params }) => {
                                     const taxFields = allFields.filter(f => f.type === 'tax' && f.linkedTax && f.linkedField)
                                     if (taxFields.length === 0) return null
 
+                                    const getVal = (f) => {
+                                        if (f.belongsto === 'add-vehicles') return parseFloat(formData[f._id]) || 0
+                                        return parseFloat(accountData[f._id]) || 0
+                                    }
+
                                     let sumInputs = 0
                                     let sumTaxes = 0
 
@@ -400,7 +408,7 @@ const VehicleAccountPage = ({ params }) => {
                                         const linkedTax = taxes.find(t => t._id === tf.linkedTax)
                                         const sourceField = allFields.find(f => f.label === tf.linkedField)
                                         if (!linkedTax || !sourceField) return
-                                        const sourceVal = parseFloat(accountData[sourceField._id]) || 0
+                                        const sourceVal = getVal(sourceField)
                                         sumTaxes += linkedTax.type === 'percentage'
                                             ? (sourceVal * linkedTax.rate / 100)
                                             : linkedTax.rate
@@ -408,7 +416,7 @@ const VehicleAccountPage = ({ params }) => {
 
                                     numFields.forEach(f => {
                                         if (!f.linkedTax) {
-                                            sumInputs += parseFloat(accountData[f._id]) || 0
+                                            sumInputs += getVal(f)
                                         }
                                     })
 

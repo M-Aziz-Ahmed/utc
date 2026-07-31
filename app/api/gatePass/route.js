@@ -3,6 +3,16 @@ import Vehicle from "@/models/Vehicle";
 import dbConnect from "@/utils/dbConnection";
 import { NextResponse } from "next/server";
 
+async function nextGatePassNumber(type) {
+    const prefix = type === 'IGP' ? 'IGP' : 'OGP';
+    const counter = await GatePass.db.collection('counters').findOneAndUpdate(
+        { _id: `gatePass_${prefix}` },
+        { $inc: { seq: 1 } },
+        { upsert: true, returnDocument: 'after' }
+    );
+    return `${prefix}-${String(counter.seq).padStart(4, '0')}`;
+}
+
 export const GET = async (req) => {
     try {
         await dbConnect();
@@ -30,9 +40,30 @@ export const POST = async (req) => {
         if (!body.vehicle) return NextResponse.json({ message: 'Vehicle is required' }, { status: 400 });
         if (!body.type) return NextResponse.json({ message: 'Type is required' }, { status: 400 });
 
-        const count = await GatePass.countDocuments({ type: body.type });
-        const prefix = body.type === 'IGP' ? 'IGP' : 'OGP';
-        body.gatePassNumber = `${prefix}-${String(count + 1).padStart(4, '0')}`;
+        const vehicle = await Vehicle.findById(body.vehicle).lean();
+        if (!vehicle) return NextResponse.json({ message: 'Vehicle not found' }, { status: 404 });
+
+        if (body.type === 'IGP' && vehicle.physicalIn) {
+            return NextResponse.json({
+                message: 'Vehicle already checked in (IGP exists)',
+                status: 'duplicate',
+                physicalInDate: vehicle.physicalInDate,
+            }, { status: 409 });
+        }
+
+        if (body.type === 'OGP' && !vehicle.physicalIn) {
+            return NextResponse.json({ message: 'Vehicle must be checked in (IGP) before OGP' }, { status: 400 });
+        }
+
+        if (body.type === 'OGP' && vehicle.physicalOut) {
+            return NextResponse.json({
+                message: 'Vehicle already shipped (OGP exists)',
+                status: 'duplicate',
+                physicalOutDate: vehicle.physicalOutDate,
+            }, { status: 409 });
+        }
+
+        body.gatePassNumber = await nextGatePassNumber(body.type);
 
         const gatePass = await GatePass.create(body);
 
@@ -59,5 +90,52 @@ export const POST = async (req) => {
         return NextResponse.json(populated, { status: 201 });
     } catch (error) {
         return NextResponse.json({ message: 'Error creating gate pass' }, { status: 500 });
+    }
+};
+
+const VALID_STATUS_TRANSITIONS = {
+    pending:   ['approved', 'cancelled'],
+    approved:  ['completed', 'cancelled'],
+    completed: [],
+    cancelled: [],
+};
+
+export const PATCH = async (req) => {
+    try {
+        await dbConnect();
+        const body = await req.json();
+        const { gatePassId, status } = body;
+
+        if (!gatePassId) {
+            return NextResponse.json({ message: 'Gate Pass ID is required' }, { status: 400 });
+        }
+        if (!status) {
+            return NextResponse.json({ message: 'Status is required' }, { status: 400 });
+        }
+
+        const gatePass = await GatePass.findById(gatePassId).lean();
+        if (!gatePass) {
+            return NextResponse.json({ message: 'Gate pass not found' }, { status: 404 });
+        }
+
+        const allowed = VALID_STATUS_TRANSITIONS[gatePass.status] || [];
+        if (!allowed.includes(status)) {
+            return NextResponse.json({
+                message: `Cannot transition from "${gatePass.status}" to "${status}". Allowed: ${allowed.join(', ') || 'none'}`,
+            }, { status: 400 });
+        }
+
+        const updated = await GatePass.findByIdAndUpdate(
+            gatePassId,
+            { $set: { status } },
+            { new: true }
+        )
+            .populate('vehicle', 'manufacturer model auctionGroup auctionVenue')
+            .populate('yard', 'name location')
+            .populate('consignee', 'name company');
+
+        return NextResponse.json(updated, { status: 200 });
+    } catch (error) {
+        return NextResponse.json({ message: 'Error updating gate pass' }, { status: 500 });
     }
 };
