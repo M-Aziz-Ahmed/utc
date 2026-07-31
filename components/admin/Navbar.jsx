@@ -44,14 +44,6 @@ const Navbar = ({ user }) => {
 
                     {/* Right side */}
                     <div className="flex items-center gap-2">
-                        {/* Quick search */}
-                        <div className="hidden md:flex items-center" style={{background:'#F9FAFB', border:'1px solid #E5E7EB', borderRadius:8, padding:'5px 12px', gap:8, minWidth:220}}>
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{color:'#9CA3AF'}}>
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                            <span style={{fontSize:12, color:'#9CA3AF'}}>Search vehicles...</span>
-                        </div>
-
                         {/* Notifications */}
                         <button
                             className="p-2 rounded-lg relative transition-colors"
