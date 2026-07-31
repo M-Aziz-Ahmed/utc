@@ -603,9 +603,13 @@ const AddVehiclePage = () => {
             const sourceVal = sourceField ? parseFloat(allData[sourceField._id]) || 0 : 0
             let taxAmount = 0
             if (linkedTax && sourceVal > 0) {
-                taxAmount = linkedTax.type === 'percentage'
-                    ? (sourceVal * linkedTax.rate / 100)
-                    : linkedTax.rate
+                if (linkedTax.type === 'percentage') {
+                    taxAmount = sourceVal * linkedTax.rate / 100
+                } else if (linkedTax.type === 'multiplier') {
+                    taxAmount = sourceVal * linkedTax.rate
+                } else {
+                    taxAmount = linkedTax.rate
+                }
             }
             return (
                 <div style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid #fbbf24', background: '#fffbeb' }}>
@@ -613,7 +617,7 @@ const AddVehiclePage = () => {
                         <span style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                             {linkedTax ? linkedTax.name : 'Tax'}{linkedTax?.code ? ` (${linkedTax.code})` : ''}
                         </span>
-                        {linkedTax && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', background: linkedTax.type === 'percentage' ? '#fef3c7' : '#e0e7ff', color: linkedTax.type === 'percentage' ? '#92400e' : '#3730a3', fontWeight: 600 }}>{linkedTax.type === 'percentage' ? `${linkedTax.rate}%` : `Fixed $${linkedTax.rate}`}</span>}
+                        {linkedTax && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', background: linkedTax.type === 'percentage' ? '#fef3c7' : linkedTax.type === 'multiplier' ? '#d1fae5' : '#e0e7ff', color: linkedTax.type === 'percentage' ? '#92400e' : linkedTax.type === 'multiplier' ? '#065f46' : '#3730a3', fontWeight: 600 }}>{linkedTax.type === 'percentage' ? `${linkedTax.rate}%` : linkedTax.type === 'multiplier' ? `×${linkedTax.rate}` : `Fixed ${linkedTax.rate}`}</span>}
                     </div>
                     {sourceField && <div style={{ fontSize: '10px', color: '#9aa0a6', marginBottom: '4px' }}>Based on: <span style={{ fontWeight: 600, color: '#5f6368' }}>{sourceField.label}</span> = {sourceVal.toLocaleString()}</div>}
                     <div style={{ fontSize: '18px', fontWeight: 700, color: '#92400e' }}>
@@ -712,9 +716,13 @@ const AddVehiclePage = () => {
             const sourceVal = sourceField ? parseFloat(allData[sourceField._id]) || 0 : 0
             let taxAmount = 0
             if (linkedTax && sourceVal > 0) {
-                taxAmount = linkedTax.type === 'percentage'
-                    ? (sourceVal * linkedTax.rate / 100)
-                    : linkedTax.rate
+                if (linkedTax.type === 'percentage') {
+                    taxAmount = sourceVal * linkedTax.rate / 100
+                } else if (linkedTax.type === 'multiplier') {
+                    taxAmount = sourceVal * linkedTax.rate
+                } else {
+                    taxAmount = linkedTax.rate
+                }
             }
             return (
                 <div style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid #fbbf24', background: '#fffbeb' }}>
@@ -722,7 +730,7 @@ const AddVehiclePage = () => {
                         <span style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                             {linkedTax ? linkedTax.name : 'Tax'}{linkedTax?.code ? ` (${linkedTax.code})` : ''}
                         </span>
-                        {linkedTax && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', background: linkedTax.type === 'percentage' ? '#fef3c7' : '#e0e7ff', color: linkedTax.type === 'percentage' ? '#92400e' : '#3730a3', fontWeight: 600 }}>{linkedTax.type === 'percentage' ? `${linkedTax.rate}%` : `Fixed $${linkedTax.rate}`}</span>}
+                        {linkedTax && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', background: linkedTax.type === 'percentage' ? '#fef3c7' : linkedTax.type === 'multiplier' ? '#d1fae5' : '#e0e7ff', color: linkedTax.type === 'percentage' ? '#92400e' : linkedTax.type === 'multiplier' ? '#065f46' : '#3730a3', fontWeight: 600 }}>{linkedTax.type === 'percentage' ? `${linkedTax.rate}%` : linkedTax.type === 'multiplier' ? `×${linkedTax.rate}` : `Fixed ${linkedTax.rate}`}</span>}
                     </div>
                     {sourceField && <div style={{ fontSize: '10px', color: '#9aa0a6', marginBottom: '4px' }}>Based on: <span style={{ fontWeight: 600, color: '#5f6368' }}>{sourceField.label}</span> = {sourceVal.toLocaleString()}</div>}
                     <div style={{ fontSize: '18px', fontWeight: 700, color: '#92400e' }}>

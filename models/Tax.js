@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const TaxSchema = new mongoose.Schema({
     name:       { type: String, required: true },
     rate:       { type: Number, required: true },
-    type:       { type: String, enum: ['percentage', 'fixed'], default: 'percentage' },
+    type:       { type: String, enum: ['percentage', 'fixed', 'multiplier'], default: 'percentage' },
     code:       { type: String },
     description:{ type: String },
     active:     { type: Boolean, default: true },

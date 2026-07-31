@@ -79,15 +79,22 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
         const sourceVal = getSourceValue(field.linkedField)
         let taxAmount = 0
         if (linkedTax && sourceVal > 0) {
-            taxAmount = linkedTax.type === 'percentage'
-                ? (sourceVal * linkedTax.rate / 100)
-                : linkedTax.rate
+            if (linkedTax.type === 'percentage') {
+                taxAmount = sourceVal * linkedTax.rate / 100
+            } else if (linkedTax.type === 'multiplier') {
+                taxAmount = sourceVal * linkedTax.rate
+            } else {
+                taxAmount = linkedTax.rate
+            }
         }
         const display = taxAmount > 0 ? taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'
+        const badge = linkedTax ? (linkedTax.type === 'percentage' ? `${linkedTax.rate}%` : linkedTax.type === 'multiplier' ? `×${linkedTax.rate}` : 'Fixed') : ''
+        const badgeColor = linkedTax?.type === 'percentage' ? '#92400e' : linkedTax?.type === 'multiplier' ? '#065f46' : '#3730a3'
+        const badgeBg = linkedTax?.type === 'percentage' ? '#fef3c7' : linkedTax?.type === 'multiplier' ? '#d1fae5' : '#e0e7ff'
         return (
             <div style={{ position: 'relative' }}>
                 <input readOnly value={display} style={{ ...base, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', fontWeight: 700, fontSize: '14px', cursor: 'default' }} />
-                {linkedTax && <span style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', fontSize: '9px', padding: '1px 5px', borderRadius: '6px', background: linkedTax.type === 'percentage' ? '#fef3c7' : '#e0e7ff', color: linkedTax.type === 'percentage' ? '#92400e' : '#3730a3', fontWeight: 600, pointerEvents: 'none' }}>{linkedTax.type === 'percentage' ? `${linkedTax.rate}%` : 'Fixed'}</span>}
+                {linkedTax && <span style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', fontSize: '9px', padding: '1px 5px', borderRadius: '6px', background: badgeBg, color: badgeColor, fontWeight: 600, pointerEvents: 'none' }}>{badge}</span>}
             </div>
         )
     }
@@ -409,9 +416,13 @@ const VehicleAccountPage = ({ params }) => {
                                         const sourceField = allFields.find(f => f.label === tf.linkedField)
                                         if (!linkedTax || !sourceField) return
                                         const sourceVal = getVal(sourceField)
-                                        sumTaxes += linkedTax.type === 'percentage'
-                                            ? (sourceVal * linkedTax.rate / 100)
-                                            : linkedTax.rate
+                                        if (linkedTax.type === 'percentage') {
+                                            sumTaxes += sourceVal * linkedTax.rate / 100
+                                        } else if (linkedTax.type === 'multiplier') {
+                                            sumTaxes += sourceVal * linkedTax.rate
+                                        } else {
+                                            sumTaxes += linkedTax.rate
+                                        }
                                     })
 
                                     numFields.forEach(f => {

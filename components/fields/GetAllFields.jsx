@@ -332,7 +332,7 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                                                         <select value={editDraft.linkedTax||''} onChange={e=>setEditDraft({...editDraft,linkedTax:e.target.value})}
                                                             className="w-full border border-amber-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-amber-400 bg-white mb-2">
                                                             <option value="">Select a tax...</option>
-                                                            {taxes.filter(t=>t.active).map(t=><option key={t._id} value={t._id}>{t.name} ({t.type==='percentage'?`${t.rate}%`:`$${t.rate}`})</option>)}
+                                                            {taxes.filter(t=>t.active).map(t=><option key={t._id} value={t._id}>{t.name} ({t.type==='percentage'?`${t.rate}%`:t.type==='multiplier'?`×${t.rate}`:`$${t.rate}`})</option>)}
                                                         </select>
                                                         {taxes.filter(t=>t.active).length===0&&<p className="text-xs text-amber-600 mb-2 italic">No active taxes. <a href="/admin/setup/tax" className="underline">Create taxes first.</a></p>}
                                                         <label className="text-xs font-semibold text-amber-700 uppercase tracking-wide block mb-2">Calculate from field</label>

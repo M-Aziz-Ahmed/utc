@@ -198,13 +198,13 @@ export default function TaxSetupPage() {
                                                 ) : <span style={{ color: '#dadce0' }}>—</span>}
                                             </td>
                                             <td style={{ padding: '10px 16px', textAlign: 'right', fontWeight: 600, color: '#202124' }}>
-                                                {tax.type === 'percentage' ? `${tax.rate}%` : `$${tax.rate}`}
+                                                {tax.type === 'percentage' ? `${tax.rate}%` : tax.type === 'multiplier' ? `×${tax.rate}` : `$${tax.rate}`}
                                             </td>
                                             <td style={{ padding: '10px 16px', textAlign: 'center' }}>
                                                 <span style={{
                                                     display: 'inline-block', padding: '2px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600,
-                                                    background: tax.type === 'percentage' ? '#e8f0fe' : '#fef3c7',
-                                                    color: tax.type === 'percentage' ? '#1a73e8' : '#92400e',
+                                                    background: tax.type === 'percentage' ? '#e8f0fe' : tax.type === 'multiplier' ? '#d1fae5' : '#fef3c7',
+                                                    color: tax.type === 'percentage' ? '#1a73e8' : tax.type === 'multiplier' ? '#065f46' : '#92400e',
                                                 }}>{tax.type}</span>
                                             </td>
                                             <td style={{ padding: '10px 16px', textAlign: 'center' }}>
@@ -268,6 +268,7 @@ function TaxModal({ data, saving, onSave, onClose }) {
                     <Field label="Type">
                         <Select value={form.type} onChange={e => setForm(p => ({ ...p, type: e.target.value }))}>
                             <option value="percentage">Percentage (%)</option>
+                            <option value="multiplier">Multiplier (×)</option>
                             <option value="fixed">Fixed Amount ($)</option>
                         </Select>
                     </Field>
