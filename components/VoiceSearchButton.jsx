@@ -15,6 +15,7 @@ export default function VoiceSearchButton({ onResult, disabled = false, size = 3
     const [supported, setSupported] = useState(true)
     const recognitionRef = useRef(null)
     const onResultRef = useRef(onResult)
+    const finalDoneRef = useRef(false)
     onResultRef.current = onResult
 
     useEffect(() => {
@@ -28,7 +29,7 @@ export default function VoiceSearchButton({ onResult, disabled = false, size = 3
             recognitionRef.current.onresult = null
             recognitionRef.current.onerror = null
             recognitionRef.current.onend = null
-            recognitionRef.current.stop()
+            try { recognitionRef.current.stop() } catch {}
             recognitionRef.current = null
         }
         setListening(false)
@@ -39,20 +40,29 @@ export default function VoiceSearchButton({ onResult, disabled = false, size = 3
         if (!SR) { setSupported(false); return }
 
         stop()
+        finalDoneRef.current = false
 
         const recognition = new SR()
-        recognition.continuous = false
-        recognition.interimResults = false
+        recognition.continuous = true
+        recognition.interimResults = true
         recognition.lang = 'en-US'
 
         recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript
-            onResultRef.current(transcript)
-            setListening(false)
-            recognitionRef.current = null
+            let finalTranscript = ''
+            for (let i = 0; i < event.results.length; i++) {
+                const result = event.results[i]
+                if (result.isFinal) {
+                    finalTranscript += result[0].transcript
+                }
+            }
+            if (finalTranscript && !finalDoneRef.current) {
+                finalDoneRef.current = true
+                onResultRef.current(finalTranscript.trim())
+                stop()
+            }
         }
         recognition.onerror = (e) => {
-            if (e.error !== 'aborted') console.warn('Voice error:', e.error)
+            if (e.error !== 'aborted' && e.error !== 'no-speech') console.warn('Voice error:', e.error)
             setListening(false)
             recognitionRef.current = null
         }
