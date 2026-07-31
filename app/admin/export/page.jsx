@@ -49,7 +49,18 @@ const ExportCarsPage = () => {
 
     const countries = [...new Set(vehicles.map(v => v.exportCountry).filter(Boolean))].sort((a, b) => a.localeCompare(b))
     const filtered = vehicles.filter(v => {
-        if (search && !JSON.stringify(v).toLowerCase().includes(search.toLowerCase())) return false
+        if (search) {
+            const terms = search.toLowerCase().split(/\s+/).filter(Boolean)
+            const haystack = Object.entries(v)
+                .filter(([k]) => !['_id','__v','createdAt','updatedAt','mainImageUrl','files'].includes(k))
+                .map(([, val]) => {
+                    if (val == null) return ''
+                    if (Array.isArray(val)) return val.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' ')
+                    if (typeof val === 'object') return JSON.stringify(val)
+                    return String(val)
+                }).join(' ').toLowerCase()
+            if (!terms.every(t => haystack.includes(t))) return false
+        }
         if (filterCountry && v.exportCountry !== filterCountry) return false
         return true
     })

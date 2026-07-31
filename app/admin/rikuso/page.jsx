@@ -561,7 +561,19 @@ const RikusoManagementPage = () => {
         } catch (e) { alert('Failed to save export details') }
     }
 
-    const filtered = vehicles.filter(v => !search || JSON.stringify(v).toLowerCase().includes(search.toLowerCase()))
+    const filtered = vehicles.filter(v => {
+        if (!search) return true
+        const terms = search.toLowerCase().split(/\s+/).filter(Boolean)
+        const haystack = Object.entries(v)
+            .filter(([k]) => !['_id','__v','createdAt','updatedAt','mainImageUrl','files'].includes(k))
+            .map(([, val]) => {
+                if (val == null) return ''
+                if (Array.isArray(val)) return val.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' ')
+                if (typeof val === 'object') return JSON.stringify(val)
+                return String(val)
+            }).join(' ').toLowerCase()
+        return terms.every(t => haystack.includes(t))
+    })
 
     const controlProps = { rikusoCompanies, consignees, allocations, onAllocChange: handleAllocChange, onRikusoChange: handleRikusoChange, onPresold: handlePresold, onRemovePresold: handleRemovePresold, onExportSelect: (v) => setExportVehicle(v) }
 

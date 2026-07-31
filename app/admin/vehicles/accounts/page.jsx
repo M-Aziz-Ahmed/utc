@@ -201,9 +201,19 @@ const AccountsPage = () => {
         .finally(() => setLoading(false))
     }, [])
 
-    const filtered = vehicles.filter(v =>
-        !search || JSON.stringify(v).toLowerCase().includes(search.toLowerCase())
-    )
+    const filtered = vehicles.filter(v => {
+        if (!search) return true
+        const terms = search.toLowerCase().split(/\s+/).filter(Boolean)
+        const haystack = Object.entries(v)
+            .filter(([k]) => !['_id','__v','createdAt','updatedAt','mainImageUrl','files'].includes(k))
+            .map(([, val]) => {
+                if (val == null) return ''
+                if (Array.isArray(val)) return val.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' ')
+                if (typeof val === 'object') return JSON.stringify(val)
+                return String(val)
+            }).join(' ').toLowerCase()
+        return terms.every(t => haystack.includes(t))
+    })
 
     React.useEffect(() => { setPage(1) }, [search, viewMode])
 
