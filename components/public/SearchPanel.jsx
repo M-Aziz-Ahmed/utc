@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import VoiceSearchButton from '@/components/VoiceSearchButton'
 
 export default function SearchPanel() {
   const router = useRouter()
@@ -63,12 +64,16 @@ export default function SearchPanel() {
               </div>
               <div className="form-group">
                 <label>Model</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Corolla"
-                  value={form.model}
-                  onChange={(e) => updateField('model', e.target.value)}
-                />
+                <div style={{display:'flex', alignItems:'center', gap:6}}>
+                    <input
+                      type="text"
+                      placeholder="e.g. Corolla"
+                      value={form.model}
+                      onChange={(e) => updateField('model', e.target.value)}
+                      style={{flex:1}}
+                    />
+                    <VoiceSearchButton onResult={(text) => updateField('model', form.model ? `${form.model} ${text}` : text)} size={28} />
+                </div>
               </div>
               <div className="form-group">
                 <label>Year</label>

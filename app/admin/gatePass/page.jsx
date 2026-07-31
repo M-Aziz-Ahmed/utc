@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import VoiceSearchButton from '@/components/VoiceSearchButton'
 
 const GatePassPage = () => {
     const [gatePasses, setGatePasses] = useState([])
@@ -110,10 +111,13 @@ const GatePassPage = () => {
                 ))}
             </div>
 
-            <div style={{ position: 'relative', maxWidth: '280px', marginBottom: '14px' }}>
-                <svg style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '13px', height: '13px', color: '#9aa0a6' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                <input type="text" placeholder={`Search ${tab}...`} value={search} onChange={e => setSearch(e.target.value)}
-                    style={{ width: '100%', paddingLeft: '30px', padding: '7px 10px 7px 30px', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '12px', outline: 'none', background: '#fff', boxSizing: 'border-box' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, maxWidth: '320px', marginBottom: '14px' }}>
+                <div style={{ position: 'relative', flex: 1 }}>
+                    <svg style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '13px', height: '13px', color: '#9aa0a6' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    <input type="text" placeholder={`Search ${tab}...`} value={search} onChange={e => setSearch(e.target.value)}
+                        style={{ width: '100%', paddingLeft: '30px', padding: '7px 10px 7px 30px', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '12px', outline: 'none', background: '#fff', boxSizing: 'border-box' }} />
+                </div>
+                <VoiceSearchButton onResult={(text) => setSearch(prev => prev ? `${prev} ${text}` : text)} size={30} />
             </div>
 
             {loading ? (

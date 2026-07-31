@@ -1,6 +1,7 @@
 'use client'
 import React, { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
+import VoiceSearchButton from '@/components/VoiceSearchButton'
 
 const getVehicleImages = (vehicle) => {
     const all = []
@@ -27,23 +28,24 @@ const getVehicleImages = (vehicle) => {
 
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—'
 
-const SPEC_FIELDS = [
-    { key: 'model',        label: 'Model',            get: (v, fv) => v.model || v['Model'] || '' },
-    { key: 'year',         label: 'Year',             get: (v, fv) => fv('Year') },
-    { key: 'fuelType',     label: 'Fuel Type',        get: (v, fv) => fv('Fuel Type') },
-    { key: 'transmission', label: 'Transmission',     get: (v, fv) => fv('Gear Box Type') },
-    { key: 'engine',       label: 'Engine Capacity',  get: (v, fv) => fv('Engine Capacity') },
-    { key: 'doors',        label: 'Doors',            get: (v, fv) => fv('Doors') },
-    { key: 'seats',        label: 'Seating Capacity',  get: (v, fv) => fv('Seats') || fv('Seating Capacity') },
-    { key: 'mileage',      label: 'Mileage',          get: (v, fv) => fv('KM') || fv('Mileage') },
-]
-
 const getSpecs = (vehicle, fields) => {
-    const fv = (label) => {
-        const f = fields.find(fl => fl.label === label)
-        return f ? (vehicle[f._id] || vehicle[f.label] || '') : (vehicle[label] || '')
+    const cardFields = fields
+        .filter(f => f.showOnCard !== false && f.type !== 'file' && f.type !== 'image')
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+
+    if (cardFields.length > 0) {
+        return cardFields.map(f => {
+            const val = vehicle[f._id] || vehicle[f.label] || ''
+            return { label: f.label, value: val }
+        }).filter(s => s.value && s.value !== '' && s.value !== null && s.value !== undefined)
     }
-    return SPEC_FIELDS.map(s => ({ label: s.label, value: s.get(vehicle, fv) })).filter(s => s.value)
+
+    const fallbackLabels = ['Year', 'Fuel Type', 'Gear Box Type', 'Engine Capacity', 'Doors', 'Seats', 'Seating Capacity', 'KM', 'Mileage']
+    return fallbackLabels.map(label => {
+        const f = fields.find(fl => fl.label === label)
+        const val = f ? (vehicle[f._id] || vehicle[f.label] || '') : (vehicle[label] || '')
+        return { label, value: val }
+    }).filter(s => s.value)
 }
 
 const maskChassis = (val) => {
@@ -613,15 +615,11 @@ const VehicleRow = ({ vehicle, fields, onView, onDelete, showChassis }) => {
                     </div>
                 )}
             </td>
-            {/* 8 Spec columns */}
+            {/* Spec columns */}
             {specs.map((s, i) => (
                 <td key={i} style={{padding:'5px 8px', minWidth:'80px'}}>
                     <div style={{fontSize:'11px', fontWeight:600, color:'#1e293b', whiteSpace:'nowrap'}}>{s.value}</div>
                 </td>
-            ))}
-            {/* Pad missing spec cells to always show 8 columns */}
-            {specs.length < 8 && Array.from({length: 8 - specs.length}).map((_, i) => (
-                <td key={`pad-${i}`} style={{padding:'5px 8px'}} />
             ))}
             {/* Chassis No — only for registered users */}
             {showChassis && (
@@ -802,6 +800,12 @@ const Page = () => {
 
     React.useEffect(() => { setPage(1) }, [search, viewMode, filters])
 
+    const cardFields = useMemo(() => {
+        return fields
+            .filter(f => f.showOnCard !== false && f.type !== 'file' && f.type !== 'image')
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    }, [fields])
+
     const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
     const paginated  = filtered.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE)
 
@@ -877,12 +881,15 @@ const Page = () => {
                             </button>
                         )}
                     </div>
-                    <div className="relative" style={{width:280}}>
-                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{color:'#9CA3AF'}}>
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        <input type="text" placeholder="Search vehicles, chassis, LOT..." value={search} onChange={e => setSearch(e.target.value)}
-                            style={{...inputStyle, paddingLeft:34}} />
+                    <div className="relative" style={{display:'flex', alignItems:'center', gap:6, width:320}}>
+                        <div className="relative" style={{flex:1}}>
+                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{color:'#9CA3AF'}}>
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <input type="text" placeholder="Search vehicles, chassis, LOT..." value={search} onChange={e => setSearch(e.target.value)}
+                                style={{...inputStyle, paddingLeft:34}} />
+                        </div>
+                        <VoiceSearchButton onResult={(text) => setSearch(prev => prev ? `${prev} ${text}` : text)} size={30} />
                     </div>
                 </div>
 
@@ -1007,8 +1014,8 @@ const Page = () => {
                                     <th style={{padding:'7px 8px', width:'48px'}}></th>
                                     <th style={{padding:'7px 8px', textAlign:'left', fontSize:'11px', fontWeight:600, color:'#64748b'}}>Group / Venue</th>
                                     <th style={{padding:'7px 8px', textAlign:'left', fontSize:'11px', fontWeight:600, color:'#64748b'}}>Vehicle</th>
-                                    {SPEC_FIELDS.map(s => (
-                                        <th key={s.key} style={{padding:'7px 8px', textAlign:'left', fontSize:'11px', fontWeight:600, color:'#64748b', whiteSpace:'nowrap'}}>{s.label}</th>
+                                    {cardFields.map(f => (
+                                        <th key={f._id} style={{padding:'7px 8px', textAlign:'left', fontSize:'11px', fontWeight:600, color:'#64748b', whiteSpace:'nowrap'}}>{f.label}</th>
                                     ))}
                                     {showChassis && <th style={{padding:'7px 8px', textAlign:'left', fontSize:'11px', fontWeight:600, color:'#64748b', whiteSpace:'nowrap'}}>Chassis No</th>}
                                     <th style={{padding:'7px 8px', textAlign:'left', fontSize:'11px', fontWeight:600, color:'#64748b'}}>Status</th>

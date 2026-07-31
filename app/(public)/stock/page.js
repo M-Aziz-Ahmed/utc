@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import VehicleCard from '@/components/public/VehicleCard'
+import VoiceSearchButton from '@/components/VoiceSearchButton'
 import VehicleRow from '@/components/public/VehicleRow'
 
 const SORT_OPTIONS = [
@@ -186,12 +187,16 @@ export default function StockPage() {
 
       <div className="filter-group">
         <label>Model</label>
-        <input
-          type="text"
-          placeholder="Search model..."
-          value={filters.model}
-          onChange={e => handleFilterChange('model', e.target.value)}
-        />
+        <div style={{display:'flex', alignItems:'center', gap:6}}>
+            <input
+              type="text"
+              placeholder="Search model..."
+              value={filters.model}
+              onChange={e => handleFilterChange('model', e.target.value)}
+              style={{flex:1}}
+            />
+            <VoiceSearchButton onResult={(text) => handleFilterChange('model', filters.model ? `${filters.model} ${text}` : text)} size={28} />
+        </div>
       </div>
 
       <div className="filter-group">

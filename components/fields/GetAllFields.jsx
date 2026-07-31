@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, useRef } from "react";
+import VoiceSearchButton from '@/components/VoiceSearchButton';
 
 const FIELD_TYPES = ["text","number","boolean","password","email","date","image","file","dropdown","select-year","select-country","tax","sum"];
 const TYPE_COLORS = {
@@ -226,13 +227,16 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
         <div className="space-y-5">
             {/* Search & Filters */}
             <div className="space-y-3">
-                <div className="relative">
-                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                    </svg>
-                    <input type="text" placeholder="Search fields by label..." value={searchTerm}
-                        onChange={e=>setSearchTerm(e.target.value)}
-                        className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none"/>
+                <div style={{display:'flex', alignItems:'center', gap:6}}>
+                    <div className="relative" style={{flex:1}}>
+                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                        <input type="text" placeholder="Search fields by label..." value={searchTerm}
+                            onChange={e=>setSearchTerm(e.target.value)}
+                            className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none"/>
+                    </div>
+                    <VoiceSearchButton onResult={(text) => setSearchTerm(prev => prev ? `${prev} ${text}` : text)} size={32} />
                 </div>
                 <div className="flex gap-2">
                     <select value={filterType} onChange={e=>setFilterType(e.target.value)}
