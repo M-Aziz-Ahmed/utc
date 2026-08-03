@@ -94,18 +94,29 @@ export default function VehicleDetailContent({ vehicle }) {
     URL.revokeObjectURL(url)
   }
 
-  const specs = [
-    { icon: '&#128200;', label: 'Mileage', value: formatMileage(vehicle.mileage) },
-    { icon: '&#9881;', label: 'Engine', value: vehicle.engine || 'N/A' },
-    { icon: '&#128260;', label: 'Transmission', value: vehicle.transmission || 'N/A' },
-    { icon: '&#9981;', label: 'Fuel', value: vehicle.fuelType || 'N/A' },
-    { icon: '&#128662;', label: 'Drive', value: vehicle.driveType || 'N/A' },
-    { icon: '&#127912;', label: 'Color', value: vehicle.color || 'N/A' },
-    { icon: '&#128186;', label: 'Seats', value: vehicle.seats || 'N/A' },
-    { icon: '&#128682;', label: 'Doors', value: vehicle.doors || 'N/A' },
-    { icon: '&#128196;', label: 'Chassis No', value: vehicle.chassisNumber || 'N/A' },
-    { icon: '&#128205;', label: 'Location', value: vehicle.location || 'N/A' },
-    { icon: '&#11088;', label: 'Grade', value: vehicle.grade || 'N/A' },
+  // Group specs into categories for better organization
+  const primarySpecs = [
+    { label: 'Mileage', value: formatMileage(vehicle.mileage), icon: '&#128200;' },
+    { label: 'Engine', value: vehicle.engine || 'N/A', icon: '&#9881;' },
+    { label: 'Transmission', value: vehicle.transmission || 'N/A', icon: '&#128260;' },
+    { label: 'Fuel Type', value: vehicle.fuelType || 'N/A', icon: '&#9981;' },
+  ]
+
+  const vehicleSpecs = [
+    { label: 'Body Type', value: vehicle.bodyType || 'N/A' },
+    { label: 'Drive Type', value: vehicle.driveType || 'N/A' },
+    { label: 'Steering', value: vehicle.steering || 'N/A' },
+    { label: 'Color', value: vehicle.color || 'N/A' },
+    { label: 'Seats', value: vehicle.seats || 'N/A' },
+    { label: 'Doors', value: vehicle.doors || 'N/A' },
+  ]
+
+  const documentSpecs = [
+    { label: 'Year', value: vehicle.year || 'N/A' },
+    { label: 'Chassis Number', value: vehicle.chassisNumber || 'N/A' },
+    { label: 'Grade', value: vehicle.grade || 'N/A' },
+    { label: 'Condition', value: vehicle.condition || 'N/A' },
+    { label: 'Location', value: vehicle.location || 'N/A' },
   ]
 
   return (
@@ -124,7 +135,7 @@ export default function VehicleDetailContent({ vehicle }) {
             <div className="vehicle-gallery">
               <div className="gallery-main">
                 {mainImage ? (
-                  <img src={mainImage} alt={vehicle.title} />
+                  <img src={mainImage} alt={vehicle.title} style={{ objectFit: 'contain', maxHeight: '100%' }} />
                 ) : (
                   <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 16 }}>
                     No Image Available
@@ -139,7 +150,7 @@ export default function VehicleDetailContent({ vehicle }) {
                       className={`gallery-thumb ${i === selectedImage ? 'active' : ''}`}
                       onClick={() => setSelectedImage(i)}
                     >
-                      <img src={img} alt={`${vehicle.title} - Image ${i + 1}`} />
+                      <img src={img} alt={`${vehicle.title} - Image ${i + 1}`} style={{ objectFit: 'cover' }} />
                     </div>
                   ))}
                 </div>
@@ -153,16 +164,41 @@ export default function VehicleDetailContent({ vehicle }) {
                 <div className="detail-id">Stock ID: {vehicle.stockId || vehicle.vehicleId}</div>
               </div>
 
-              <div className="detail-specs-grid">
-                {specs.map((spec, i) => (
-                  <div key={i} className="detail-spec-item">
-                    <div className="detail-spec-icon" dangerouslySetInnerHTML={{ __html: spec.icon }} />
-                    <div className="detail-spec-text">
-                      <div className="label">{spec.label}</div>
-                      <div className="value">{spec.value}</div>
-                    </div>
+              {/* Primary Specifications - Highlighted Grid */}
+              <div className="detail-primary-specs">
+                {primarySpecs.map((spec, i) => (
+                  <div key={i} className="primary-spec-card">
+                    <div className="spec-icon" dangerouslySetInnerHTML={{ __html: spec.icon }} />
+                    <div className="spec-label">{spec.label}</div>
+                    <div className="spec-value">{spec.value}</div>
                   </div>
                 ))}
+              </div>
+
+              {/* Vehicle Details - Professional Table */}
+              <div className="detail-specs-section">
+                <h3 className="specs-section-title">Vehicle Details</h3>
+                <div className="detail-specs-table">
+                  {vehicleSpecs.map((spec, i) => (
+                    <div key={i} className="spec-row">
+                      <div className="spec-label-col">{spec.label}</div>
+                      <div className="spec-value-col">{spec.value}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Document Information - Professional Table */}
+              <div className="detail-specs-section">
+                <h3 className="specs-section-title">Document Information</h3>
+                <div className="detail-specs-table">
+                  {documentSpecs.map((spec, i) => (
+                    <div key={i} className="spec-row">
+                      <div className="spec-label-col">{spec.label}</div>
+                      <div className="spec-value-col">{spec.value}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="detail-actions">
