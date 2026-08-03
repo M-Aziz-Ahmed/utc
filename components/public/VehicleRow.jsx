@@ -1,9 +1,12 @@
 'use client'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useSyncExternalStore } from 'react'
+import { subscribeWishlist, getWishlistSnapshot, toggleWishlist } from '@/components/public/wishlist'
 
 export default function VehicleRow({ vehicle }) {
-  const [wishlisted, setWishlisted] = useState(false)
+  const wishlist = useSyncExternalStore(subscribeWishlist, getWishlistSnapshot, () => [])
+  const vehicleId = vehicle.vehicleId || vehicle._id
+  const wishlisted = vehicleId ? wishlist.some(v => (v.vehicleId || v._id) === vehicleId) : false
 
   const formatPrice = (price) => {
     if (!price) return 'Price on Request'
@@ -19,7 +22,7 @@ export default function VehicleRow({ vehicle }) {
     return `${num.toLocaleString()} km`
   }
 
-  const detailUrl = `/stock/${vehicle.slug || vehicle.vehicleId}`
+  const detailUrl = `/stock/${vehicle.vehicleId || vehicle.slug}`
 
   return (
     <div className="vehicle-row">
@@ -75,7 +78,7 @@ export default function VehicleRow({ vehicle }) {
       <div className="vehicle-row-actions">
         <button
           className={`vehicle-row-wishlist ${wishlisted ? 'active' : ''}`}
-          onClick={() => setWishlisted(!wishlisted)}
+          onClick={() => toggleWishlist(vehicle)}
           title="Add to Wishlist"
         >
           {wishlisted ? '\u2665' : '\u2661'}

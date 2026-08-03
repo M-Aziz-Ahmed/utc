@@ -1,19 +1,14 @@
 'use client'
-import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { useSyncExternalStore } from 'react'
+import { subscribeWishlist, getWishlistSnapshot, removeFromWishlist } from '@/components/public/wishlist'
 
 export default function WishlistPage() {
-  const [wishlist, setWishlist] = useState([])
+  const wishlist = useSyncExternalStore(subscribeWishlist, getWishlistSnapshot, () => [])
 
-  useEffect(() => {
-    const stored = localStorage.getItem('utc_wishlist')
-    if (stored) {
-      try {
-        setWishlist(JSON.parse(stored))
-      } catch {
-        setWishlist([])
-      }
-    }
-  }, [])
+  const handleRemove = (id) => {
+    removeFromWishlist(id)
+  }
 
   return (
     <div>
@@ -25,21 +20,41 @@ export default function WishlistPage() {
           <div className="empty-state-icon">&#9825;</div>
           <h3>No Vehicles Saved</h3>
           <p>Browse our stock and save vehicles you&apos;re interested in.</p>
-          <a href="/stock" className="btn-primary" style={{ marginTop: 16, display: 'inline-flex' }}>Browse Stock</a>
+          <Link href="/stock" className="btn-primary" style={{ marginTop: 16, display: 'inline-flex' }}>Browse Stock</Link>
         </div>
       ) : (
         <div className="vehicles-grid">
-          {wishlist.map((v, i) => (
-            <div key={i} className="vehicle-card">
-              <div className="vehicle-card-image">
-                {v.mainImage && <img src={v.mainImage} alt={v.title} />}
+          {wishlist.map((v, i) => {
+            const id = v.vehicleId || v._id
+            const url = `/stock/${id || v.slug}`
+            return (
+              <div key={id || v.slug || i} className="vehicle-card">
+                <div className="vehicle-card-image">
+                  <Link href={url}>
+                    {v.mainImage && <img src={v.mainImage} alt={v.title} />}
+                  </Link>
+                  <button
+                    onClick={() => handleRemove(id)}
+                    title="Remove from Wishlist"
+                    className="vehicle-card-wishlist active"
+                  >
+                    &#10005;
+                  </button>
+                </div>
+                <div className="vehicle-card-body">
+                  <Link href={url} style={{ textDecoration: 'none' }}>
+                    <h3 className="vehicle-card-title">{v.title}</h3>
+                  </Link>
+                  <div className="vehicle-card-price">{v.price ? `$${parseFloat(v.price).toLocaleString()}` : 'Price on Request'}</div>
+                </div>
+                <div className="vehicle-card-footer">
+                  <Link href={url} style={{ textDecoration: 'none' }}>
+                    <button className="view-details-btn">View Details</button>
+                  </Link>
+                </div>
               </div>
-              <div className="vehicle-card-body">
-                <h3 className="vehicle-card-title">{v.title}</h3>
-                <div className="vehicle-card-price">{v.price ? `$${parseFloat(v.price).toLocaleString()}` : 'Price on Request'}</div>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

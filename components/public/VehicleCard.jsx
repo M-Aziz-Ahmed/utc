@@ -1,9 +1,12 @@
 'use client'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useSyncExternalStore } from 'react'
+import { subscribeWishlist, getWishlistSnapshot, toggleWishlist } from '@/components/public/wishlist'
 
 export default function VehicleCard({ vehicle }) {
-  const [wishlisted, setWishlisted] = useState(false)
+  const wishlist = useSyncExternalStore(subscribeWishlist, getWishlistSnapshot, () => [])
+  const vehicleId = vehicle.vehicleId || vehicle._id
+  const wishlisted = vehicleId ? wishlist.some(v => (v.vehicleId || v._id) === vehicleId) : false
 
   const formatPrice = (price) => {
     if (!price) return 'Price on Request'
@@ -19,7 +22,7 @@ export default function VehicleCard({ vehicle }) {
     return `${num.toLocaleString()} km`
   }
 
-  const detailUrl = `/stock/${vehicle.slug || vehicle.vehicleId}`
+  const detailUrl = `/stock/${vehicleId || vehicle.slug}`
 
   const specs = [
     { label: 'Year', value: vehicle.year || 'N/A' },
@@ -50,11 +53,11 @@ export default function VehicleCard({ vehicle }) {
           className={`vehicle-card-wishlist ${wishlisted ? 'active' : ''}`}
           onClick={(e) => {
             e.preventDefault()
-            setWishlisted(!wishlisted)
+            toggleWishlist(vehicle)
           }}
           title="Add to Wishlist"
         >
-          {wishlisted ? '&#9829;' : '&#9825;'}
+          {wishlisted ? '\u2665' : '\u2661'}
         </button>
       </div>
 

@@ -7,7 +7,7 @@ async function getVehicle(slug) {
     })
     if (!res.ok) return null
     const data = await res.json()
-    return data.vehicles?.find(v => v.slug === slug) || null
+    return data.vehicles?.find(v => v.slug === slug || v.vehicleId === slug) || null
   } catch {
     return null
   }
