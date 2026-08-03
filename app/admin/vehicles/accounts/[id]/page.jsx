@@ -37,13 +37,27 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
     const focus = e => { e.target.style.borderColor = '#1a73e8'; e.target.style.boxShadow = '0 0 0 3px rgba(26,115,232,0.1)' }
     const blur  = e => { e.target.style.borderColor = '#e0e0e0'; e.target.style.boxShadow = 'none' }
 
-    const getSourceValue = (sourceFieldLabel) => {
+    const getSourceValue = (sourceFieldLabel, visited = new Set()) => {
         const src = (allFields || []).find(f => f.label === sourceFieldLabel)
-        if (!src) return 0
-        if (src.belongsto === 'add-vehicles') {
-            return parseFloat(vehicleData?.[src._id]) || 0
+        if (!src || visited.has(src._id)) return 0
+        visited.add(src._id)
+        if (src.vehicleField && vehicle) {
+            const raw = vehicle[src.vehicleField]
+            return parseFloat(raw && typeof raw === 'object' ? raw.name : raw) || 0
         }
-        return parseFloat(accountData?.[src._id]) || 0
+        const data = src.belongsto === 'add-vehicles' ? (vehicleData || {}) : (accountData || {})
+        if (src.type === 'tax') {
+            const lt = taxes.find(t => t._id === src.linkedTax)
+            const sv = getSourceValue(src.linkedField, visited)
+            if (!lt || sv <= 0) return 0
+            if (lt.type === 'percentage') return sv * lt.rate / 100
+            if (lt.type === 'multiplier') return sv * lt.rate
+            return parseFloat(lt.rate) || 0
+        }
+        if (src.type === 'sum') {
+            return (src.linkedFields || []).reduce((acc, l) => acc + getSourceValue(l, visited), 0)
+        }
+        return parseFloat(data[src._id]) || 0
     }
 
     if (field.vehicleField && vehicle) {

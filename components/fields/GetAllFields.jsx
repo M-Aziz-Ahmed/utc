@@ -343,7 +343,7 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                                                         <select value={editDraft.linkedField||''} onChange={e=>setEditDraft({...editDraft,linkedField:e.target.value})}
                                                             className="w-full border border-amber-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-amber-400 bg-white">
                                                             <option value="">Select source field...</option>
-                                                            {fields.filter(f=>(f.type==='number'||f.type==='text')&&f._id!==editing).map(f=><option key={f._id} value={f.label}>{f.label}{f.belongsto?` (${f.belongsto})`:''}</option>)}
+                                                            {fields.filter(f=>(f.type==='number'||f.type==='text'||f.type==='tax'||f.type==='sum')&&f._id!==editing).map(f=><option key={f._id} value={f.label}>{f.label}{f.belongsto?` (${f.belongsto})`:''}</option>)}
                                                         </select>
                                                     </div>
                                                 )}
