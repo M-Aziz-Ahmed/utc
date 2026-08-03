@@ -121,7 +121,7 @@ const AddAccountFieldModal = ({ FIELD_TYPES, existingFields, onDone, onClose }) 
                         <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '10px', padding: '12px' }}>
                             <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#6d28d9', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Source Fields to Sum</label>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '120px', overflowY: 'auto' }}>
-                                {existingFields.filter(f => f.type === 'number').map(f => (
+                                {existingFields.filter(f => f.type === 'number' || f.type === 'text' || f.type === 'tax' || f.type === 'sum').map(f => (
                                     <label key={f._id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#374151', cursor: 'pointer', padding: '4px 8px', borderRadius: '6px', background: field.linkedFields.includes(f.label) ? '#ede9fe' : 'transparent' }}>
                                         <input type="checkbox" checked={field.linkedFields.includes(f.label)} onChange={() => setField(p => ({ ...p, linkedFields: p.linkedFields.includes(f.label) ? p.linkedFields.filter(l => l !== f.label) : [...p.linkedFields, f.label] }))} style={{ accentColor: '#6d28d9' }} />
                                         {f.label}
