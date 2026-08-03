@@ -1,7 +1,8 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import VoiceSearchButton from '@/components/VoiceSearchButton'
+import CountrySelect from '@/components/CountrySelect'
+import { VehicleFilterBar, applyVehicleFilters, EMPTY_FILTERS } from '@/components/VehicleFilters'
 
 // ── same image helper as vehicles page ────────────────────────────────────────
 const getVehicleImages = (vehicle) => {
@@ -29,10 +30,11 @@ const ALLOC_OPTIONS = [
     { value: 'resale-to-auction', label: 'Resale to Auction' },
 ]
 
-// ── Export details modal ───────────────────────────────────────────────────────
-const ExportModal = ({ vehicle, onSave, onClose }) => {
+// ── Export / Khitai details modal ──────────────────────────────────────────────
+const ExportModal = ({ vehicle, mode, countries, onSave, onClose }) => {
     const [country, setCountry] = useState(vehicle.exportCountry || '')
     const [saving, setSaving]   = useState(false)
+    const isKhitai = mode === 'khitai'
 
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -45,7 +47,7 @@ const ExportModal = ({ vehicle, onSave, onClose }) => {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: '16px' }} onClick={onClose}>
             <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', maxWidth: '400px', width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }} onClick={e => e.stopPropagation()}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#202124', margin: 0 }}>Export Details</h3>
+                    <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#202124', margin: 0 }}>{isKhitai ? 'Khitai Details' : 'Export Details'}</h3>
                     <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9aa0a6', display: 'flex' }}>
                         <svg style={{ width: '14px', height: '14px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
@@ -56,18 +58,15 @@ const ExportModal = ({ vehicle, onSave, onClose }) => {
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <div>
                         <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '5px' }}>
-                            Export Country <span style={{ color: '#c5221f' }}>*</span>
+                            {isKhitai ? 'Destination Country' : 'Export Country'} <span style={{ color: '#c5221f' }}>*</span>
                         </label>
-                        <input
-                            autoFocus
-                            type="text"
+                        <CountrySelect
                             value={country}
-                            onChange={e => setCountry(e.target.value)}
+                            onChange={setCountry}
+                            extraOptions={countries}
                             required
-                            placeholder="e.g. Kenya, Tanzania, Uganda…"
-                            style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
-                            onFocus={e => e.target.style.borderColor = '#1a73e8'}
-                            onBlur={e => e.target.style.borderColor = '#e0e0e0'}
+                            autoFocus
+                            placeholder="Type or select a country…"
                         />
                     </div>
                     <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
@@ -77,7 +76,7 @@ const ExportModal = ({ vehicle, onSave, onClose }) => {
                         </button>
                         <button type="submit" disabled={saving || !country.trim()}
                             style={{ flex: 1, padding: '8px', background: saving ? '#9aa0a6' : '#1a73e8', color: '#fff', border: 'none', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: !country.trim() ? 0.5 : 1 }}>
-                            {saving ? 'Saving…' : 'Save Export'}
+                            {saving ? 'Saving…' : isKhitai ? 'Save Khitai' : 'Save Export'}
                         </button>
                     </div>
                 </form>
@@ -98,10 +97,10 @@ const AllocControls = ({ vehicle, rikusoCompanies, consignees, allocations,
             {/* Allocation */}
             <select value={alloc} onChange={e => {
                 const val = e.target.value
-                if (val === 'export') {
-                    // first set the allocation, then open export modal
+                if (val === 'export' || val === 'khitai') {
+                    // first set the allocation, then open the country modal
                     onAllocChange(vehicle._id, val)
-                    onExportSelect(vehicle)
+                    onExportSelect(vehicle, val)
                 } else {
                     onAllocChange(vehicle._id, val)
                 }
@@ -111,18 +110,18 @@ const AllocControls = ({ vehicle, rikusoCompanies, consignees, allocations,
                 {ALLOC_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
 
-            {/* Export details badge — shown when export is set */}
-            {alloc === 'export' && vehicle.exportCountry && (
+            {/* Export / Khitai details badge — shown when set */}
+            {(alloc === 'export' || alloc === 'khitai') && vehicle.exportCountry && (
                 <div style={{ padding: '4px 8px', background: '#e8f0fe', borderRadius: '6px', fontSize: '11px', color: '#1a73e8', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>🌍 {vehicle.exportCountry}</span>
-                    <button onClick={() => onExportSelect(vehicle)}
+                    <span style={{ fontWeight: 600 }}>{alloc === 'export' ? 'Export' : 'Khitai'} / {vehicle.exportCountry}</span>
+                    <button onClick={() => onExportSelect(vehicle, alloc)}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1a73e8', fontSize: '10px', fontWeight: 600, padding: '0 2px' }}>Edit</button>
                 </div>
             )}
-            {alloc === 'export' && !vehicle.exportCountry && (
-                <button onClick={() => onExportSelect(vehicle)}
+            {(alloc === 'export' || alloc === 'khitai') && !vehicle.exportCountry && (
+                <button onClick={() => onExportSelect(vehicle, alloc)}
                     style={{ padding: '4px 8px', background: '#fce8e6', border: '1px dashed #f5c6c2', borderRadius: '6px', fontSize: '11px', color: '#c5221f', cursor: 'pointer', fontWeight: 500, textAlign: 'left' }}>
-                    ⚠ Add export country
+                    ⚠ Add {alloc === 'export' ? 'export' : 'khitai'} country
                 </button>
             )}
 
@@ -400,20 +399,20 @@ const AllocRow = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
                     <select value={allocations[vehicle._id] || ''} onChange={e => {
                         const val = e.target.value
                         onAllocChange(vehicle._id, val)
-                        if (val === 'export') onExportSelect(vehicle)
+                        if (val === 'export' || val === 'khitai') onExportSelect(vehicle, val)
                     }}
                         style={{ width: '100%', padding: '4px 6px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '11px', outline: 'none', background: '#fff' }}>
                         <option value="">Allocation…</option>
                         {ALLOC_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
-                    {allocations[vehicle._id] === 'export' && vehicle.exportCountry && (
+                    {(allocations[vehicle._id] === 'export' || allocations[vehicle._id] === 'khitai') && vehicle.exportCountry && (
                         <div style={{ fontSize: '10px', color: '#1a73e8', background: '#e8f0fe', padding: '2px 6px', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' }}>
-                            <span>🌍 {vehicle.exportCountry}</span>
-                            <button onClick={() => onExportSelect(vehicle)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1a73e8', fontSize: '10px', fontWeight: 600, padding: 0 }}>Edit</button>
+                            <span>{allocations[vehicle._id] === 'export' ? 'Export' : 'Khitai'} / {vehicle.exportCountry}</span>
+                            <button onClick={() => onExportSelect(vehicle, allocations[vehicle._id])} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1a73e8', fontSize: '10px', fontWeight: 600, padding: 0 }}>Edit</button>
                         </div>
                     )}
-                    {allocations[vehicle._id] === 'export' && !vehicle.exportCountry && (
-                        <button onClick={() => onExportSelect(vehicle)} style={{ padding: '2px 6px', background: '#fce8e6', border: 'none', borderRadius: '4px', fontSize: '10px', color: '#c5221f', cursor: 'pointer', textAlign: 'left' }}>⚠ Add country</button>
+                    {(allocations[vehicle._id] === 'export' || allocations[vehicle._id] === 'khitai') && !vehicle.exportCountry && (
+                        <button onClick={() => onExportSelect(vehicle, allocations[vehicle._id])} style={{ padding: '2px 6px', background: '#fce8e6', border: 'none', borderRadius: '4px', fontSize: '10px', color: '#c5221f', cursor: 'pointer', textAlign: 'left' }}>⚠ Add country</button>
                     )}
                 </div>
             </td>
@@ -462,6 +461,10 @@ const RikusoManagementPage = () => {
 
     // export modal
     const [exportVehicle, setExportVehicle] = useState(null)
+    const [exportMode, setExportMode] = useState('export')
+
+    // shared filters
+    const [filters, setFilters] = useState(EMPTY_FILTERS)
 
     useEffect(() => {
         Promise.all([
@@ -561,21 +564,11 @@ const RikusoManagementPage = () => {
         } catch (e) { alert('Failed to save export details') }
     }
 
-    const filtered = vehicles.filter(v => {
-        if (!search) return true
-        const terms = search.toLowerCase().split(/\s+/).filter(Boolean)
-        const haystack = Object.entries(v)
-            .filter(([k]) => !['_id','__v','createdAt','updatedAt','mainImageUrl','files'].includes(k))
-            .map(([, val]) => {
-                if (val == null) return ''
-                if (Array.isArray(val)) return val.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' ')
-                if (typeof val === 'object') return JSON.stringify(val)
-                return String(val)
-            }).join(' ').toLowerCase()
-        return terms.every(t => haystack.includes(t))
-    })
+    const filtered = applyVehicleFilters(vehicles, fields, search, filters)
 
-    const controlProps = { rikusoCompanies, consignees, allocations, onAllocChange: handleAllocChange, onRikusoChange: handleRikusoChange, onPresold: handlePresold, onRemovePresold: handleRemovePresold, onExportSelect: (v) => setExportVehicle(v) }
+    const exportCountries = [...new Set(vehicles.map(v => v.exportCountry).filter(Boolean))].sort((a, b) => a.localeCompare(b))
+
+    const controlProps = { rikusoCompanies, consignees, allocations, onAllocChange: handleAllocChange, onRikusoChange: handleRikusoChange, onPresold: handlePresold, onRemovePresold: handleRemovePresold, onExportSelect: (v, mode) => { setExportVehicle(v); setExportMode(mode || (v.allocation || '').toLowerCase()) } }
 
     return (
         <div style={{ padding: '16px', minHeight: '100vh', background: '#f6f8fc' }}>
@@ -606,17 +599,16 @@ const RikusoManagementPage = () => {
                 </div>
             </div>
 
-            {/* Search */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, maxWidth: '320px', marginBottom: '14px' }}>
-                <div style={{ position: 'relative', flex: 1 }}>
-                    <svg style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '13px', height: '13px', color: '#9aa0a6' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                    <input type="text" placeholder="Search vehicles..." value={search} onChange={e => setSearch(e.target.value)}
-                        style={{ width: '100%', paddingLeft: '30px', padding: '7px 10px 7px 30px', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '12px', outline: 'none', background: '#fff', boxSizing: 'border-box' }} />
-                </div>
-                <VoiceSearchButton onResult={(text) => setSearch(prev => prev ? `${prev} ${text}` : text)} size={30} />
-            </div>
+            {/* Search + Filters */}
+            <VehicleFilterBar
+                vehicles={vehicles}
+                fields={fields}
+                search={search}
+                onSearchChange={setSearch}
+                filters={filters}
+                onFiltersChange={setFilters}
+                searchPlaceholder="Search vehicles..."
+            />
 
             {loading ? (
                 <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '80px' }}>
@@ -713,10 +705,12 @@ const RikusoManagementPage = () => {
                 </div>
             )}
 
-            {/* Export Modal */}
+            {/* Export / Khitai Modal */}
             {exportVehicle && (
                 <ExportModal
                     vehicle={exportVehicle}
+                    mode={exportMode}
+                    countries={exportCountries}
                     onSave={handleExportSave}
                     onClose={() => setExportVehicle(null)}
                 />

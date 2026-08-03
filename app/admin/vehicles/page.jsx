@@ -1,7 +1,7 @@
 'use client'
 import React, { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
-import VoiceSearchButton from '@/components/VoiceSearchButton'
+import { VehicleFilterBar, applyVehicleFilters, EMPTY_FILTERS } from '@/components/VehicleFilters'
 
 const getVehicleImages = (vehicle) => {
     const all = []
@@ -677,13 +677,8 @@ const Page = () => {
     const [selected, setSelected] = useState(null)
     const [viewMode, setViewMode] = useState('grid')
     const [page, setPage] = useState(1)
-    const [showFilters, setShowFilters] = useState(false)
     const [user, setUser] = useState(null)
-    const [filters, setFilters] = useState({
-        make: '', model: '', yearFrom: '', yearTo: '',
-        minPrice: '', maxPrice: '', fuelType: '', transmission: '',
-        bodyType: '', driveType: '', allocation: '',
-    })
+    const [filters, setFilters] = useState(EMPTY_FILTERS)
     const PAGE_SIZE = 25
 
     const showChassis = !!user
@@ -731,83 +726,7 @@ const Page = () => {
         }
     }
 
-    const getVVal = (v, label) => {
-        if (!label) return ''
-        const f = fields.find(fl => fl.label === label)
-        return f ? (v[f._id] || v[f.label] || '') : (v[label] || '')
-    }
-
-    const filterOptions = useMemo(() => {
-        const makes = [...new Set(vehicles.map(v => v.manufacturer || v['Make']).filter(Boolean))].sort()
-        const models = [...new Set(vehicles.map(v => v.model || v['Model']).filter(Boolean))].sort()
-        const fuelTypes = [...new Set(vehicles.map(v => getVVal(v, 'Fuel Type')).filter(Boolean))].sort()
-        const transmissions = [...new Set(vehicles.map(v => getVVal(v, 'Gear Box Type')).filter(Boolean))].sort()
-        const bodyTypes = [...new Set(vehicles.map(v => getVVal(v, 'Body Type')).filter(Boolean))].sort()
-        const driveTypes = [...new Set(vehicles.map(v => getVVal(v, 'Drive Type')).filter(Boolean))].sort()
-        return { makes, models, fuelTypes, transmissions, bodyTypes, driveTypes }
-    }, [vehicles, fields])
-
-    const filtered = useMemo(() => {
-        return vehicles.filter(v => {
-            if (search) {
-                const terms = search.toLowerCase().split(/\s+/).filter(Boolean)
-                const haystack = Object.entries(v)
-                    .filter(([k]) => !['_id','__v','createdAt','updatedAt','mainImageUrl','files'].includes(k))
-                    .map(([, val]) => {
-                        if (val == null) return ''
-                        if (Array.isArray(val)) return val.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' ')
-                        if (typeof val === 'object') return JSON.stringify(val)
-                        return String(val)
-                    }).join(' ').toLowerCase()
-                if (!terms.every(t => haystack.includes(t))) return false
-            }
-            if (filters.make) {
-                const make = (v.manufacturer || v['Make'] || '').toLowerCase()
-                if (!make.includes(filters.make.toLowerCase())) return false
-            }
-            if (filters.model) {
-                const model = (v.model || v['Model'] || '').toLowerCase()
-                if (!model.includes(filters.model.toLowerCase())) return false
-            }
-            if (filters.yearFrom || filters.yearTo) {
-                const year = parseInt(getVVal(v, 'Year')) || 0
-                if (filters.yearFrom && year < parseInt(filters.yearFrom)) return false
-                if (filters.yearTo && year > parseInt(filters.yearTo)) return false
-            }
-            if (filters.minPrice || filters.maxPrice) {
-                const price = parseFloat(getVVal(v, 'Price')) || 0
-                if (filters.minPrice && price < parseFloat(filters.minPrice)) return false
-                if (filters.maxPrice && price > parseFloat(filters.maxPrice)) return false
-            }
-            if (filters.fuelType) {
-                const ft = (getVVal(v, 'Fuel Type')).toLowerCase()
-                if (!ft.includes(filters.fuelType.toLowerCase())) return false
-            }
-            if (filters.transmission) {
-                const tr = (getVVal(v, 'Gear Box Type')).toLowerCase()
-                if (!tr.includes(filters.transmission.toLowerCase())) return false
-            }
-            if (filters.bodyType) {
-                const bt = (getVVal(v, 'Body Type')).toLowerCase()
-                if (!bt.includes(filters.bodyType.toLowerCase())) return false
-            }
-            if (filters.driveType) {
-                const dt = (getVVal(v, 'Drive Type')).toLowerCase()
-                if (!dt.includes(filters.driveType.toLowerCase())) return false
-            }
-            if (filters.allocation) {
-                const alloc = (v.allocation || '').toLowerCase()
-                if (alloc !== filters.allocation.toLowerCase()) return false
-            }
-            return true
-        })
-    }, [vehicles, search, filters, fields])
-
-    const activeFilterCount = Object.values(filters).filter(Boolean).length
-
-    const clearFilters = () => setFilters({ make: '', model: '', yearFrom: '', yearTo: '', minPrice: '', maxPrice: '', fuelType: '', transmission: '', bodyType: '', driveType: '', allocation: '' })
-
-    const updateFilter = (key, value) => setFilters(prev => ({ ...prev, [key]: value }))
+    const filtered = useMemo(() => applyVehicleFilters(vehicles, fields, search, filters), [vehicles, fields, search, filters])
 
     React.useEffect(() => { setPage(1) }, [search, viewMode, filters])
 
@@ -819,10 +738,6 @@ const Page = () => {
 
     const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
     const paginated  = filtered.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE)
-
-    const inputStyle = { height: 34, fontSize: 12, borderRadius: 6, border: '1px solid #D1D5DB', padding: '0 10px', background: '#fff', width: '100%' }
-    const selectStyle = { ...inputStyle, cursor: 'pointer', appearance: 'auto' }
-    const labelStyle = { fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4, display: 'block' }
 
     return (
         <div className="px-3 md:px-5 py-5">
@@ -868,128 +783,14 @@ const Page = () => {
             </div>
 
             {/* Filter Bar */}
-            <div style={{background:'#fff', borderRadius:10, border:'1px solid #E5E7EB', marginBottom:16, overflow:'hidden'}}>
-                {/* Filter header row */}
-                <div className="flex items-center justify-between px-4 py-2.5" style={{borderBottom: showFilters ? '1px solid #F3F4F6' : 'none'}}>
-                    <div className="flex items-center gap-3">
-                        <button onClick={() => setShowFilters(!showFilters)}
-                            className="flex items-center gap-2 font-semibold transition-colors"
-                            style={{fontSize:13, color:'#111827', background:'none', border:'none', padding:0}}>
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{transform: showFilters ? 'rotate(180deg)' : 'none', transition:'transform 0.2s'}}>
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                            </svg>
-                            Filters
-                            {activeFilterCount > 0 && (
-                                <span style={{fontSize:10, fontWeight:700, background:'#DC2626', color:'#fff', padding:'1px 6px', borderRadius:999}}>
-                                    {activeFilterCount}
-                                </span>
-                            )}
-                        </button>
-                        {activeFilterCount > 0 && (
-                            <button onClick={clearFilters}
-                                style={{fontSize:12, color:'#DC2626', background:'none', border:'none', fontWeight:600, cursor:'pointer'}}>
-                                Clear all
-                            </button>
-                        )}
-                    </div>
-                    <div className="relative" style={{display:'flex', alignItems:'center', gap:6, width:320}}>
-                        <div className="relative" style={{flex:1}}>
-                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{color:'#9CA3AF'}}>
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                            <input type="text" placeholder="Search vehicles, chassis, LOT..." value={search} onChange={e => setSearch(e.target.value)}
-                                style={{...inputStyle, paddingLeft:34}} />
-                        </div>
-                        <VoiceSearchButton onResult={(text) => setSearch(prev => prev ? `${prev} ${text}` : text)} size={30} />
-                    </div>
-                </div>
-
-                {/* Filter panel */}
-                {showFilters && (
-                    <div className="px-4 py-3" style={{background:'#FAFBFC', borderTop:'1px solid #F3F4F6'}}>
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                            {/* Make */}
-                            <div>
-                                <label style={labelStyle}>Make</label>
-                                <select value={filters.make} onChange={e => updateFilter('make', e.target.value)} style={selectStyle}>
-                                    <option value="">All Makes</option>
-                                    {filterOptions.makes.map(m => <option key={m} value={m}>{m}</option>)}
-                                </select>
-                            </div>
-                            {/* Model */}
-                            <div>
-                                <label style={labelStyle}>Model</label>
-                                <select value={filters.model} onChange={e => updateFilter('model', e.target.value)} style={selectStyle}>
-                                    <option value="">All Models</option>
-                                    {filterOptions.models.map(m => <option key={m} value={m}>{m}</option>)}
-                                </select>
-                            </div>
-                            {/* Allocation */}
-                            <div>
-                                <label style={labelStyle}>Status</label>
-                                <select value={filters.allocation} onChange={e => updateFilter('allocation', e.target.value)} style={selectStyle}>
-                                    <option value="">All Status</option>
-                                    <option value="export">Export</option>
-                                    <option value="khitai">Khitai</option>
-                                    <option value="resale-to-auction">Resale to Auction</option>
-                                </select>
-                            </div>
-                            {/* Year From */}
-                            <div>
-                                <label style={labelStyle}>Year From</label>
-                                <input type="number" placeholder="e.g. 2015" value={filters.yearFrom} onChange={e => updateFilter('yearFrom', e.target.value)} style={inputStyle} />
-                            </div>
-                            {/* Year To */}
-                            <div>
-                                <label style={labelStyle}>Year To</label>
-                                <input type="number" placeholder="e.g. 2024" value={filters.yearTo} onChange={e => updateFilter('yearTo', e.target.value)} style={inputStyle} />
-                            </div>
-                            {/* Fuel Type */}
-                            <div>
-                                <label style={labelStyle}>Fuel Type</label>
-                                <select value={filters.fuelType} onChange={e => updateFilter('fuelType', e.target.value)} style={selectStyle}>
-                                    <option value="">All Fuels</option>
-                                    {filterOptions.fuelTypes.map(f => <option key={f} value={f}>{f}</option>)}
-                                </select>
-                            </div>
-                            {/* Transmission */}
-                            <div>
-                                <label style={labelStyle}>Transmission</label>
-                                <select value={filters.transmission} onChange={e => updateFilter('transmission', e.target.value)} style={selectStyle}>
-                                    <option value="">All Types</option>
-                                    {filterOptions.transmissions.map(t => <option key={t} value={t}>{t}</option>)}
-                                </select>
-                            </div>
-                            {/* Body Type */}
-                            <div>
-                                <label style={labelStyle}>Body Type</label>
-                                <select value={filters.bodyType} onChange={e => updateFilter('bodyType', e.target.value)} style={selectStyle}>
-                                    <option value="">All Bodies</option>
-                                    {filterOptions.bodyTypes.map(b => <option key={b} value={b}>{b}</option>)}
-                                </select>
-                            </div>
-                            {/* Drive Type */}
-                            <div>
-                                <label style={labelStyle}>Drive Type</label>
-                                <select value={filters.driveType} onChange={e => updateFilter('driveType', e.target.value)} style={selectStyle}>
-                                    <option value="">All Drives</option>
-                                    {filterOptions.driveTypes.map(d => <option key={d} value={d}>{d}</option>)}
-                                </select>
-                            </div>
-                            {/* Min Price */}
-                            <div>
-                                <label style={labelStyle}>Min Price</label>
-                                <input type="number" placeholder="$0" value={filters.minPrice} onChange={e => updateFilter('minPrice', e.target.value)} style={inputStyle} />
-                            </div>
-                            {/* Max Price */}
-                            <div>
-                                <label style={labelStyle}>Max Price</label>
-                                <input type="number" placeholder="$99999" value={filters.maxPrice} onChange={e => updateFilter('maxPrice', e.target.value)} style={inputStyle} />
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
+            <VehicleFilterBar
+                vehicles={vehicles}
+                fields={fields}
+                search={search}
+                onSearchChange={setSearch}
+                filters={filters}
+                onFiltersChange={setFilters}
+            />
 
             {loading ? (
                 <div className="flex items-center justify-center py-20">

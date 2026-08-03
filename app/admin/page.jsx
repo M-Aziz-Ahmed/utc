@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
+import { VehicleFilterBar, applyVehicleFilters, EMPTY_FILTERS } from '@/components/VehicleFilters'
 
 const AdminDashboard = () => {
     const [vehicles, setVehicles] = useState([])
@@ -8,6 +9,7 @@ const AdminDashboard = () => {
     const [users, setUsers] = useState([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
+    const [filters, setFilters] = useState(EMPTY_FILTERS)
     const [filterAlloc, setFilterAlloc] = useState('all')
 
     useEffect(() => { fetchDashboardData() }, [])
@@ -26,24 +28,11 @@ const AdminDashboard = () => {
     }
 
     const filteredVehicles = useMemo(() => {
-        return vehicles.filter(v => {
-            if (search) {
-                const terms = search.toLowerCase().split(/\s+/).filter(Boolean)
-                const haystack = Object.entries(v)
-                    .filter(([k]) => !['_id','__v','createdAt','updatedAt','mainImageUrl','files'].includes(k))
-                    .map(([, val]) => {
-                        if (val == null) return ''
-                        if (Array.isArray(val)) return val.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' ')
-                        if (typeof val === 'object') return JSON.stringify(val)
-                        return String(val)
-                    }).join(' ').toLowerCase()
-                if (!terms.every(t => haystack.includes(t))) return false
-            }
+        return applyVehicleFilters(vehicles, fields, search, filters).filter(v => {
             const alloc = (v.allocation || '').toLowerCase()
-            const matchesAlloc = filterAlloc === 'all' || alloc === filterAlloc
-            return matchesAlloc
+            return filterAlloc === 'all' || alloc === filterAlloc
         })
-    }, [vehicles, search, filterAlloc])
+    }, [vehicles, fields, search, filters, filterAlloc])
 
     const allocCounts = useMemo(() => {
         const counts = { all: vehicles.length, export: 0, khitai: 0, 'resale-to-auction': 0 }
@@ -105,26 +94,25 @@ const AdminDashboard = () => {
                     <h1 className="font-bold" style={{fontSize:'var(--text-2xl)', color:'#111827'}}>Dashboard</h1>
                     <p style={{fontSize:'var(--text-xs)', color:'#6B7280', marginTop:2}}>Welcome back. Here&apos;s your vehicle management overview.</p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className="relative flex-1 md:w-64">
-                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{color:'#9CA3AF'}}>
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        <input
-                            type="text"
-                            placeholder="Search vehicles, chassis, LOT..."
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            style={{paddingLeft:36, paddingRight:12, height:36, borderRadius:8, border:'1px solid #E5E7EB', fontSize:13, background:'#fff'}}
-                        />
-                    </div>
-                    <Link href="/admin/vehicles/add"
-                        className="flex items-center gap-1.5 shrink-0"
-                        style={{padding:'8px 16px', borderRadius:8, background:'#DC2626', color:'#fff', fontSize:13, fontWeight:600, textDecoration:'none'}}>
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                        Add Vehicle
-                    </Link>
-                </div>
+                <Link href="/admin/vehicles/add"
+                    className="flex items-center gap-1.5 shrink-0"
+                    style={{padding:'8px 16px', borderRadius:8, background:'#DC2626', color:'#fff', fontSize:13, fontWeight:600, textDecoration:'none'}}>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                    Add Vehicle
+                </Link>
+            </div>
+
+            {/* Search + Filters */}
+            <div style={{ marginBottom: 16 }}>
+                <VehicleFilterBar
+                    vehicles={vehicles}
+                    fields={fields}
+                    search={search}
+                    onSearchChange={setSearch}
+                    filters={filters}
+                    onFiltersChange={setFilters}
+                    searchPlaceholder="Search vehicles, chassis, LOT..."
+                />
             </div>
 
             {/* Stat Cards */}

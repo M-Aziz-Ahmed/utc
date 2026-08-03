@@ -396,50 +396,6 @@ const VehicleAccountPage = ({ params }) => {
                                         </div>
                                     ))}
                                 </div>
-
-                                {/* Auto-calculated total */}
-                                {(() => {
-                                    const numFields = allFields.filter(f => f.type === 'number' || f.type === 'text')
-                                    const taxFields = allFields.filter(f => f.type === 'tax' && f.linkedTax && f.linkedField)
-                                    if (taxFields.length === 0) return null
-
-                                    const getVal = (f) => {
-                                        if (f.belongsto === 'add-vehicles') return parseFloat(formData[f._id]) || 0
-                                        return parseFloat(accountData[f._id]) || 0
-                                    }
-
-                                    let sumInputs = 0
-                                    let sumTaxes = 0
-
-                                    taxFields.forEach(tf => {
-                                        const linkedTax = taxes.find(t => t._id === tf.linkedTax)
-                                        const sourceField = allFields.find(f => f.label === tf.linkedField)
-                                        if (!linkedTax || !sourceField) return
-                                        const sourceVal = getVal(sourceField)
-                                        if (linkedTax.type === 'percentage') {
-                                            sumTaxes += sourceVal * linkedTax.rate / 100
-                                        } else if (linkedTax.type === 'multiplier') {
-                                            sumTaxes += sourceVal * linkedTax.rate
-                                        } else {
-                                            sumTaxes += linkedTax.rate
-                                        }
-                                    })
-
-                                    numFields.forEach(f => {
-                                        if (!f.linkedTax) {
-                                            sumInputs += getVal(f)
-                                        }
-                                    })
-
-                                    const grandTotal = sumInputs + sumTaxes
-
-                                    return (
-                                        <div style={{ marginTop: '16px', padding: '12px 16px', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                            <span style={{ fontSize: '13px', fontWeight: 700, color: '#0369a1' }}>Total Price</span>
-                                            <span style={{ fontSize: '18px', fontWeight: 800, color: '#0369a1' }}>{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                        </div>
-                                    )
-                                })()}
                                 </>
                             )}
                         </div>

@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { VehicleFilterBar, applyVehicleFilters, EMPTY_FILTERS } from '@/components/VehicleFilters'
 
 const getVehicleImages = (vehicle) => {
     const all = []
@@ -25,7 +26,7 @@ const ExportCarsPage = () => {
     const [yards, setYards] = useState([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
-    const [filterCountry, setFilterCountry] = useState('')
+    const [filters, setFilters] = useState(EMPTY_FILTERS)
     const [showCertModal, setShowCertModal] = useState(false)
     const [certVehicle, setCertVehicle] = useState(null)
     const [certForm, setCertForm] = useState({ exportCertNumber: '', exportCertExpiry: '' })
@@ -47,23 +48,7 @@ const ExportCarsPage = () => {
         }).finally(() => setLoading(false))
     }, [])
 
-    const countries = [...new Set(vehicles.map(v => v.exportCountry).filter(Boolean))].sort((a, b) => a.localeCompare(b))
-    const filtered = vehicles.filter(v => {
-        if (search) {
-            const terms = search.toLowerCase().split(/\s+/).filter(Boolean)
-            const haystack = Object.entries(v)
-                .filter(([k]) => !['_id','__v','createdAt','updatedAt','mainImageUrl','files'].includes(k))
-                .map(([, val]) => {
-                    if (val == null) return ''
-                    if (Array.isArray(val)) return val.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' ')
-                    if (typeof val === 'object') return JSON.stringify(val)
-                    return String(val)
-                }).join(' ').toLowerCase()
-            if (!terms.every(t => haystack.includes(t))) return false
-        }
-        if (filterCountry && v.exportCountry !== filterCountry) return false
-        return true
-    })
+    const filtered = applyVehicleFilters(vehicles, fields, search, filters)
 
     const openCertModal = (v) => {
         setCertVehicle(v)
@@ -115,18 +100,18 @@ const ExportCarsPage = () => {
                 ))}
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
-                <div style={{ position: 'relative', flex: 1, minWidth: '200px', maxWidth: '320px' }}>
-                    <svg style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '13px', height: '13px', color: '#9aa0a6' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                    <input type="text" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)}
-                        style={{ width: '100%', paddingLeft: '30px', padding: '7px 10px 7px 30px', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '12px', outline: 'none', background: '#fff', boxSizing: 'border-box' }} />
-                </div>
-                <select value={filterCountry} onChange={e => setFilterCountry(e.target.value)}
-                    style={{ padding: '7px 12px', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '12px', outline: 'none', background: '#fff', color: filterCountry ? '#202124' : '#9aa0a6' }}>
-                    <option value="">All countries</option>
-                    {countries.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-            </div>
+            {/* Search + Filters */}
+            <VehicleFilterBar
+                vehicles={vehicles}
+                fields={fields}
+                search={search}
+                onSearchChange={setSearch}
+                filters={filters}
+                onFiltersChange={setFilters}
+                searchPlaceholder="Search..."
+                showCountry
+                showAllocation={false}
+            />
 
             {loading ? (
                 <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '80px' }}>
@@ -134,7 +119,7 @@ const ExportCarsPage = () => {
                 </div>
             ) : filtered.length === 0 ? (
                 <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e0e0e0', padding: '48px', textAlign: 'center' }}>
-                    <p style={{ fontSize: '13px', color: '#9aa0a6', margin: 0 }}>{search || filterCountry ? 'No vehicles match your filters' : 'No export vehicles yet. Allocate vehicles to export from Vehicle Allocation page.'}</p>
+                    <p style={{ fontSize: '13px', color: '#9aa0a6', margin: 0 }}>{search || filters.country ? 'No vehicles match your filters' : 'No export vehicles yet. Allocate vehicles to export from Vehicle Allocation page.'}</p>
                 </div>
             ) : (
                 <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>

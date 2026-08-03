@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import VoiceSearchButton from '@/components/VoiceSearchButton'
+import { VehicleFilterBar, applyVehicleFilters, EMPTY_FILTERS } from '@/components/VehicleFilters'
 
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 
@@ -24,12 +24,15 @@ const setCookie = (n, v) => {
 }
 
 // ── Vehicle card for accounts list ───────────────────────────────────────────
-const AccountVehicleCard = ({ vehicle, accountFields, onClick }) => {
+const AccountVehicleCard = ({ vehicle, fields, accountFields, onClick }) => {
     const [hov, setHov] = useState(false)
     const img = getMainImage(vehicle)
     const nameLine = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ').toUpperCase()
     const subtitle = vehicle.modelDescription || vehicle.variant || ''
     const headerLine = [vehicle.auctionGroup, vehicle.auctionVenue].filter(Boolean).join(' / ')
+
+    const chassisField = fields.find(f => f.label?.toLowerCase().includes('chassis'))
+    const chassisVal   = chassisField ? (vehicle[chassisField._id] || vehicle[chassisField.label]) : ''
 
     // How many account fields are already filled
     const filled = accountFields.filter(f => {
@@ -73,6 +76,11 @@ const AccountVehicleCard = ({ vehicle, accountFields, onClick }) => {
             <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #f0f4f8' }}>
                 <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: '#0f172a', lineHeight: 1.25 }}>{nameLine || '—'}</p>
                 {subtitle && <p style={{ margin: '3px 0 0', fontSize: '11px', color: '#64748b' }}>{subtitle}</p>}
+                {chassisVal && (
+                    <p style={{ margin: '5px 0 0', fontSize: '10px', color: '#2563eb', fontFamily: 'monospace', fontWeight: 600, letterSpacing: '0.02em' }}>
+                        Chassis No: {chassisVal}
+                    </p>
+                )}
             </div>
 
             {/* Account completion */}
@@ -102,11 +110,14 @@ const AccountVehicleCard = ({ vehicle, accountFields, onClick }) => {
 }
 
 // ── Vehicle row for list view ────────────────────────────────────────────────
-const AccountVehicleRow = ({ vehicle, accountFields, onClick }) => {
+const AccountVehicleRow = ({ vehicle, fields, accountFields, onClick }) => {
     const img = getMainImage(vehicle)
     const nameLine = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ').toUpperCase()
     const subtitle = vehicle.modelDescription || vehicle.variant || ''
     const headerLine = [vehicle.auctionGroup, vehicle.auctionVenue].filter(Boolean).join(' / ')
+
+    const chassisField = fields.find(f => f.label?.toLowerCase().includes('chassis'))
+    const chassisVal   = chassisField ? (vehicle[chassisField._id] || vehicle[chassisField.label]) : ''
 
     const filled = accountFields.filter(f => {
         const v = vehicle[f._id] ?? vehicle[f.label]
@@ -139,6 +150,10 @@ const AccountVehicleRow = ({ vehicle, accountFields, onClick }) => {
             <td style={{ padding: '5px 8px', minWidth: '120px' }}>
                 <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }} className="uppercase">{nameLine || '—'}</div>
                 {subtitle && <div style={{ fontSize: '10px', color: '#94a3b8' }}>{subtitle}</div>}
+            </td>
+            {/* Chassis No */}
+            <td style={{ padding: '5px 8px', minWidth: '120px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: '#2563eb', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>{chassisVal || '—'}</div>
             </td>
             {/* Account completion */}
             <td style={{ padding: '5px 8px', minWidth: '120px' }}>
@@ -173,9 +188,11 @@ const AccountVehicleRow = ({ vehicle, accountFields, onClick }) => {
 const AccountsPage = () => {
     const router = useRouter()
     const [vehicles, setVehicles] = useState([])
+    const [fields, setFields] = useState([])
     const [accountFields, setAccountFields] = useState([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
+    const [filters, setFilters] = useState(EMPTY_FILTERS)
     const [viewMode, setViewMode] = useState('grid')
     const [page, setPage] = useState(1)
     const PAGE_SIZE = 25
@@ -193,29 +210,19 @@ const AccountsPage = () => {
     useEffect(() => {
         Promise.all([
             fetch('/api/vehicles').then(r => r.json()),
+            fetch('/api/fields').then(r => r.json()),
             fetch('/api/fields', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ belongsto: 'accounts' }) }).then(r => r.json()),
-        ]).then(([v, f]) => {
+        ]).then(([v, all, af]) => {
             setVehicles(Array.isArray(v) ? v : [])
-            setAccountFields(Array.isArray(f) ? f : [])
+            setFields(Array.isArray(all) ? all : [])
+            setAccountFields(Array.isArray(af) ? af : [])
         }).catch(console.error)
         .finally(() => setLoading(false))
     }, [])
 
-    const filtered = vehicles.filter(v => {
-        if (!search) return true
-        const terms = search.toLowerCase().split(/\s+/).filter(Boolean)
-        const haystack = Object.entries(v)
-            .filter(([k]) => !['_id','__v','createdAt','updatedAt','mainImageUrl','files'].includes(k))
-            .map(([, val]) => {
-                if (val == null) return ''
-                if (Array.isArray(val)) return val.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' ')
-                if (typeof val === 'object') return JSON.stringify(val)
-                return String(val)
-            }).join(' ').toLowerCase()
-        return terms.every(t => haystack.includes(t))
-    })
+    const filtered = applyVehicleFilters(vehicles, fields, search, filters)
 
-    React.useEffect(() => { setPage(1) }, [search, viewMode])
+    React.useEffect(() => { setPage(1) }, [search, filters, viewMode])
 
     const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
     const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
@@ -223,15 +230,15 @@ const AccountsPage = () => {
     return (
         <div style={{ padding: '16px', minHeight: '100vh', background: '#f6f8fc' }}>
             {/* Header */}
-            <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
                     <h1 style={{ fontSize: '20px', fontWeight: 700, color: '#202124', margin: 0 }}>Vehicle Accounts</h1>
                     <p style={{ fontSize: '13px', color: '#9aa0a6', margin: '4px 0 0' }}>
                         {loading ? '…' : `${filtered.length} vehicles · click to manage account details`}
                     </p>
                 </div>
+                {/* View toggle */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    {/* View toggle */}
                     <div style={{ display: 'flex', gap: '2px', padding: '2px', background: '#f1f3f4', borderRadius: '8px' }}>
                         <button onClick={() => switchView('grid')} title="Grid view"
                             style={{ width: '30px', height: '30px', borderRadius: '6px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
@@ -254,21 +261,19 @@ const AccountsPage = () => {
                             </svg>
                         </button>
                     </div>
-                    {/* Search */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '300px' }}>
-                        <div style={{ position: 'relative', flex: 1 }}>
-                            <svg style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', width: '14px', height: '14px', color: '#9aa0a6', pointerEvents: 'none' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-                            </svg>
-                            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search vehicles..."
-                                style={{ width: '100%', paddingLeft: '34px', paddingRight: '12px', paddingTop: '8px', paddingBottom: '8px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fff', boxSizing: 'border-box' }}
-                                onFocus={e => { e.target.style.borderColor = '#1a73e8'; e.target.style.boxShadow = '0 0 0 3px rgba(26,115,232,0.1)' }}
-                                onBlur={e => { e.target.style.borderColor = '#e0e0e0'; e.target.style.boxShadow = 'none' }} />
-                        </div>
-                        <VoiceSearchButton onResult={(text) => setSearch(prev => prev ? `${prev} ${text}` : text)} size={32} />
-                    </div>
                 </div>
             </div>
+
+            {/* Search + Filters */}
+            <VehicleFilterBar
+                vehicles={vehicles}
+                fields={fields}
+                search={search}
+                onSearchChange={setSearch}
+                filters={filters}
+                onFiltersChange={setFilters}
+                searchPlaceholder="Search vehicles..."
+            />
 
             {loading ? (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '300px' }}>
@@ -287,6 +292,7 @@ const AccountsPage = () => {
                         <AccountVehicleCard
                             key={v._id}
                             vehicle={v}
+                            fields={fields}
                             accountFields={accountFields}
                             onClick={() => router.push(`/admin/vehicles/accounts/${v._id}`)}
                         />
@@ -301,6 +307,7 @@ const AccountsPage = () => {
                                     <th style={{ padding: '7px 8px', width: '48px' }}></th>
                                     <th style={{ padding: '7px 8px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#64748b' }}>Group / Venue</th>
                                     <th style={{ padding: '7px 8px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#64748b' }}>Vehicle</th>
+                                    <th style={{ padding: '7px 8px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#64748b' }}>Chassis No</th>
                                     <th style={{ padding: '7px 8px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#64748b' }}>Account Progress</th>
                                     <th style={{ padding: '7px 8px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#64748b' }}>Date</th>
                                     <th style={{ padding: '7px 8px', width: '60px' }}></th>
@@ -311,6 +318,7 @@ const AccountsPage = () => {
                                     <AccountVehicleRow
                                         key={v._id}
                                         vehicle={v}
+                                        fields={fields}
                                         accountFields={accountFields}
                                         onClick={() => router.push(`/admin/vehicles/accounts/${v._id}`)}
                                     />
