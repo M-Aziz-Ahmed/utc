@@ -555,23 +555,30 @@ const AddVehiclePage = () => {
         } catch (e) { alert(e.message) } finally { setInlineAdding(false) }
     }
 
-    const resolveFieldValue = (label, visited = new Set()) => {
-        const src = (fields || []).find(f => f.label === label) || (accountFields || []).find(f => f.label === label)
+    const toNum = (v) => {
+        if (v === null || v === undefined || v === '') return 0
+        const n = parseFloat(String(v).replace(/[^0-9.\-]/g, ''))
+        return isNaN(n) ? 0 : n
+    }
+
+    const resolveFieldValue = (label, contextBelongsto, visited = new Set()) => {
+        let src = (fields || []).find(f => f.label === label && f.belongsto === contextBelongsto) || (accountFields || []).find(f => f.label === label && f.belongsto === contextBelongsto)
+        if (!src) src = (fields || []).find(f => f.label === label) || (accountFields || []).find(f => f.label === label)
         if (!src || visited.has(src._id)) return 0
         visited.add(src._id)
         const data = src.belongsto === 'add-vehicles' ? (formData || {}) : (accountData || {})
         if (src.type === 'tax') {
             const lt = taxes.find(t => t._id === src.linkedTax)
-            const sv = resolveFieldValue(src.linkedField, visited)
+            const sv = resolveFieldValue(src.linkedField, src.belongsto, visited)
             if (!lt || sv <= 0) return 0
             if (lt.type === 'percentage') return sv * lt.rate / 100
             if (lt.type === 'multiplier') return sv * lt.rate
-            return parseFloat(lt.rate) || 0
+            return toNum(lt.rate)
         }
         if (src.type === 'sum') {
-            return (src.linkedFields || []).reduce((acc, l) => acc + resolveFieldValue(l, visited), 0)
+            return (src.linkedFields || []).reduce((acc, l) => acc + resolveFieldValue(l, src.belongsto, visited), 0)
         }
-        return parseFloat(data[src._id]) || 0
+        return toNum(data[src._id])
     }
 
     const renderInput = (field) => {
@@ -618,7 +625,7 @@ const AddVehiclePage = () => {
         if (field.type === 'tax') {
             const linkedTax = taxes.find(t => t._id === field.linkedTax)
             const sourceField = fields.find(f => f.label === field.linkedField) || accountFields.find(f => f.label === field.linkedField)
-            const sourceVal = resolveFieldValue(field.linkedField)
+            const sourceVal = resolveFieldValue(field.linkedField, field.belongsto)
             let taxAmount = 0
             if (linkedTax && sourceVal > 0) {
                 if (linkedTax.type === 'percentage') {
@@ -651,7 +658,7 @@ const AddVehiclePage = () => {
             linkedFieldLabels.forEach(label => {
                 const src = fields.find(f => f.label === label) || accountFields.find(f => f.label === label)
                 if (src) {
-                    const val = resolveFieldValue(label)
+                    const val = resolveFieldValue(label, field.belongsto)
                     sum += val
                     if (val !== 0) parts.push({ label: src.label, val })
                 }
@@ -729,8 +736,7 @@ const AddVehiclePage = () => {
         if (field.type === 'tax') {
             const linkedTax = taxes.find(t => t._id === field.linkedTax)
             const sourceField = accountFields.find(f => f.label === field.linkedField) || fields.find(f => f.label === field.linkedField)
-            const allData = { ...accountData, ...formData }
-            const sourceVal = sourceField ? parseFloat(allData[sourceField._id]) || 0 : 0
+            const sourceVal = resolveFieldValue(field.linkedField, field.belongsto)
             let taxAmount = 0
             if (linkedTax && sourceVal > 0) {
                 if (linkedTax.type === 'percentage') {
@@ -757,14 +763,13 @@ const AddVehiclePage = () => {
             )
         }
         if (field.type === 'sum') {
-            const allData = { ...accountData, ...formData }
             const linkedFieldLabels = field.linkedFields || []
             let sum = 0
             const parts = []
             linkedFieldLabels.forEach(label => {
                 const src = accountFields.find(f => f.label === label) || fields.find(f => f.label === label)
                 if (src) {
-                    const val = parseFloat(allData[src._id]) || 0
+                    const val = resolveFieldValue(label, field.belongsto)
                     sum += val
                     if (val !== 0) parts.push({ label: src.label, val })
                 }

@@ -37,27 +37,34 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
     const focus = e => { e.target.style.borderColor = '#1a73e8'; e.target.style.boxShadow = '0 0 0 3px rgba(26,115,232,0.1)' }
     const blur  = e => { e.target.style.borderColor = '#e0e0e0'; e.target.style.boxShadow = 'none' }
 
-    const getSourceValue = (sourceFieldLabel, visited = new Set()) => {
-        const src = (allFields || []).find(f => f.label === sourceFieldLabel)
+    const toNum = (v) => {
+        if (v === null || v === undefined || v === '') return 0
+        const n = parseFloat(String(v).replace(/[^0-9.\-]/g, ''))
+        return isNaN(n) ? 0 : n
+    }
+
+    const getSourceValue = (sourceFieldLabel, contextBelongsto = field.belongsto, visited = new Set()) => {
+        let src = (allFields || []).find(f => f.label === sourceFieldLabel && f.belongsto === contextBelongsto)
+        if (!src) src = (allFields || []).find(f => f.label === sourceFieldLabel)
         if (!src || visited.has(src._id)) return 0
         visited.add(src._id)
         if (src.vehicleField && vehicle) {
             const raw = vehicle[src.vehicleField]
-            return parseFloat(raw && typeof raw === 'object' ? raw.name : raw) || 0
+            return toNum(raw && typeof raw === 'object' ? raw.name : raw)
         }
         const data = src.belongsto === 'add-vehicles' ? (vehicleData || {}) : (accountData || {})
         if (src.type === 'tax') {
             const lt = taxes.find(t => t._id === src.linkedTax)
-            const sv = getSourceValue(src.linkedField, visited)
+            const sv = getSourceValue(src.linkedField, src.belongsto, visited)
             if (!lt || sv <= 0) return 0
             if (lt.type === 'percentage') return sv * lt.rate / 100
             if (lt.type === 'multiplier') return sv * lt.rate
-            return parseFloat(lt.rate) || 0
+            return toNum(lt.rate)
         }
         if (src.type === 'sum') {
-            return (src.linkedFields || []).reduce((acc, l) => acc + getSourceValue(l, visited), 0)
+            return (src.linkedFields || []).reduce((acc, l) => acc + getSourceValue(l, src.belongsto, visited), 0)
         }
-        return parseFloat(data[src._id]) || 0
+        return toNum(data[src._id])
     }
 
     if (field.vehicleField && vehicle) {
