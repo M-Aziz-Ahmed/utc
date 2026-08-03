@@ -363,7 +363,7 @@ const Page = () => {
                                         style={{width:'100%', padding:'7px 10px', border:'1px solid #c4c7c5', borderRadius:'4px', fontSize:'13px', color:'#202124', outline:'none', background:'#fff'}}
                                     >
                                         <option value="">Select source field...</option>
-                                        {allFields.filter(f => f.type === 'number' || f.type === 'text').map((f) => (
+                                        {allFields.filter(f => f.type === 'number' || f.type === 'text' || f.type === 'tax' || f.type === 'sum').map((f) => (
                                             <option key={f._id} value={f.label}>
                                                 {f.label} {f.belongsto ? `(${f.belongsto})` : ''}
                                             </option>
