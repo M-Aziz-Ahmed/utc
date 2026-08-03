@@ -225,7 +225,7 @@ export async function getPublicVehicles({
 export async function getPublicVehicleById(id) {
   try {
     await dbConnect()
-    const vehicle = await Vehicle.findById(id).lean()
+    const vehicle = await Vehicle.findOne({ _id: id, allocation: PUBLIC_VEHICLE_STATUS }).lean()
     if (!vehicle) return null
     return mapVehicleToPublic(vehicle)
   } catch (error) {
@@ -237,9 +237,9 @@ export async function getPublicVehicleById(id) {
 export async function getPublicVehicleBySlug(slug) {
   try {
     await dbConnect()
-    const vehicles = await Vehicle.find({}).lean()
+    const vehicles = await Vehicle.find({ allocation: PUBLIC_VEHICLE_STATUS }).lean()
     const mapped = vehicles.map(mapVehicleToPublic)
-    return mapped.find(v => v.slug === slug) || null
+    return mapped.find(v => v.slug === slug || v.vehicleId === slug) || null
   } catch (error) {
     console.error('getPublicVehicleBySlug error:', error.message)
     return null

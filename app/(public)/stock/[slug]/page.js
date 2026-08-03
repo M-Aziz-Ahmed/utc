@@ -1,17 +1,13 @@
+import { cache } from 'react'
+import Link from 'next/link'
 import VehicleDetailContent from '@/components/public/VehicleDetailContent'
+import { getPublicVehicleById, getPublicVehicleBySlug } from '@/utils/publicVehicleService'
 
-async function getVehicle(slug) {
-  try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/public/vehicles?limit=1000`, {
-      cache: 'no-store',
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    return data.vehicles?.find(v => v.slug === slug || v.vehicleId === slug) || null
-  } catch {
-    return null
-  }
-}
+const getVehicle = cache(async (slug) => {
+  const byId = await getPublicVehicleById(slug)
+  if (byId) return byId
+  return getPublicVehicleBySlug(slug)
+})
 
 export async function generateMetadata({ params }) {
   const { slug } = await params
@@ -47,9 +43,9 @@ export default async function VehicleDetailPage({ params }) {
       <div className="vehicle-detail-page">
         <div className="utc-container">
           <div className="breadcrumb" style={{ marginBottom: 24 }}>
-            <a href="/">Home</a>
+            <Link href="/">Home</Link>
             <span className="separator">&#8250;</span>
-            <a href="/stock">Stock</a>
+            <Link href="/stock">Stock</Link>
             <span className="separator">&#8250;</span>
             <span className="current">Not Found</span>
           </div>
@@ -57,9 +53,9 @@ export default async function VehicleDetailPage({ params }) {
             <div className="empty-state-icon">&#128533;</div>
             <h3>Vehicle Not Found</h3>
             <p>The vehicle you are looking for does not exist or has been removed.</p>
-            <a href="/stock">
+            <Link href="/stock">
               <button className="btn-primary" style={{ marginTop: 16 }}>Browse Our Stock</button>
-            </a>
+            </Link>
           </div>
         </div>
       </div>
