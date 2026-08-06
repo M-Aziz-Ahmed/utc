@@ -56,9 +56,6 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
             return toNum(raw && typeof raw === 'object' ? raw.name : raw)
         }
         
-        // Determine which data source to use based on field's belongsto
-        const data = src.belongsto === 'add-vehicles' ? (vehicleData || {}) : (accountData || {})
-        
         // Handle tax calculation fields
         if (src.type === 'tax') {
             const lt = taxes.find(t => t._id === src.linkedTax)
@@ -69,18 +66,39 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
             return toNum(lt.rate)
         }
         
-        // Handle sum fields - don't pass belongsto context to allow cross-context sums
+        // Handle sum fields - ALWAYS recalculate instead of using stored value
         if (src.type === 'sum') {
             return (src.linkedFields || []).reduce((acc, label) => {
-                // For each linked field, find it without forcing belongsto context
                 const linkedField = (allFields || []).find(f => f.label === label)
                 if (!linkedField) return acc
-                // Use the linked field's own belongsto context
                 return acc + getSourceValue(label, linkedField.belongsto, visited)
             }, 0)
         }
         
-        // Return the actual value from data
+        // Handle formula fields - ALWAYS recalculate instead of using stored value
+        if (src.type === 'formula') {
+            const formulaFieldsArr = src.formulaFields || []
+            let result = null
+            formulaFieldsArr.forEach((formulaField, idx) => {
+                const val = getSourceValue(formulaField.field, src.belongsto, visited)
+                if (result === null) {
+                    result = val
+                } else {
+                    const op = formulaField.operation || 'add'
+                    switch (op) {
+                        case 'add': result = result + val; break
+                        case 'subtract': result = result - val; break
+                        case 'multiply': result = result * val; break
+                        case 'divide': result = val !== 0 ? result / val : 0; break
+                        default: result = result + val; break
+                    }
+                }
+            })
+            return result === null ? 0 : result
+        }
+        
+        // For regular fields, determine which data source to use based on field's belongsto
+        const data = src.belongsto === 'add-vehicles' ? (vehicleData || {}) : (accountData || {})
         return toNum(data[src._id])
     }
 
