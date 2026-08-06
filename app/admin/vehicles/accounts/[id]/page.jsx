@@ -59,19 +59,16 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
         // Handle tax calculation fields
         if (src.type === 'tax') {
             const lt = taxes.find(t => t._id === src.linkedTax)
-            // Find the linked field and use its own belongsto context
+            if (!lt) return 0
+            
+            // Find the linked field
             const linkedField = (allFields || []).find(f => f.label === src.linkedField)
             if (!linkedField) return 0
             
-            // Get source value - need to check which data source contains it
-            let sv = 0
-            if (linkedField.belongsto === 'add-vehicles') {
-                sv = toNum((vehicleData || {})[linkedField._id])
-            } else {
-                sv = toNum((accountData || {})[linkedField._id])
-            }
+            // Recursively get the source value using the linked field's context
+            const sv = getSourceValue(src.linkedField, linkedField.belongsto, visited)
             
-            if (!lt || sv <= 0) return 0
+            if (sv <= 0) return 0
             if (lt.type === 'percentage') return sv * lt.rate / 100
             if (lt.type === 'multiplier') return sv * lt.rate
             return toNum(lt.rate)
@@ -110,7 +107,9 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
         
         // For regular fields, determine which data source to use based on field's belongsto
         const data = src.belongsto === 'add-vehicles' ? (vehicleData || {}) : (accountData || {})
-        return toNum(data[src._id])
+        // Try multiple possible keys: field ID, label, or sanitized label
+        const value = data[src._id] ?? data[src.label] ?? data[src.label?.replace(/\./g, '')]
+        return toNum(value)
     }
 
     if (field.vehicleField && vehicle) {
