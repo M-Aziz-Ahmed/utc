@@ -61,41 +61,31 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
             const lt = taxes.find(t => t._id === src.linkedTax)
             if (!lt) return 0
             
-            // Get the source value directly from the appropriate data store
+            // Get the source value - use the same logic as regular field rendering
             const linkedFieldObj = (allFields || []).find(f => f.label === src.linkedField)
             if (!linkedFieldObj) return 0
             
+            // If the linked field is a vehicle-linked field, compute from vehicleData
+            if (linkedFieldObj.vehicleField && vehicle) {
+                const raw = vehicle[linkedFieldObj.vehicleField]
+                const sv = toNum(raw && typeof raw === 'object' ? raw.name : raw)
+                if (sv <= 0) return 0
+                if (lt.type === 'percentage') return sv * lt.rate / 100
+                if (lt.type === 'multiplier') return sv * lt.rate
+                return toNum(lt.rate)
+            }
+
+            // Otherwise read from the appropriate data store
             const data = linkedFieldObj.belongsto === 'add-vehicles' ? (vehicleData || {}) : (accountData || {})
-            
-            // DEBUG: Log what we're looking for and what's available
-            console.log(`TAX CALC: Looking for "${src.linkedField}"`)
-            console.log(`- Field ID: ${linkedFieldObj._id}`)
-            console.log(`- Field label: ${linkedFieldObj.label}`)
-            console.log(`- Field belongsto: ${linkedFieldObj.belongsto}`)
-            console.log(`- Available keys in data:`, Object.keys(data))
-            console.log(`- Data values:`, data)
-            
-            // Try to get the value from any possible key
             let sv = data[linkedFieldObj._id]
-            console.log(`- Value by ID [${linkedFieldObj._id}]:`, sv)
-            
-            if (sv === undefined || sv === null || sv === '') {
-                sv = data[linkedFieldObj.label]
-                console.log(`- Value by label [${linkedFieldObj.label}]:`, sv)
-            }
-            if (sv === undefined || sv === null || sv === '') {
-                const noDots = linkedFieldObj.label?.replace(/\./g, '')
-                sv = data[noDots]
-                console.log(`- Value by label without dots [${noDots}]:`, sv)
-            }
-            
+            if (sv === undefined || sv === null || sv === '') sv = data[linkedFieldObj.label]
+            if (sv === undefined || sv === null || sv === '') sv = data[linkedFieldObj.label?.replace(/\./g, '')]
             sv = toNum(sv)
-            console.log(`- Final numeric value:`, sv)
             
             if (sv <= 0) return 0
-            const result = lt.type === 'percentage' ? sv * lt.rate / 100 : lt.type === 'multiplier' ? sv * lt.rate : toNum(lt.rate)
-            console.log(`- Tax result (${lt.type} ${lt.rate}):`, result)
-            return result
+            if (lt.type === 'percentage') return sv * lt.rate / 100
+            if (lt.type === 'multiplier') return sv * lt.rate
+            return toNum(lt.rate)
         }
         
         // Handle sum fields - ALWAYS recalculate to get fresh values
@@ -130,14 +120,17 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
         }
         
         // For regular fields, determine which data source to use based on field's belongsto
-        const data = src.belongsto === 'add-vehicles' ? (vehicleData || {}) : (accountData || {})
+        // If it's a vehicle-linked field, compute from vehicle data
+        if (src.vehicleField && vehicle) {
+            const raw = vehicle[src.vehicleField]
+            return toNum(raw && typeof raw === 'object' ? raw.name : raw)
+        }
         
-        // Try ALL possible keys to find the value
+        const data = src.belongsto === 'add-vehicles' ? (vehicleData || {}) : (accountData || {})
         let value = data[src._id]
         if (value === undefined || value === null || value === '') value = data[src.label]
         if (value === undefined || value === null || value === '') value = data[src.label?.replace(/\./g, '')]
         if (value === undefined || value === null || value === '') value = data[src.label?.replace(/\s+/g, '_')]
-        
         return toNum(value)
     }
 
