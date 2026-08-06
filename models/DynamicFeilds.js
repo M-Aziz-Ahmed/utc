@@ -20,6 +20,7 @@ const DynFeildsSchema = new mongoose.Schema({
     // Display options
     displayAsPrice: { type: Boolean, default: false },
     showOnPublicCard: { type: Boolean, default: false },
+    showOnAdminCard: { type: Boolean, default: false },
 });
 
 export default mongoose.models.DynFeilds || mongoose.model('DynFeilds', DynFeildsSchema);

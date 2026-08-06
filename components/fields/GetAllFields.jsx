@@ -55,7 +55,7 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
     const startEdit = (f) => {
         setEditing(f._id);
         setEditDraft({ label:f.label, type:f.type, isRequired:f.isRequired??false,
-            belongsto:f.belongsto??'', options:f.options||[], newOption:'', linkedTax:f.linkedTax||'', linkedField:f.linkedField||'', linkedFields:f.linkedFields||[], vehicleField:f.vehicleField||'', displayAsPrice:f.displayAsPrice||false, showOnPublicCard:f.showOnPublicCard||false, formulaFields:f.formulaFields||[{field:'',operation:'add'}] });
+            belongsto:f.belongsto??'', options:f.options||[], newOption:'', linkedTax:f.linkedTax||'', linkedField:f.linkedField||'', linkedFields:f.linkedFields||[], vehicleField:f.vehicleField||'', displayAsPrice:f.displayAsPrice||false, showOnPublicCard:f.showOnPublicCard||false, showOnAdminCard:f.showOnAdminCard||false, formulaFields:f.formulaFields||[{field:'',operation:'add'}] });
     };
     const cancelEdit = () => { setEditing(null); setEditDraft({}); };
 
@@ -97,6 +97,7 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
             // Add display options
             d.displayAsPrice = editDraft.displayAsPrice || false;
             d.showOnPublicCard = editDraft.showOnPublicCard || false;
+            d.showOnAdminCard = editDraft.showOnAdminCard || false;
             
             const res = await fetch(`/api/fields/${id}`, {
                 method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(d) });
@@ -452,6 +453,14 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                                                                 <div className="text-xs text-gray-500 mt-0.5">Display this field on vehicle cards on the home/stock pages (below price)</div>
                                                             </div>
                                                         </label>
+                                                        <label className="flex items-start gap-2 cursor-pointer p-2 rounded bg-white border border-blue-200 hover:border-blue-300 transition">
+                                                            <input type="checkbox" className="mt-0.5 accent-blue-600" checked={editDraft.showOnAdminCard||false}
+                                                                onChange={e=>setEditDraft({...editDraft,showOnAdminCard:e.target.checked})}/>
+                                                            <div>
+                                                                <div className="text-xs font-semibold text-gray-800">Show on Admin Card (Editable)</div>
+                                                                <div className="text-xs text-gray-500 mt-0.5">Display this field as an editable input on the admin vehicle management card</div>
+                                                            </div>
+                                                        </label>
                                                     </div>
                                                 </div>
                                                 <div className="col-span-2">
@@ -502,6 +511,7 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                                                              {f.vehicleField&&<span className="text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full border border-green-200">→ {f.vehicleField}</span>}
                                                              {f.displayAsPrice&&<span className="text-xs text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded-full border border-blue-300 font-bold">💰 PRICE</span>}
                                                              {f.showOnPublicCard&&<span className="text-xs text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded-full border border-indigo-300">📌 CARD</span>}
+                                                             {f.showOnAdminCard&&<span className="text-xs text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full border border-emerald-300">✏️ ADMIN</span>}
                                                         </div>
                                                     </div>
                                                 </div>

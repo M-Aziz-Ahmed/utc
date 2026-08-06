@@ -29,6 +29,7 @@ const Page = () => {
     const [formulaFields, setFormulaFields] = useState([{ field: '', operation: 'add' }]);
     const [displayAsPrice, setDisplayAsPrice] = useState(false);
     const [showOnPublicCard, setShowOnPublicCard] = useState(false);
+    const [showOnAdminCard, setShowOnAdminCard] = useState(false);
 
     // Fetch unique forms from fields
     useEffect(() => {
@@ -157,6 +158,7 @@ const Page = () => {
             // Add display options
             fieldData.displayAsPrice = displayAsPrice;
             fieldData.showOnPublicCard = showOnPublicCard;
+            fieldData.showOnAdminCard = showOnAdminCard;
 
             // Add vehicle field linking
             if (vehicleField) {
@@ -184,6 +186,7 @@ const Page = () => {
             setFormulaFields([{ field: '', operation: 'add' }]);
             setDisplayAsPrice(false);
             setShowOnPublicCard(false);
+            setShowOnAdminCard(false);
             setRefreshKey((k) => k + 1);
         } catch (err) {
             setMessage({ type: 'error', text: err.message });
@@ -635,7 +638,7 @@ const Page = () => {
                                 </label>
 
                                 {/* Show on public vehicle cards */}
-                                <label style={{display:'flex', alignItems:'start', gap:'8px', cursor:'pointer', padding:'8px', borderRadius:'6px', background:'#fff', border:'1px solid #e0e0e0', transition:'all 0.15s'}}>
+                                <label style={{display:'flex', alignItems:'start', gap:'8px', marginBottom:'10px', cursor:'pointer', padding:'8px', borderRadius:'6px', background:'#fff', border:'1px solid #e0e0e0', transition:'all 0.15s'}}>
                                     <input
                                         type="checkbox"
                                         checked={showOnPublicCard}
@@ -648,6 +651,24 @@ const Page = () => {
                                         </div>
                                         <div style={{fontSize:'11px', color:'#9aa0a6', marginTop:'2px'}}>
                                             Display this field on vehicle cards on the home/stock pages (below price)
+                                        </div>
+                                    </div>
+                                </label>
+
+                                {/* Show on admin card as editable */}
+                                <label style={{display:'flex', alignItems:'start', gap:'8px', cursor:'pointer', padding:'8px', borderRadius:'6px', background:'#fff', border:'1px solid #e0e0e0', transition:'all 0.15s'}}>
+                                    <input
+                                        type="checkbox"
+                                        checked={showOnAdminCard}
+                                        onChange={(e) => setShowOnAdminCard(e.target.checked)}
+                                        style={{marginTop:'2px', accentColor:'#1a73e8', flexShrink:0}}
+                                    />
+                                    <div>
+                                        <div style={{fontSize:'12px', fontWeight:600, color:'#202124'}}>
+                                            Show on Admin Card (Editable)
+                                        </div>
+                                        <div style={{fontSize:'11px', color:'#9aa0a6', marginTop:'2px'}}>
+                                            Display this field as an editable input on the admin vehicle management card
                                         </div>
                                     </div>
                                 </label>
