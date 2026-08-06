@@ -522,7 +522,6 @@ const AllocRow = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
                         <span key={idx} title={s.title} onClick={s.onClick} style={{ width: s.label.includes('/') ? 'auto' : '14px', minWidth: '14px', height: '14px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '3px', fontSize: '8px', fontWeight: 700, background: s.active ? '#dc2626' : '#e2e8f0', color: s.active ? '#fff' : '#94a3b8', padding: s.label.includes('/') ? '0 3px' : '0', cursor: s.onClick ? 'pointer' : 'default', whiteSpace: 'nowrap' }}>
                             {s.label}
                         </span>
-                    ))}t: '14px', borderRadius: '3px', fontSize: '8px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', background: s.active ? '#1a73e8' : '#f1f3f4', color: s.active ? '#fff' : '#9aa0a6' }}>{s.label}</span>
                     ))}
                 </div>
             </td>
