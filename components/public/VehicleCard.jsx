@@ -15,8 +15,20 @@ export default function VehicleCard({ vehicle }) {
     fetch('/api/fields')
       .then(r => r.json())
       .then(fields => {
-        const priceDisplayField = fields.find(f => f.displayAsPrice && vehicle[f._id])
-        const publicCardFields = fields.filter(f => f.showOnPublicCard && vehicle[f._id])
+        // Find price field - check field._id, field.label, and sanitized label (dots removed)
+        const priceDisplayField = fields.find(f => {
+          if (!f.displayAsPrice) return false
+          const sanitizedLabel = f.label?.replace(/\./g, '')
+          return vehicle[f._id] || vehicle[f.label] || vehicle[sanitizedLabel]
+        })
+        
+        // Find public card fields - check field._id, field.label, and sanitized label
+        const publicCardFields = fields.filter(f => {
+          if (!f.showOnPublicCard) return false
+          const sanitizedLabel = f.label?.replace(/\./g, '')
+          return vehicle[f._id] || vehicle[f.label] || vehicle[sanitizedLabel]
+        })
+        
         setPriceField(priceDisplayField)
         setDisplayFields(publicCardFields)
       })
@@ -39,8 +51,10 @@ export default function VehicleCard({ vehicle }) {
 
   const detailUrl = `/stock/${vehicleId || vehicle.slug}`
 
-  // Determine which price to display
-  const displayPrice = priceField ? vehicle[priceField._id] : vehicle.price
+  // Determine which price to display - check _id, label, and sanitized label
+  const displayPrice = priceField 
+    ? (vehicle[priceField._id] || vehicle[priceField.label] || vehicle[priceField.label?.replace(/\./g, '')]) 
+    : vehicle.price
 
   const specs = [
     { label: 'Year', value: vehicle.year || 'N/A' },
@@ -95,12 +109,16 @@ export default function VehicleCard({ vehicle }) {
         {/* Display custom fields marked for public cards */}
         {displayFields.length > 0 && (
           <div style={{ marginTop: '8px', marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            {displayFields.map(field => (
-              <div key={field._id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '4px 8px', background: '#f9fafb', borderRadius: '4px' }}>
-                <span style={{ color: '#6b7280', fontWeight: 500 }}>{field.label}</span>
-                <span style={{ color: '#111827', fontWeight: 600 }}>{formatFieldValue(vehicle[field._id])}</span>
-              </div>
-            ))}
+            {displayFields.map(field => {
+              const sanitizedLabel = field.label?.replace(/\./g, '')
+              const fieldValue = vehicle[field._id] || vehicle[field.label] || vehicle[sanitizedLabel]
+              return fieldValue ? (
+                <div key={field._id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '4px 8px', background: '#f9fafb', borderRadius: '4px' }}>
+                  <span style={{ color: '#6b7280', fontWeight: 500 }}>{field.label}</span>
+                  <span style={{ color: '#111827', fontWeight: 600 }}>{formatFieldValue(fieldValue)}</span>
+                </div>
+              ) : null
+            })}
           </div>
         )}
 
