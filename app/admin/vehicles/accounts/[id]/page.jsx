@@ -43,7 +43,7 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
         return isNaN(n) ? 0 : n
     }
 
-    const getSourceValue = (sourceFieldLabel, contextBelongsto = field.belongsto, visited = new Set()) => {
+    const getSourceValue = (sourceFieldLabel, contextBelongsto = field.belongsto, visited = new Set(), insideFormula = false) => {
         // Try to find field in specified context first, then in any context
         let src = (allFields || []).find(f => f.label === sourceFieldLabel && f.belongsto === contextBelongsto)
         if (!src) src = (allFields || []).find(f => f.label === sourceFieldLabel)
@@ -66,7 +66,7 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
             if (!linkedField) return 0
             
             // Recursively get the source value using the linked field's context
-            const sv = getSourceValue(src.linkedField, linkedField.belongsto, visited)
+            const sv = getSourceValue(src.linkedField, linkedField.belongsto, visited, insideFormula)
             
             if (sv <= 0) return 0
             if (lt.type === 'percentage') return sv * lt.rate / 100
@@ -74,12 +74,23 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
             return toNum(lt.rate)
         }
         
-        // Handle sum fields - ALWAYS recalculate instead of using stored value
+        // Handle sum fields
+        // If we're inside a formula calculation, try to use stored value first to avoid recursion issues
+        if (src.type === 'sum' && insideFormula) {
+            const data = src.belongsto === 'add-vehicles' ? (vehicleData || {}) : (accountData || {})
+            const storedValue = data[src._id] ?? data[src.label] ?? data[src.label?.replace(/\./g, '')]
+            // If we have a stored value, use it; otherwise recalculate
+            if (storedValue !== undefined && storedValue !== null && storedValue !== '') {
+                return toNum(storedValue)
+            }
+        }
+        
+        // Handle sum fields - ALWAYS recalculate if not inside formula or no stored value
         if (src.type === 'sum') {
             return (src.linkedFields || []).reduce((acc, label) => {
                 const linkedField = (allFields || []).find(f => f.label === label)
                 if (!linkedField) return acc
-                return acc + getSourceValue(label, linkedField.belongsto, visited)
+                return acc + getSourceValue(label, linkedField.belongsto, visited, insideFormula)
             }, 0)
         }
         
@@ -88,7 +99,7 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
             const formulaFieldsArr = src.formulaFields || []
             let result = null
             formulaFieldsArr.forEach((formulaField, idx) => {
-                const val = getSourceValue(formulaField.field, src.belongsto, visited)
+                const val = getSourceValue(formulaField.field, src.belongsto, visited, true) // Mark as inside formula
                 if (result === null) {
                     result = val
                 } else {
