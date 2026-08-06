@@ -61,7 +61,16 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
             const lt = taxes.find(t => t._id === src.linkedTax)
             // Find the linked field and use its own belongsto context
             const linkedField = (allFields || []).find(f => f.label === src.linkedField)
-            const sv = linkedField ? getSourceValue(src.linkedField, linkedField.belongsto, visited) : 0
+            if (!linkedField) return 0
+            
+            // Get source value - need to check which data source contains it
+            let sv = 0
+            if (linkedField.belongsto === 'add-vehicles') {
+                sv = toNum((vehicleData || {})[linkedField._id])
+            } else {
+                sv = toNum((accountData || {})[linkedField._id])
+            }
+            
             if (!lt || sv <= 0) return 0
             if (lt.type === 'percentage') return sv * lt.rate / 100
             if (lt.type === 'multiplier') return sv * lt.rate
