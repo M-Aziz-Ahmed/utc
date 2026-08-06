@@ -157,38 +157,48 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
     
     if (field.type === 'formula') {
         const formulaFieldsArr = field.formulaFields || []
-        let result = 0
+        let result = null  // Start with null to detect first field
         const parts = []
         
         formulaFieldsArr.forEach((formulaField, idx) => {
             const val = getSourceValue(formulaField.field)
             parts.push({ label: formulaField.field, val, operation: formulaField.operation })
             
-            if (idx === 0) {
+            if (result === null) {
+                // First field: initialize result
                 result = val
             } else {
-                switch (formulaField.operation) {
+                // Subsequent fields: apply their operation
+                const op = formulaField.operation || 'add'  // Default to add if not specified
+                switch (op) {
                     case 'add':
-                        result += val
+                        result = result + val
                         break
                     case 'subtract':
-                        result -= val
+                        result = result - val
                         break
                     case 'multiply':
-                        result *= val
+                        result = result * val
                         break
                     case 'divide':
                         result = val !== 0 ? result / val : 0
+                        break
+                    default:
+                        result = result + val
                         break
                 }
             }
         })
         
+        if (result === null) result = 0  // Handle empty formula
+        
         const display = result.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
         const opSymbols = { add: '+', subtract: '−', multiply: '×', divide: '÷' }
         const title = parts.map((p, i) => 
-            `${i === 0 ? '' : opSymbols[p.operation] + ' '}${p.label}: ${p.val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-        ).join('\n')
+            i === 0 
+                ? `Start: ${p.label} = ${p.val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                : `${opSymbols[p.operation || 'add']} ${p.label} = ${p.val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        ).join('\n') + `\n= ${display}`
         
         return (
             <div style={{ position: 'relative' }} title={title}>
