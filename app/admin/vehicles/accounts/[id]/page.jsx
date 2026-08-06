@@ -62,24 +62,40 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
             if (!lt) return 0
             
             // Get the source value directly from the appropriate data store
-            // Don't recursively call getSourceValue to avoid infinite loops
             const linkedFieldObj = (allFields || []).find(f => f.label === src.linkedField)
             if (!linkedFieldObj) return 0
             
             const data = linkedFieldObj.belongsto === 'add-vehicles' ? (vehicleData || {}) : (accountData || {})
             
+            // DEBUG: Log what we're looking for and what's available
+            console.log(`TAX CALC: Looking for "${src.linkedField}"`)
+            console.log(`- Field ID: ${linkedFieldObj._id}`)
+            console.log(`- Field label: ${linkedFieldObj.label}`)
+            console.log(`- Field belongsto: ${linkedFieldObj.belongsto}`)
+            console.log(`- Available keys in data:`, Object.keys(data))
+            console.log(`- Data values:`, data)
+            
             // Try to get the value from any possible key
             let sv = data[linkedFieldObj._id]
-            if (sv === undefined || sv === null || sv === '') sv = data[linkedFieldObj.label]
-            if (sv === undefined || sv === null || sv === '') sv = data[linkedFieldObj.label?.replace(/\./g, '')]
-            if (sv === undefined || sv === null || sv === '') sv = data[linkedFieldObj.label?.replace(/\s+/g, '_')]
+            console.log(`- Value by ID [${linkedFieldObj._id}]:`, sv)
+            
+            if (sv === undefined || sv === null || sv === '') {
+                sv = data[linkedFieldObj.label]
+                console.log(`- Value by label [${linkedFieldObj.label}]:`, sv)
+            }
+            if (sv === undefined || sv === null || sv === '') {
+                const noDots = linkedFieldObj.label?.replace(/\./g, '')
+                sv = data[noDots]
+                console.log(`- Value by label without dots [${noDots}]:`, sv)
+            }
             
             sv = toNum(sv)
+            console.log(`- Final numeric value:`, sv)
             
             if (sv <= 0) return 0
-            if (lt.type === 'percentage') return sv * lt.rate / 100
-            if (lt.type === 'multiplier') return sv * lt.rate
-            return toNum(lt.rate)
+            const result = lt.type === 'percentage' ? sv * lt.rate / 100 : lt.type === 'multiplier' ? sv * lt.rate : toNum(lt.rate)
+            console.log(`- Tax result (${lt.type} ${lt.rate}):`, result)
+            return result
         }
         
         // Handle sum fields - ALWAYS recalculate to get fresh values
