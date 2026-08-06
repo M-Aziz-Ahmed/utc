@@ -12,6 +12,14 @@ const DynFeildsSchema = new mongoose.Schema({
     linkedField:{ type: String, default: '' },
     linkedFields: [{ type: String }],
     vehicleField:{ type: String, default: '' },
+    // Formula field properties
+    formulaFields: [{ 
+        field: { type: String },
+        operation: { type: String, enum: ['add', 'subtract', 'multiply', 'divide'], default: 'add' }
+    }],
+    // Display options
+    displayAsPrice: { type: Boolean, default: false },
+    showOnPublicCard: { type: Boolean, default: false },
 });
 
 export default mongoose.models.DynFeilds || mongoose.model('DynFeilds', DynFeildsSchema);

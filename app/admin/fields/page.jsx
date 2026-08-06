@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import GetAllFields from "@/components/fields/GetAllFields";
 
-const FIELD_TYPES = ["text", "number", "boolean", "password", "email", "date", "file", "image", "dropdown", "select-year", "select-country", "tax", "sum"];
+const FIELD_TYPES = ["text", "number", "boolean", "password", "email", "date", "file", "image", "dropdown", "select-year", "select-country", "tax", "sum", "formula"];
 
 const Page = () => {
     const [label, setLabel] = useState("");
@@ -26,6 +26,9 @@ const Page = () => {
     const [linkedFields, setLinkedFields] = useState([]);
     const [allFields, setAllFields] = useState([]);
     const [vehicleField, setVehicleField] = useState("");
+    const [formulaFields, setFormulaFields] = useState([{ field: '', operation: 'add' }]);
+    const [displayAsPrice, setDisplayAsPrice] = useState(false);
+    const [showOnPublicCard, setShowOnPublicCard] = useState(false);
 
     // Fetch unique forms from fields
     useEffect(() => {
@@ -142,6 +145,19 @@ const Page = () => {
                 fieldData.linkedFields = linkedFields;
             }
 
+            // Add formula fields if type is formula
+            if (type === 'formula' && formulaFields.length > 0) {
+                const validFormulaFields = formulaFields.filter(f => f.field && f.operation);
+                if (validFormulaFields.length === 0) {
+                    throw new Error('Please add at least one field to the formula');
+                }
+                fieldData.formulaFields = validFormulaFields;
+            }
+
+            // Add display options
+            fieldData.displayAsPrice = displayAsPrice;
+            fieldData.showOnPublicCard = showOnPublicCard;
+
             // Add vehicle field linking
             if (vehicleField) {
                 fieldData.vehicleField = vehicleField;
@@ -165,6 +181,9 @@ const Page = () => {
             setLinkedField('');
             setLinkedFields([]);
             setVehicleField('');
+            setFormulaFields([{ field: '', operation: 'add' }]);
+            setDisplayAsPrice(false);
+            setShowOnPublicCard(false);
             setRefreshKey((k) => k + 1);
         } catch (err) {
             setMessage({ type: 'error', text: err.message });
@@ -414,6 +433,94 @@ const Page = () => {
                                 </div>
                             )}
 
+                            {/* Formula fields - Only show if type is formula */}
+                            {type === 'formula' && (
+                                <div style={{border:'1px solid #fde68a', borderRadius:'8px', padding:'12px', background:'rgba(254,243,199,0.3)'}}>
+                                    <label style={{display:'block', fontSize:'var(--text-xs)', fontWeight:600, color:'#5f6368', marginBottom:'8px', textTransform:'uppercase', letterSpacing:'0.05em'}}>
+                                        Formula Builder
+                                    </label>
+                                    <p style={{fontSize:'var(--text-xs)', color:'#9aa0a6', marginBottom:'10px'}}>
+                                        Build a custom calculation with add, subtract, multiply, and divide operations.
+                                    </p>
+                                    <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
+                                        {formulaFields.map((formulaField, idx) => (
+                                            <div key={idx} style={{display:'flex', alignItems:'center', gap:'6px', padding:'8px', background:'#fff', borderRadius:'6px', border:'1px solid #e0e0e0'}}>
+                                                {idx > 0 && (
+                                                    <select
+                                                        value={formulaField.operation}
+                                                        onChange={(e) => {
+                                                            const updated = [...formulaFields];
+                                                            updated[idx].operation = e.target.value;
+                                                            setFormulaFields(updated);
+                                                        }}
+                                                        style={{padding:'6px 8px', border:'1px solid #fbbf24', borderRadius:'6px', fontSize:'11px', fontWeight:700, background:'#fffbeb', color:'#92400e', outline:'none', width:'80px'}}
+                                                    >
+                                                        <option value="add">+</option>
+                                                        <option value="subtract">−</option>
+                                                        <option value="multiply">×</option>
+                                                        <option value="divide">÷</option>
+                                                    </select>
+                                                )}
+                                                <select
+                                                    value={formulaField.field}
+                                                    onChange={(e) => {
+                                                        const updated = [...formulaFields];
+                                                        updated[idx].field = e.target.value;
+                                                        setFormulaFields(updated);
+                                                    }}
+                                                    style={{flex:1, padding:'6px 10px', border:'1px solid #e0e0e0', borderRadius:'6px', fontSize:'12px', outline:'none'}}
+                                                >
+                                                    <option value="">Select field...</option>
+                                                    {allFields.filter(f => f.type === 'number' || f.type === 'text' || f.type === 'tax' || f.type === 'sum' || f.type === 'formula').map((f) => (
+                                                        <option key={f._id} value={f.label}>
+                                                            {f.label} {f.belongsto ? `(${f.belongsto})` : ''}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                {formulaFields.length > 1 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setFormulaFields(formulaFields.filter((_, i) => i !== idx))}
+                                                        style={{padding:'6px', color:'#c5221f', background:'transparent', border:'none', cursor:'pointer', borderRadius:'4px', flexShrink:0}}
+                                                        title="Remove field"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormulaFields([...formulaFields, { field: '', operation: 'add' }])}
+                                        style={{marginTop:'8px', width:'100%', padding:'6px 12px', background:'#fffbeb', color:'#92400e', border:'1px dashed #fbbf24', borderRadius:'6px', fontSize:'12px', fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'4px'}}
+                                    >
+                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        Add Field to Formula
+                                    </button>
+                                    {formulaFields.filter(f => f.field).length > 0 && (
+                                        <div style={{marginTop:'8px', padding:'8px', background:'#fffbeb', borderRadius:'6px', border:'1px solid #fde68a'}}>
+                                            <p style={{fontSize:'10px', fontWeight:700, color:'#92400e', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'4px'}}>Preview:</p>
+                                            <p style={{fontSize:'12px', color:'#78350f', fontWeight:600}}>
+                                                {formulaFields.map((f, i) => {
+                                                    const opSymbol = f.operation === 'add' ? ' + ' : f.operation === 'subtract' ? ' − ' : f.operation === 'multiply' ? ' × ' : ' ÷ ';
+                                                    return (i === 0 ? '' : opSymbol) + (f.field || '___');
+                                                }).join('')}
+                                            </p>
+                                        </div>
+                                    )}
+                                    {allFields.filter(f => f.type === 'number' || f.type === 'text' || f.type === 'tax' || f.type === 'sum' || f.type === 'formula').length === 0 && (
+                                        <p style={{fontSize:'var(--text-xs)', color:'#9aa0a6', fontStyle:'italic', marginTop:'8px'}}>
+                                            No numeric fields available. Create number/tax/sum fields first.
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
                             {/* Is Required */}
                             <div>
                                 <span style={{display:'block', fontSize:'var(--text-xs)', fontWeight:600, color:'#5f6368', marginBottom:'8px', textTransform:'uppercase', letterSpacing:'0.05em'}}>
@@ -502,6 +609,49 @@ const Page = () => {
                                     </select>
                                 </div>
                             )}
+
+                            {/* Display Options */}
+                            <div style={{border:'1px solid #bfdbfe', borderRadius:'8px', padding:'12px', background:'rgba(219,234,254,0.3)'}}>
+                                <label style={{display:'block', fontSize:'var(--text-xs)', fontWeight:600, color:'#5f6368', marginBottom:'10px', textTransform:'uppercase', letterSpacing:'0.05em'}}>
+                                    Display Options
+                                </label>
+                                
+                                {/* Show as Price on main screen */}
+                                <label style={{display:'flex', alignItems:'start', gap:'8px', marginBottom:'10px', cursor:'pointer', padding:'8px', borderRadius:'6px', background:'#fff', border:'1px solid #e0e0e0', transition:'all 0.15s'}}>
+                                    <input
+                                        type="checkbox"
+                                        checked={displayAsPrice}
+                                        onChange={(e) => setDisplayAsPrice(e.target.checked)}
+                                        style={{marginTop:'2px', accentColor:'#1a73e8', flexShrink:0}}
+                                    />
+                                    <div>
+                                        <div style={{fontSize:'12px', fontWeight:600, color:'#202124'}}>
+                                            Display as Price
+                                        </div>
+                                        <div style={{fontSize:'11px', color:'#9aa0a6', marginTop:'2px'}}>
+                                            Use this field's value as the vehicle price on the main screen instead of "Price on Request"
+                                        </div>
+                                    </div>
+                                </label>
+
+                                {/* Show on public vehicle cards */}
+                                <label style={{display:'flex', alignItems:'start', gap:'8px', cursor:'pointer', padding:'8px', borderRadius:'6px', background:'#fff', border:'1px solid #e0e0e0', transition:'all 0.15s'}}>
+                                    <input
+                                        type="checkbox"
+                                        checked={showOnPublicCard}
+                                        onChange={(e) => setShowOnPublicCard(e.target.checked)}
+                                        style={{marginTop:'2px', accentColor:'#1a73e8', flexShrink:0}}
+                                    />
+                                    <div>
+                                        <div style={{fontSize:'12px', fontWeight:600, color:'#202124'}}>
+                                            Show on Vehicle Cards
+                                        </div>
+                                        <div style={{fontSize:'11px', color:'#9aa0a6', marginTop:'2px'}}>
+                                            Display this field on vehicle cards on the home/stock pages (below price)
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
 
                             {/* Submit */}
                             <button

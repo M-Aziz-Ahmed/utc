@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import VoiceSearchButton from '@/components/VoiceSearchButton';
 
-const FIELD_TYPES = ["text","number","boolean","password","email","date","image","file","dropdown","select-year","select-country","tax","sum"];
+const FIELD_TYPES = ["text","number","boolean","password","email","date","image","file","dropdown","select-year","select-country","tax","sum","formula"];
 const TYPE_COLORS = {
     text:'bg-blue-50 text-blue-700 border-blue-200', number:'bg-purple-50 text-purple-700 border-purple-200',
     boolean:'bg-yellow-50 text-yellow-700 border-yellow-200', password:'bg-red-50 text-red-700 border-red-200',
@@ -13,6 +13,7 @@ const TYPE_COLORS = {
     'select-country':'bg-lime-50 text-lime-700 border-lime-200',
     tax:'bg-amber-50 text-amber-700 border-amber-200',
     sum:'bg-violet-50 text-violet-700 border-violet-200',
+    formula:'bg-yellow-50 text-yellow-700 border-yellow-200',
 };
 
 const GetAllFields = ({ refreshKey, onDelete, forms }) => {
@@ -54,7 +55,7 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
     const startEdit = (f) => {
         setEditing(f._id);
         setEditDraft({ label:f.label, type:f.type, isRequired:f.isRequired??false,
-            belongsto:f.belongsto??'', options:f.options||[], newOption:'', linkedTax:f.linkedTax||'', linkedField:f.linkedField||'', linkedFields:f.linkedFields||[], vehicleField:f.vehicleField||'' });
+            belongsto:f.belongsto??'', options:f.options||[], newOption:'', linkedTax:f.linkedTax||'', linkedField:f.linkedField||'', linkedFields:f.linkedFields||[], vehicleField:f.vehicleField||'', displayAsPrice:f.displayAsPrice||false, showOnPublicCard:f.showOnPublicCard||false, formulaFields:f.formulaFields||[{field:'',operation:'add'}] });
     };
     const cancelEdit = () => { setEditing(null); setEditDraft({}); };
 
@@ -84,11 +85,19 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
             if (editDraft.type === 'sum') {
                 d.linkedFields = editDraft.linkedFields || [];
             }
+            if (editDraft.type === 'formula') {
+                d.formulaFields = (editDraft.formulaFields || []).filter(f => f.field && f.operation);
+            }
             if (editDraft.vehicleField) {
                 d.vehicleField = editDraft.vehicleField;
             } else {
                 d.vehicleField = '';
             }
+            
+            // Add display options
+            d.displayAsPrice = editDraft.displayAsPrice || false;
+            d.showOnPublicCard = editDraft.showOnPublicCard || false;
+            
             const res = await fetch(`/api/fields/${id}`, {
                 method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(d) });
             if (!res.ok) throw new Error('Failed to save');
@@ -364,6 +373,48 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                                                         {(editDraft.linkedFields||[]).length>0&&<p className="text-xs text-violet-600 mt-2 font-medium">Summing: {(editDraft.linkedFields||[]).join(' + ')}</p>}
                                                     </div>
                                                 )}
+                                                {editDraft.type==='formula' && (
+                                                    <div className="col-span-2 border-2 border-yellow-200 rounded-lg p-3 bg-yellow-50">
+                                                        <label className="text-xs font-semibold text-yellow-700 uppercase tracking-wide block mb-2">Formula Builder</label>
+                                                        <p className="text-xs text-yellow-600 mb-2">Build a custom calculation with add, subtract, multiply, and divide.</p>
+                                                        <div className="space-y-2 bg-white rounded border border-yellow-200 p-2">
+                                                            {(editDraft.formulaFields||[{field:'',operation:'add'}]).map((fField,idx)=>(
+                                                                <div key={idx} className="flex items-center gap-1">
+                                                                    {idx>0&&(
+                                                                        <select value={fField.operation} onChange={e=>{const ff=[...(editDraft.formulaFields||[])];ff[idx]={...ff[idx],operation:e.target.value};setEditDraft({...editDraft,formulaFields:ff})}}
+                                                                            className="px-1 py-1 border border-yellow-300 rounded text-xs font-bold bg-yellow-100 text-yellow-800 outline-none" style={{width:'45px'}}>
+                                                                            <option value="add">+</option>
+                                                                            <option value="subtract">−</option>
+                                                                            <option value="multiply">×</option>
+                                                                            <option value="divide">÷</option>
+                                                                        </select>
+                                                                    )}
+                                                                    <select value={fField.field} onChange={e=>{const ff=[...(editDraft.formulaFields||[])];ff[idx]={...ff[idx],field:e.target.value};setEditDraft({...editDraft,formulaFields:ff})}}
+                                                                        className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs outline-none focus:ring-1 focus:ring-yellow-400">
+                                                                        <option value="">Select field...</option>
+                                                                        {fields.filter(f=>(f.type==='number'||f.type==='text'||f.type==='tax'||f.type==='sum'||f.type==='formula')&&f._id!==editing).map(f=>
+                                                                            <option key={f._id} value={f.label}>{f.label}{f.belongsto?` (${f.belongsto})`:''}</option>
+                                                                        )}
+                                                                    </select>
+                                                                    {(editDraft.formulaFields||[]).length>1&&<button type="button" onClick={()=>setEditDraft({...editDraft,formulaFields:(editDraft.formulaFields||[]).filter((_,i)=>i!==idx)})} className="text-red-500 hover:text-red-700 px-1 text-sm">×</button>}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                        <button type="button" onClick={()=>setEditDraft({...editDraft,formulaFields:[...(editDraft.formulaFields||[{field:'',operation:'add'}]),{field:'',operation:'add'}]})}
+                                                            className="mt-2 w-full px-2 py-1 bg-yellow-100 text-yellow-700 border border-yellow-300 rounded text-xs font-semibold hover:bg-yellow-200 transition">+ Add Field</button>
+                                                        {(editDraft.formulaFields||[]).filter(f=>f.field).length>0&&(
+                                                            <div className="mt-2 p-2 bg-yellow-100 rounded border border-yellow-200">
+                                                                <p className="text-xs font-semibold text-yellow-800 mb-1">Preview:</p>
+                                                                <p className="text-xs text-yellow-900 font-mono">
+                                                                    {(editDraft.formulaFields||[]).map((f,i)=>{
+                                                                        const op=f.operation==='add'?' + ':f.operation==='subtract'?' − ':f.operation==='multiply'?' × ':' ÷ ';
+                                                                        return (i===0?'':(op))+(f.field||'___');
+                                                                    }).join('')}
+                                                                </p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
                                                 {editDraft.type!=='file'&&editDraft.type!=='image' && (
                                                     <div className="col-span-2 border-2 border-green-200 rounded-lg p-3 bg-green-50">
                                                         <label className="text-xs font-semibold text-green-700 uppercase tracking-wide block mb-2">Link to Vehicle DB Field</label>
@@ -382,6 +433,27 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                                                         </select>
                                                     </div>
                                                 )}
+                                                <div className="col-span-2 border-2 border-blue-200 rounded-lg p-3 bg-blue-50">
+                                                    <label className="text-xs font-semibold text-blue-700 uppercase tracking-wide block mb-3">Display Options</label>
+                                                    <div className="space-y-2">
+                                                        <label className="flex items-start gap-2 cursor-pointer p-2 rounded bg-white border border-blue-200 hover:border-blue-300 transition">
+                                                            <input type="checkbox" className="mt-0.5 accent-blue-600" checked={editDraft.displayAsPrice||false}
+                                                                onChange={e=>setEditDraft({...editDraft,displayAsPrice:e.target.checked})}/>
+                                                            <div>
+                                                                <div className="text-xs font-semibold text-gray-800">Display as Price</div>
+                                                                <div className="text-xs text-gray-500 mt-0.5">Use this field as the vehicle price on the main screen instead of "Price on Request"</div>
+                                                            </div>
+                                                        </label>
+                                                        <label className="flex items-start gap-2 cursor-pointer p-2 rounded bg-white border border-blue-200 hover:border-blue-300 transition">
+                                                            <input type="checkbox" className="mt-0.5 accent-blue-600" checked={editDraft.showOnPublicCard||false}
+                                                                onChange={e=>setEditDraft({...editDraft,showOnPublicCard:e.target.checked})}/>
+                                                            <div>
+                                                                <div className="text-xs font-semibold text-gray-800">Show on Vehicle Cards</div>
+                                                                <div className="text-xs text-gray-500 mt-0.5">Display this field on vehicle cards on the home/stock pages (below price)</div>
+                                                            </div>
+                                                        </label>
+                                                    </div>
+                                                </div>
                                                 <div className="col-span-2">
                                                     <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Required?</span>
                                                     <div className="flex gap-3">
@@ -426,7 +498,10 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                                                             {f.type==='select-country'&&f.options?.length>0&&<span className="text-xs text-lime-600 bg-lime-50 px-1.5 py-0.5 rounded-full">{f.options.length} countries</span>}
                                                              {f.type==='tax'&&f.linkedTax&&<span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-200">linked: {taxes.find(t=>t._id===f.linkedTax)?.name||'unknown'}</span>}
                                                              {f.type==='sum'&&f.linkedFields?.length>0&&<span className="text-xs text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded-full border border-violet-200">Σ {f.linkedFields.length} fields</span>}
+                                                             {f.type==='formula'&&f.formulaFields?.length>0&&<span className="text-xs text-yellow-600 bg-yellow-50 px-1.5 py-0.5 rounded-full border border-yellow-200">ƒ {f.formulaFields.length} fields</span>}
                                                              {f.vehicleField&&<span className="text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full border border-green-200">→ {f.vehicleField}</span>}
+                                                             {f.displayAsPrice&&<span className="text-xs text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded-full border border-blue-300 font-bold">💰 PRICE</span>}
+                                                             {f.showOnPublicCard&&<span className="text-xs text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded-full border border-indigo-300">📌 CARD</span>}
                                                         </div>
                                                     </div>
                                                 </div>

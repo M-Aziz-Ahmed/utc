@@ -1,12 +1,27 @@
 'use client'
 import Link from 'next/link'
-import { useSyncExternalStore } from 'react'
+import { useSyncExternalStore, useEffect, useState } from 'react'
 import { subscribeWishlist, getWishlistSnapshot, toggleWishlist } from '@/components/public/wishlist'
 
 export default function VehicleCard({ vehicle }) {
   const wishlist = useSyncExternalStore(subscribeWishlist, getWishlistSnapshot, () => [])
   const vehicleId = vehicle.vehicleId || vehicle._id
   const wishlisted = vehicleId ? wishlist.some(v => (v.vehicleId || v._id) === vehicleId) : false
+  const [displayFields, setDisplayFields] = useState([])
+  const [priceField, setPriceField] = useState(null)
+
+  useEffect(() => {
+    // Fetch fields marked for display
+    fetch('/api/fields')
+      .then(r => r.json())
+      .then(fields => {
+        const priceDisplayField = fields.find(f => f.displayAsPrice && vehicle[f._id])
+        const publicCardFields = fields.filter(f => f.showOnPublicCard && vehicle[f._id])
+        setPriceField(priceDisplayField)
+        setDisplayFields(publicCardFields)
+      })
+      .catch(() => {})
+  }, [vehicle])
 
   const formatPrice = (price) => {
     if (!price) return 'Price on Request'
@@ -24,6 +39,9 @@ export default function VehicleCard({ vehicle }) {
 
   const detailUrl = `/stock/${vehicleId || vehicle.slug}`
 
+  // Determine which price to display
+  const displayPrice = priceField ? vehicle[priceField._id] : vehicle.price
+
   const specs = [
     { label: 'Year', value: vehicle.year || 'N/A' },
     { label: 'Fuel Type', value: vehicle.fuelType || 'N/A' },
@@ -33,6 +51,13 @@ export default function VehicleCard({ vehicle }) {
     { label: 'Seats', value: vehicle.seats || 'N/A' },
     { label: 'Mileage', value: formatMileage(vehicle.mileage) },
   ]
+
+  const formatFieldValue = (value) => {
+    if (value === null || value === undefined) return 'N/A'
+    const num = parseFloat(value)
+    if (!isNaN(num)) return num.toLocaleString()
+    return String(value)
+  }
 
   return (
     <div className="vehicle-card">
@@ -65,7 +90,19 @@ export default function VehicleCard({ vehicle }) {
         <Link href={detailUrl}>
           <h3 className="vehicle-card-title">{vehicle.title}</h3>
         </Link>
-        <div className="vehicle-card-price">{formatPrice(vehicle.price)}</div>
+        <div className="vehicle-card-price">{formatPrice(displayPrice)}</div>
+
+        {/* Display custom fields marked for public cards */}
+        {displayFields.length > 0 && (
+          <div style={{ marginTop: '8px', marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {displayFields.map(field => (
+              <div key={field._id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '4px 8px', background: '#f9fafb', borderRadius: '4px' }}>
+                <span style={{ color: '#6b7280', fontWeight: 500 }}>{field.label}</span>
+                <span style={{ color: '#111827', fontWeight: 600 }}>{formatFieldValue(vehicle[field._id])}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="vehicle-card-specs">
           {specs.map((s) => (

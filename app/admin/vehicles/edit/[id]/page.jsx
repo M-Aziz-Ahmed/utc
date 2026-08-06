@@ -59,11 +59,47 @@ const FieldInput = ({ field, value, onChange, allFields = [], allData = {} }) =>
         )
     }
 
+    if (field.type === 'formula') {
+        const formulaFieldsArr = field.formulaFields || []
+        let result = 0
+        
+        formulaFieldsArr.forEach((formulaField, idx) => {
+            const src = allFields.find(f => f.label === formulaField.field)
+            const val = src ? (parseFloat(allData[src._id]) || 0) : 0
+            
+            if (idx === 0) {
+                result = val
+            } else {
+                switch (formulaField.operation) {
+                    case 'add':
+                        result += val
+                        break
+                    case 'subtract':
+                        result -= val
+                        break
+                    case 'multiply':
+                        result *= val
+                        break
+                    case 'divide':
+                        result = val !== 0 ? result / val : 0
+                        break
+                }
+            }
+        })
+        
+        return (
+            <div style={{ position: 'relative' }}>
+                <input readOnly value={result.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} style={{ ...base, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', fontWeight: 700, fontSize: '14px', cursor: 'default' }} />
+                <span style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', fontSize: '9px', padding: '1px 5px', borderRadius: '6px', background: '#fef3c7', color: '#92400e', fontWeight: 600, pointerEvents: 'none' }}>Formula</span>
+            </div>
+        )
+    }
+
     return <input type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'} value={value ?? ''} onChange={e => onChange(e.target.value)} required={field.isRequired} placeholder={`Enter ${field.label.toLowerCase()}`} style={base} onFocus={focus} onBlur={blur} />
 }
 
 const AddAccountFieldModal = ({ FIELD_TYPES, existingFields, onDone, onClose }) => {
-    const [field, setField] = useState({ label: '', type: 'text', isRequired: false, options: [], linkedFields: [] })
+    const [field, setField] = useState({ label: '', type: 'text', isRequired: false, options: [], linkedFields: [], formulaFields: [{ field: '', operation: 'add' }] })
     const [optInput, setOptInput] = useState('')
     const [adding, setAdding] = useState(false)
     const [msg, setMsg] = useState(null)
@@ -77,6 +113,7 @@ const AddAccountFieldModal = ({ FIELD_TYPES, existingFields, onDone, onClose }) 
             if (field.type === 'select-year') { const y = []; for (let i = new Date().getFullYear(); i >= 1950; i--) y.push(String(i)); payload.options = y }
             if (field.type === 'select-country') payload.options = COUNTRIES
             if (field.type === 'sum') payload.linkedFields = field.linkedFields
+            if (field.type === 'formula') payload.formulaFields = field.formulaFields.filter(f => f.field && f.operation)
             const res = await fetch('/api/newField', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
             const data = await res.json()
             if (!res.ok) throw new Error(data.message || 'Failed')
@@ -128,6 +165,31 @@ const AddAccountFieldModal = ({ FIELD_TYPES, existingFields, onDone, onClose }) 
                                     </label>
                                 ))}
                             </div>
+                        </div>
+                    )}
+                    {field.type === 'formula' && existingFields.length > 0 && (
+                        <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '12px' }}>
+                            <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Formula Builder</label>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                {field.formulaFields.map((fField, idx) => (
+                                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        {idx > 0 && (
+                                            <select value={fField.operation} onChange={e => setField(p => ({ ...p, formulaFields: p.formulaFields.map((f, i) => i === idx ? { ...f, operation: e.target.value } : f) }))} style={{ padding: '4px 6px', border: '1px solid #fbbf24', borderRadius: '4px', fontSize: '11px', fontWeight: 700, background: '#fef3c7', color: '#92400e', outline: 'none', width: '50px' }}>
+                                                <option value="add">+</option>
+                                                <option value="subtract">−</option>
+                                                <option value="multiply">×</option>
+                                                <option value="divide">÷</option>
+                                            </select>
+                                        )}
+                                        <select value={fField.field} onChange={e => setField(p => ({ ...p, formulaFields: p.formulaFields.map((f, i) => i === idx ? { ...f, field: e.target.value } : f) }))} style={{ flex: 1, padding: '5px 8px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '11px', outline: 'none', background: '#fff' }}>
+                                            <option value="">Select...</option>
+                                            {existingFields.filter(f => f.type === 'number' || f.type === 'text' || f.type === 'tax' || f.type === 'sum' || f.type === 'formula').map(f => <option key={f._id} value={f.label}>{f.label}</option>)}
+                                        </select>
+                                        {field.formulaFields.length > 1 && <button type="button" onClick={() => setField(p => ({ ...p, formulaFields: p.formulaFields.filter((_, i) => i !== idx) }))} style={{ padding: '4px', background: 'none', border: 'none', cursor: 'pointer', color: '#c5221f', fontSize: '14px' }}>×</button>}
+                                    </div>
+                                ))}
+                            </div>
+                            <button type="button" onClick={() => setField(p => ({ ...p, formulaFields: [...p.formulaFields, { field: '', operation: 'add' }] }))} style={{ marginTop: '6px', width: '100%', padding: '5px', background: '#fef3c7', color: '#92400e', border: '1px dashed #fbbf24', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>+ Add Field</button>
                         </div>
                     )}
                     {msg && <div style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12px', background: '#fce8e6', color: '#c5221f', border: '1px solid #f5c6c2' }}>{msg}</div>}

@@ -154,6 +154,49 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
             </div>
         )
     }
+    
+    if (field.type === 'formula') {
+        const formulaFieldsArr = field.formulaFields || []
+        let result = 0
+        const parts = []
+        
+        formulaFieldsArr.forEach((formulaField, idx) => {
+            const val = getSourceValue(formulaField.field)
+            parts.push({ label: formulaField.field, val, operation: formulaField.operation })
+            
+            if (idx === 0) {
+                result = val
+            } else {
+                switch (formulaField.operation) {
+                    case 'add':
+                        result += val
+                        break
+                    case 'subtract':
+                        result -= val
+                        break
+                    case 'multiply':
+                        result *= val
+                        break
+                    case 'divide':
+                        result = val !== 0 ? result / val : 0
+                        break
+                }
+            }
+        })
+        
+        const display = result.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        const opSymbols = { add: '+', subtract: '−', multiply: '×', divide: '÷' }
+        const title = parts.map((p, i) => 
+            `${i === 0 ? '' : opSymbols[p.operation] + ' '}${p.label}: ${p.val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        ).join('\n')
+        
+        return (
+            <div style={{ position: 'relative' }} title={title}>
+                <input readOnly value={display} style={{ ...base, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', fontWeight: 700, fontSize: '14px', cursor: 'default' }} />
+                <span style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', fontSize: '9px', padding: '1px 5px', borderRadius: '6px', background: '#fef3c7', color: '#92400e', fontWeight: 600, pointerEvents: 'none' }}>Formula</span>
+            </div>
+        )
+    }
     return <input type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'} value={value ?? ''} onChange={e => onChange(e.target.value)} required={field.isRequired} placeholder={`Enter ${field.label.toLowerCase()}`} style={base} onFocus={focus} onBlur={blur} />
 }
 
