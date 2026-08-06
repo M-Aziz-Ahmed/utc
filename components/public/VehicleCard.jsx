@@ -15,12 +15,30 @@ export default function VehicleCard({ vehicle }) {
     fetch('/api/fields')
       .then(r => r.json())
       .then(fields => {
+        console.log('=== PRICE FIELD DEBUG ===')
+        console.log('All fields:', fields.map(f => ({ id: f._id, label: f.label, displayAsPrice: f.displayAsPrice })))
+        console.log('Vehicle data keys:', Object.keys(vehicle))
+        
         // Find price field - check field._id, field.label, and sanitized label (dots removed)
         const priceDisplayField = fields.find(f => {
           if (!f.displayAsPrice) return false
           const sanitizedLabel = f.label?.replace(/\./g, '')
-          return vehicle[f._id] || vehicle[f.label] || vehicle[sanitizedLabel]
+          const hasValue = vehicle[f._id] || vehicle[f.label] || vehicle[sanitizedLabel]
+          console.log(`Checking field "${f.label}" (id: ${f._id}):`, {
+            byId: vehicle[f._id],
+            byLabel: vehicle[f.label],
+            bySanitized: vehicle[sanitizedLabel],
+            hasValue
+          })
+          return hasValue
         })
+        
+        console.log('Price field found:', priceDisplayField)
+        if (priceDisplayField) {
+          const sanitizedLabel = priceDisplayField.label?.replace(/\./g, '')
+          const value = vehicle[priceDisplayField._id] || vehicle[priceDisplayField.label] || vehicle[sanitizedLabel]
+          console.log('Price value:', value)
+        }
         
         // Find public card fields - check field._id, field.label, and sanitized label
         const publicCardFields = fields.filter(f => {
@@ -28,6 +46,9 @@ export default function VehicleCard({ vehicle }) {
           const sanitizedLabel = f.label?.replace(/\./g, '')
           return vehicle[f._id] || vehicle[f.label] || vehicle[sanitizedLabel]
         })
+        
+        console.log('Public card fields:', publicCardFields)
+        console.log('=== END DEBUG ===')
         
         setPriceField(priceDisplayField)
         setDisplayFields(publicCardFields)

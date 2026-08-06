@@ -79,7 +79,7 @@ function mapVehicleToPublic(vehicle) {
   const make = get('make')
   const model = get('model')
 
-  return {
+  const mapped = {
     vehicleId: vehicle._id?.toString(),
     stockId: get('stockId'),
     make,
@@ -117,6 +117,18 @@ function mapVehicleToPublic(vehicle) {
       return diffDays <= 14
     })(),
   }
+
+  // Include ALL dynamic fields from the vehicle object to support custom fields
+  // This ensures fields like "Final Price" or any other dynamic field are available
+  const knownKeys = new Set(Object.values(FIELD_MAPPING))
+  Object.keys(vehicle).forEach(key => {
+    // Skip internal MongoDB fields and already-mapped fields
+    if (key !== '_id' && key !== '__v' && !mapped[key] && !key.startsWith('_')) {
+      mapped[key] = vehicle[key]
+    }
+  })
+
+  return mapped
 }
 
 function buildFilterQuery(filters = {}) {
