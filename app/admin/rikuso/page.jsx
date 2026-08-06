@@ -269,14 +269,36 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
                 {descLine && <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#64748b' }}>{descLine}</p>}
             </div>
 
-            {/* Editable Admin Fields */}
-            {adminFields.length > 0 && (
+            {/* Editable Admin Fields + Presold Info */}
+            {(adminFields.length > 0 || isPresold) && (
                 <div style={{ padding: '8px 10px', borderBottom: '1px solid #f0f4f8', background: '#fffbf0' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '6px' }}>
                         <svg style={{ width: '10px', height: '10px', color: '#92400e' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                         <span style={{ fontSize: '9px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Quick Edit</span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        {/* Show presold consignee info if vehicle is presold */}
+                        {isPresold && vehicle.consignee && (() => {
+                            const consignee = consignees.find(c => c._id === vehicle.consignee);
+                            return consignee ? (
+                                <div key="presold-info" style={{ padding: '6px 8px', background: '#e8f0fe', borderRadius: '6px', border: '1px solid #1a73e8' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div>
+                                            <div style={{ fontSize: '9px', fontWeight: 700, color: '#1a73e8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Presold To</div>
+                                            <div style={{ fontSize: '11px', fontWeight: 700, color: '#0f172a', marginTop: '2px' }}>
+                                                {consignee.name}
+                                                {consignee.purchasedAmount && <span style={{ color: '#059669', marginLeft: '6px' }}>· ${Number(consignee.purchasedAmount).toLocaleString()}</span>}
+                                            </div>
+                                        </div>
+                                        <button onClick={() => onPresold(vehicle)} style={{ background: 'none', border: 'none', color: '#1a73e8', cursor: 'pointer', fontSize: '10px', fontWeight: 600, padding: '2px 4px' }}>
+                                            Edit
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : null;
+                        })()}
+                        
+                        {/* Regular admin fields */}
                         {adminFields.map(field => (
                             <div key={field._id}>
                                 <label style={{ display: 'block', fontSize: '8px', fontWeight: 700, color: '#78350f', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>{field.label}</label>
