@@ -61,12 +61,20 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
             const lt = taxes.find(t => t._id === src.linkedTax)
             if (!lt) return 0
             
-            // Find the linked field
-            const linkedField = (allFields || []).find(f => f.label === src.linkedField)
-            if (!linkedField) return 0
+            // Get the source value directly from the appropriate data store
+            // Don't recursively call getSourceValue to avoid infinite loops
+            const linkedFieldObj = (allFields || []).find(f => f.label === src.linkedField)
+            if (!linkedFieldObj) return 0
             
-            // Recursively get the source value using the linked field's context
-            const sv = getSourceValue(src.linkedField, linkedField.belongsto, visited, insideFormula)
+            const data = linkedFieldObj.belongsto === 'add-vehicles' ? (vehicleData || {}) : (accountData || {})
+            
+            // Try to get the value from any possible key
+            let sv = data[linkedFieldObj._id]
+            if (sv === undefined || sv === null || sv === '') sv = data[linkedFieldObj.label]
+            if (sv === undefined || sv === null || sv === '') sv = data[linkedFieldObj.label?.replace(/\./g, '')]
+            if (sv === undefined || sv === null || sv === '') sv = data[linkedFieldObj.label?.replace(/\s+/g, '_')]
+            
+            sv = toNum(sv)
             
             if (sv <= 0) return 0
             if (lt.type === 'percentage') return sv * lt.rate / 100
@@ -110,15 +118,9 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
         
         // Try ALL possible keys to find the value
         let value = data[src._id]
-        if (value === undefined || value === null || value === '') {
-            value = data[src.label]
-        }
-        if (value === undefined || value === null || value === '') {
-            value = data[src.label?.replace(/\./g, '')]
-        }
-        if (value === undefined || value === null || value === '') {
-            value = data[src.label?.replace(/\s+/g, '_')]
-        }
+        if (value === undefined || value === null || value === '') value = data[src.label]
+        if (value === undefined || value === null || value === '') value = data[src.label?.replace(/\./g, '')]
+        if (value === undefined || value === null || value === '') value = data[src.label?.replace(/\s+/g, '_')]
         
         return toNum(value)
     }
