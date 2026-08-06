@@ -165,7 +165,39 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
     onAllocChange, onRikusoChange, onPresold, onRemovePresold, onExportSelect }) => {
     const [imgIdx, setImgIdx] = useState(0)
     const [hov, setHov]       = useState(false)
+    const [editableValues, setEditableValues] = useState({})
+    const [saving, setSaving] = useState(false)
     const imgs = getVehicleImages(vehicle)
+
+    // Initialize editable values from vehicle
+    useEffect(() => {
+        const adminFields = fields.filter(f => f.showOnAdminCard)
+        const initial = {}
+        adminFields.forEach(f => {
+            initial[f._id] = vehicle[f._id] ?? vehicle[f.label] ?? ''
+        })
+        setEditableValues(initial)
+    }, [vehicle, fields])
+
+    const handleFieldSave = async (fieldId, value) => {
+        setSaving(true)
+        try {
+            const field = fields.find(f => f._id === fieldId)
+            const payload = { vehicleId: vehicle._id, [fieldId]: value }
+            if (field?.label) payload[field.label] = value
+            
+            const res = await fetch('/api/vehicles', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            if (!res.ok) throw new Error('Failed to save')
+        } catch (e) {
+            alert('Failed to save field: ' + e.message)
+        } finally {
+            setSaving(false)
+        }
+    }
 
     const lotField   = fields.find(f => f.label?.toLowerCase().includes('lot'))
     const lotVal     = lotField ? (vehicle[lotField._id] || vehicle[lotField.label]) : null
@@ -185,6 +217,9 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
         if (Array.isArray(val) || (typeof val === 'object' && val !== null)) return null
         return { label: f.label, value: String(val) }
     }).filter(Boolean)
+
+    // Get admin editable fields
+    const adminFields = fields.filter(f => f.showOnAdminCard && f.belongsto === 'add-vehicles').sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 
     // status dots
     const alloc  = (vehicle.allocation || '').toLowerCase()
@@ -240,6 +275,41 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
                 <p style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: '#0f172a', lineHeight: 1.25 }}>{nameLine || '—'}</p>
                 {descLine && <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#64748b' }}>{descLine}</p>}
             </div>
+
+            {/* Editable Admin Fields */}
+            {adminFields.length > 0 && (
+                <div style={{ padding: '8px 10px', borderBottom: '1px solid #f0f4f8', background: '#fffbf0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '6px' }}>
+                        <svg style={{ width: '10px', height: '10px', color: '#92400e' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                        <span style={{ fontSize: '9px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Quick Edit</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        {adminFields.map(field => (
+                            <div key={field._id}>
+                                <label style={{ display: 'block', fontSize: '8px', fontWeight: 700, color: '#78350f', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>{field.label}</label>
+                                <input
+                                    type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+                                    value={editableValues[field._id] ?? ''}
+                                    onChange={e => setEditableValues(p => ({ ...p, [field._id]: e.target.value }))}
+                                    onBlur={e => {
+                                        if (e.target.value !== (vehicle[field._id] ?? vehicle[field.label] ?? '')) {
+                                            handleFieldSave(field._id, e.target.value)
+                                        }
+                                    }}
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter') {
+                                            e.target.blur()
+                                        }
+                                    }}
+                                    disabled={saving}
+                                    style={{ width: '100%', padding: '4px 6px', border: '1px solid #fcd34d', borderRadius: '4px', fontSize: '11px', outline: 'none', background: '#fff', color: '#202124', fontWeight: 600 }}
+                                    placeholder={`Enter ${field.label.toLowerCase()}...`}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* specs grid — same as VehicleCard */}
             {entries.length > 0 && (
@@ -322,6 +392,8 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
 // ── List row ──────────────────────────────────────────────────────────────────
 const AllocRow = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
     onAllocChange, onRikusoChange, onPresold, onRemovePresold, onExportSelect }) => {
+    const [editableValues, setEditableValues] = useState({})
+    const [saving, setSaving] = useState(false)
     const imgs      = getVehicleImages(vehicle)
     const isPresold = vehicle.allocationStatus || false
     const alloc     = (allocations[vehicle._id] || '').toLowerCase()
@@ -331,6 +403,36 @@ const AllocRow = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
     const lotVal     = lotField ? (vehicle[lotField._id] || vehicle[lotField.label]) : null
     const headerLine = [vehicle.auctionGroup, vehicle.auctionVenue, lotVal].filter(Boolean).join(' / ')
     const nameLine   = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ')
+
+    // Initialize editable values from vehicle
+    useEffect(() => {
+        const adminFields = fields.filter(f => f.showOnAdminCard)
+        const initial = {}
+        adminFields.forEach(f => {
+            initial[f._id] = vehicle[f._id] ?? vehicle[f.label] ?? ''
+        })
+        setEditableValues(initial)
+    }, [vehicle, fields])
+
+    const handleFieldSave = async (fieldId, value) => {
+        setSaving(true)
+        try {
+            const field = fields.find(f => f._id === fieldId)
+            const payload = { vehicleId: vehicle._id, [fieldId]: value }
+            if (field?.label) payload[field.label] = value
+            
+            const res = await fetch('/api/vehicles', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            if (!res.ok) throw new Error('Failed to save')
+        } catch (e) {
+            alert('Failed to save field: ' + e.message)
+        } finally {
+            setSaving(false)
+        }
+    }
 
     // same card fields logic
     const cardFields = fields
@@ -343,6 +445,9 @@ const AllocRow = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
         if (Array.isArray(val) || (typeof val === 'object' && val !== null)) return null
         return { label: f.label, value: String(val) }
     }).filter(Boolean)
+
+    // Get admin editable fields
+    const adminFields = fields.filter(f => f.showOnAdminCard && f.belongsto === 'add-vehicles').sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 
     return (
         <tr style={{ borderBottom: '1px solid #f0f4f8', transition: 'background 0.1s' }}
@@ -370,13 +475,45 @@ const AllocRow = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
                 {vehicle.modelDescription && <div style={{ fontSize: '10px', color: '#94a3b8' }}>{vehicle.modelDescription}</div>}
             </td>
             {/* Dynamic field values */}
-            {entries.slice(0, 5).map((e, i) => (
-                <td key={i} style={{ padding: '5px 8px', minWidth: '70px' }}>
-                    <div style={{ fontSize: '9px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1.2 }}>{e.label}</div>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap' }}>{e.value}</div>
-                </td>
-            ))}
-            {entries.length < 5 && Array.from({ length: 5 - entries.length }).map((_, i) => <td key={`p${i}`} style={{ padding: '5px 8px' }} />)}
+            {/* Show admin editable fields if any, otherwise show regular card fields */}
+            {adminFields.length > 0 ? (
+                <>
+                    {adminFields.slice(0, 5).map(field => (
+                        <td key={field._id} style={{ padding: '5px 8px', minWidth: '70px', background: '#fffbf0' }}>
+                            <div style={{ fontSize: '9px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1.2, marginBottom: '2px' }}>{field.label}</div>
+                            <input
+                                type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+                                value={editableValues[field._id] ?? ''}
+                                onChange={e => setEditableValues(p => ({ ...p, [field._id]: e.target.value }))}
+                                onBlur={e => {
+                                    if (e.target.value !== (vehicle[field._id] ?? vehicle[field.label] ?? '')) {
+                                        handleFieldSave(field._id, e.target.value)
+                                    }
+                                }}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter') {
+                                        e.target.blur()
+                                    }
+                                }}
+                                disabled={saving}
+                                style={{ width: '100%', padding: '3px 5px', border: '1px solid #fcd34d', borderRadius: '4px', fontSize: '11px', outline: 'none', background: '#fff', color: '#202124', fontWeight: 600 }}
+                                placeholder={`${field.label}...`}
+                            />
+                        </td>
+                    ))}
+                    {adminFields.length < 5 && Array.from({ length: 5 - adminFields.length }).map((_, i) => <td key={`p${i}`} style={{ padding: '5px 8px' }} />)}
+                </>
+            ) : (
+                <>
+                    {entries.slice(0, 5).map((e, i) => (
+                        <td key={i} style={{ padding: '5px 8px', minWidth: '70px' }}>
+                            <div style={{ fontSize: '9px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1.2 }}>{e.label}</div>
+                            <div style={{ fontSize: '11px', fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap' }}>{e.value}</div>
+                        </td>
+                    ))}
+                    {entries.length < 5 && Array.from({ length: 5 - entries.length }).map((_, i) => <td key={`p${i}`} style={{ padding: '5px 8px' }} />)}
+                </>
+            )}
             {/* Status dots */}
             <td style={{ padding: '5px 8px', width: '60px' }}>
                 <div style={{ display: 'flex', gap: '3px', alignItems: 'center', flexWrap: 'wrap' }}>
