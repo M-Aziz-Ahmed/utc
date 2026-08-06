@@ -159,6 +159,7 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
     const [imgIdx, setImgIdx] = useState(0)
     const [hov, setHov]       = useState(false)
     const [editableValues, setEditableValues] = useState({})
+    const [editingField, setEditingField] = useState(null)
     const [saving, setSaving] = useState(false)
     const imgs = getVehicleImages(vehicle)
 
@@ -304,29 +305,59 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
                         })()}
                         
                         {/* Regular admin fields */}
-                        {adminFields.map(field => (
+                        {adminFields.map(field => {
+                            const currentVal = editableValues[field._id] ?? ''
+                            const hasValue = currentVal !== '' && currentVal !== null && currentVal !== undefined
+                            const isEditing = editingField === field._id
+                            
+                            const formatDisplayValue = (v) => {
+                                if (v === '' || v === null || v === undefined) return null
+                                const num = parseFloat(v)
+                                if (!isNaN(num) && field.type === 'number') return `$${num.toLocaleString()}`
+                                return String(v)
+                            }
+                            
+                            return (
                             <div key={field._id}>
                                 <label style={{ display: 'block', fontSize: '8px', fontWeight: 700, color: '#78350f', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>{field.label}</label>
-                                <input
-                                    type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
-                                    value={editableValues[field._id] ?? ''}
-                                    onChange={e => setEditableValues(p => ({ ...p, [field._id]: e.target.value }))}
-                                    onBlur={e => {
-                                        if (e.target.value !== (vehicle[field._id] ?? vehicle[field.label] ?? '')) {
-                                            handleFieldSave(field._id, e.target.value)
-                                        }
-                                    }}
-                                    onKeyDown={e => {
-                                        if (e.key === 'Enter') {
-                                            e.target.blur()
-                                        }
-                                    }}
-                                    disabled={saving}
-                                    style={{ width: '100%', padding: '4px 6px', border: '1px solid #fcd34d', borderRadius: '4px', fontSize: '11px', outline: 'none', background: '#fff', color: '#202124', fontWeight: 600 }}
-                                    placeholder={`Enter ${field.label.toLowerCase()}...`}
-                                />
+                                
+                                {hasValue && !isEditing ? (
+                                    // Show value as read-only display with edit button
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 6px', border: '1px solid #fcd34d', borderRadius: '4px', background: '#fff', cursor: 'pointer' }}
+                                        onClick={() => setEditingField(field._id)}>
+                                        <span style={{ flex: 1, fontSize: '12px', fontWeight: 700, color: '#92400e' }}>
+                                            {formatDisplayValue(currentVal)}
+                                        </span>
+                                        <svg style={{ width: '10px', height: '10px', color: '#78350f', flexShrink: 0 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                    </div>
+                                ) : (
+                                    // Show editable input
+                                    <input
+                                        autoFocus={isEditing}
+                                        type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+                                        value={currentVal}
+                                        onChange={e => setEditableValues(p => ({ ...p, [field._id]: e.target.value }))}
+                                        onBlur={e => {
+                                            setEditingField(null)
+                                            const original = vehicle[field._id] ?? vehicle[field.label] ?? ''
+                                            if (String(e.target.value) !== String(original)) {
+                                                handleFieldSave(field._id, e.target.value)
+                                            }
+                                        }}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter') e.target.blur()
+                                            if (e.key === 'Escape') { setEditingField(null); setEditableValues(p => ({ ...p, [field._id]: vehicle[field._id] ?? vehicle[field.label] ?? '' })) }
+                                        }}
+                                        disabled={saving}
+                                        style={{ width: '100%', padding: '4px 6px', border: '1px solid #fbbf24', borderRadius: '4px', fontSize: '11px', outline: 'none', background: '#fff', color: '#202124', fontWeight: 600, boxSizing: 'border-box' }}
+                                        placeholder={`Enter ${field.label.toLowerCase()}...`}
+                                    />
+                                )}
                             </div>
-                        ))}
+                            )
+                        })}
                     </div>
                 </div>
             )}
