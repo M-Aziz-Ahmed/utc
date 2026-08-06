@@ -164,11 +164,66 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
     const imgs = getVehicleImages(vehicle)
 
     // Initialize editable values from vehicle
+    // For sum/formula fields, compute the value from linked fields
     useEffect(() => {
         const adminFields = fields.filter(f => f.showOnAdminCard)
+        
+        const toNum = (v) => {
+            if (v === null || v === undefined || v === '') return 0
+            const n = parseFloat(String(v).replace(/[^0-9.\-]/g, ''))
+            return isNaN(n) ? 0 : n
+        }
+        
+        const computeFieldValue = (field, visited = new Set()) => {
+            if (visited.has(field._id)) return 0
+            visited.add(field._id)
+            
+            // Vehicle-linked field
+            if (field.vehicleField && vehicle) {
+                const raw = vehicle[field.vehicleField]
+                return toNum(raw && typeof raw === 'object' ? raw.name : raw)
+            }
+            
+            // Sum field - compute from linked fields
+            if (field.type === 'sum') {
+                return (field.linkedFields || []).reduce((acc, label) => {
+                    const linked = fields.find(f => f.label === label)
+                    if (!linked) return acc
+                    return acc + computeFieldValue(linked, new Set(visited))
+                }, 0)
+            }
+            
+            // Formula field - compute from formula fields
+            if (field.type === 'formula') {
+                let result = null
+                for (const ff of (field.formulaFields || [])) {
+                    const linked = fields.find(f => f.label === ff.field)
+                    if (!linked) continue
+                    const val = computeFieldValue(linked, new Set(visited))
+                    if (result === null) { result = val; continue }
+                    switch (ff.operation || 'add') {
+                        case 'add': result += val; break
+                        case 'subtract': result -= val; break
+                        case 'multiply': result *= val; break
+                        case 'divide': result = val !== 0 ? result / val : 0; break
+                    }
+                }
+                return result ?? 0
+            }
+            
+            // Regular field - read from vehicle document
+            const val = vehicle[field._id] ?? vehicle[field.label] ?? vehicle[field.label?.replace(/\./g, '')]
+            return toNum(val)
+        }
+        
         const initial = {}
         adminFields.forEach(f => {
-            initial[f._id] = vehicle[f._id] ?? vehicle[f.label] ?? ''
+            if (f.type === 'sum' || f.type === 'formula') {
+                const computed = computeFieldValue(f)
+                initial[f._id] = computed > 0 ? computed : ''
+            } else {
+                initial[f._id] = vehicle[f._id] ?? vehicle[f.label] ?? vehicle[f.label?.replace(/\./g, '')] ?? ''
+            }
         })
         setEditableValues(initial)
     }, [vehicle, fields])
