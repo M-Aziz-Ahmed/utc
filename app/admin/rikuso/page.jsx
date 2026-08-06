@@ -211,10 +211,8 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
         return { label: f.label, value: String(val) }
     }).filter(Boolean)
 
-    // Get admin editable fields
-    const adminFields = fields.filter(f => f.showOnAdminCard && f.belongsto === 'add-vehicles').sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-
-    // status dots
+    // Get admin editable fields - include all contexts to support fields from any form
+    const adminFields = fields.filter(f => f.showOnAdminCard).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     const alloc  = (vehicle.allocation || '').toLowerCase()
     const rikuso = !!vehicle.rikusoStatus
 
@@ -461,8 +459,8 @@ const AllocRow = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
         return { label: f.label, value: String(val) }
     }).filter(Boolean)
 
-    // Get admin editable fields
-    const adminFields = fields.filter(f => f.showOnAdminCard && f.belongsto === 'add-vehicles').sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    // Get admin editable fields - include all contexts to support fields from any form
+    const adminFields = fields.filter(f => f.showOnAdminCard).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 
     return (
         <tr style={{ borderBottom: '1px solid #f0f4f8', transition: 'background 0.1s' }}
@@ -629,7 +627,7 @@ const RikusoManagementPage = () => {
         ]).then(([v, f, m, c]) => {
             const vs = Array.isArray(v) ? v : []
             setVehicles(vs)
-            setFields(Array.isArray(f) ? f.filter(fi => fi.belongsto === 'add-vehicles') : [])
+            setFields(Array.isArray(f) ? f : [])  // Load ALL fields regardless of belongsto
             setRikusoCompanies(Array.isArray(m) ? m.filter(x => x.isRikusoCompany) : [])
             setConsignees(Array.isArray(c) ? c : [])
             const init = {}
