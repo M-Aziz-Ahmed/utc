@@ -59,7 +59,9 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
         // Handle tax calculation fields
         if (src.type === 'tax') {
             const lt = taxes.find(t => t._id === src.linkedTax)
-            const sv = getSourceValue(src.linkedField, src.belongsto, visited)
+            // Find the linked field and use its own belongsto context
+            const linkedField = (allFields || []).find(f => f.label === src.linkedField)
+            const sv = linkedField ? getSourceValue(src.linkedField, linkedField.belongsto, visited) : 0
             if (!lt || sv <= 0) return 0
             if (lt.type === 'percentage') return sv * lt.rate / 100
             if (lt.type === 'multiplier') return sv * lt.rate
