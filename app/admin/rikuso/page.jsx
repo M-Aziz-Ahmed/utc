@@ -177,7 +177,14 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
         try {
             const field = fields.find(f => f._id === fieldId)
             const payload = { vehicleId: vehicle._id, [fieldId]: value }
-            if (field?.label) payload[field.label] = value
+            if (field?.label) {
+                payload[field.label] = value
+                // Also save with sanitized label (dots removed) to match MongoDB storage
+                const sanitizedLabel = field.label.replace(/\./g, '')
+                if (sanitizedLabel !== field.label) {
+                    payload[sanitizedLabel] = value
+                }
+            }
             
             const res = await fetch('/api/vehicles', {
                 method: 'PATCH',
@@ -432,7 +439,14 @@ const AllocRow = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
         try {
             const field = fields.find(f => f._id === fieldId)
             const payload = { vehicleId: vehicle._id, [fieldId]: value }
-            if (field?.label) payload[field.label] = value
+            if (field?.label) {
+                payload[field.label] = value
+                // Also save with sanitized label (dots removed) to match MongoDB storage
+                const sanitizedLabel = field.label.replace(/\./g, '')
+                if (sanitizedLabel !== field.label) {
+                    payload[sanitizedLabel] = value
+                }
+            }
             
             const res = await fetch('/api/vehicles', {
                 method: 'PATCH',
