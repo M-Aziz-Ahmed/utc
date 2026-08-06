@@ -74,18 +74,7 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
             return toNum(lt.rate)
         }
         
-        // Handle sum fields
-        // If we're inside a formula calculation, try to use stored value first to avoid recursion issues
-        if (src.type === 'sum' && insideFormula) {
-            const data = src.belongsto === 'add-vehicles' ? (vehicleData || {}) : (accountData || {})
-            const storedValue = data[src._id] ?? data[src.label] ?? data[src.label?.replace(/\./g, '')]
-            // If we have a stored value, use it; otherwise recalculate
-            if (storedValue !== undefined && storedValue !== null && storedValue !== '') {
-                return toNum(storedValue)
-            }
-        }
-        
-        // Handle sum fields - ALWAYS recalculate if not inside formula or no stored value
+        // Handle sum fields - ALWAYS recalculate to get fresh values
         if (src.type === 'sum') {
             return (src.linkedFields || []).reduce((acc, label) => {
                 const linkedField = (allFields || []).find(f => f.label === label)
@@ -118,8 +107,19 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
         
         // For regular fields, determine which data source to use based on field's belongsto
         const data = src.belongsto === 'add-vehicles' ? (vehicleData || {}) : (accountData || {})
-        // Try multiple possible keys: field ID, label, or sanitized label
-        const value = data[src._id] ?? data[src.label] ?? data[src.label?.replace(/\./g, '')]
+        
+        // Try ALL possible keys to find the value
+        let value = data[src._id]
+        if (value === undefined || value === null || value === '') {
+            value = data[src.label]
+        }
+        if (value === undefined || value === null || value === '') {
+            value = data[src.label?.replace(/\./g, '')]
+        }
+        if (value === undefined || value === null || value === '') {
+            value = data[src.label?.replace(/\s+/g, '_')]
+        }
+        
         return toNum(value)
     }
 
