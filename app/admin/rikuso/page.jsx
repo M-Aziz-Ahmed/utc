@@ -369,7 +369,11 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
                             const formatDisplayValue = (v) => {
                                 if (v === '' || v === null || v === undefined) return null
                                 const num = parseFloat(v)
-                                if (!isNaN(num) && field.type === 'number') return `$${num.toLocaleString()}`
+                                if (!isNaN(num)) {
+                                    if (Math.abs(num) >= 1_000_000) return `${(num / 1_000_000).toFixed(2).replace(/\.?0+$/, '')}M`
+                                    if (Math.abs(num) >= 1_000) return `${(num / 1_000).toFixed(1).replace(/\.?0+$/, '')}K`
+                                    return num.toLocaleString()
+                                }
                                 return String(v)
                             }
                             
