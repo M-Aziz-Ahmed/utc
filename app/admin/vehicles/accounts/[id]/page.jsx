@@ -43,95 +43,58 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
         return isNaN(n) ? 0 : n
     }
 
-    const getSourceValue = (sourceFieldLabel, contextBelongsto = field.belongsto, visited = new Set(), insideFormula = false) => {
-        // Try to find field in specified context first, then in any context
+    const getSourceValue = (sourceFieldLabel, contextBelongsto = field.belongsto, visited = new Set()) => {
+        // Find the field definition
         let src = (allFields || []).find(f => f.label === sourceFieldLabel && f.belongsto === contextBelongsto)
         if (!src) src = (allFields || []).find(f => f.label === sourceFieldLabel)
         if (!src || visited.has(src._id)) return 0
         visited.add(src._id)
-        
-        // Handle vehicle fields
+
+        // ── Vehicle-linked field: always compute from vehicle document ──────────
         if (src.vehicleField && vehicle) {
             const raw = vehicle[src.vehicleField]
             return toNum(raw && typeof raw === 'object' ? raw.name : raw)
         }
-        
-        // Handle tax calculation fields
+
+        // ── Tax field: calculate from its linked source field ──────────────────
         if (src.type === 'tax') {
             const lt = taxes.find(t => t._id === src.linkedTax)
             if (!lt) return 0
-            
-            // Get the source value - use the same logic as regular field rendering
-            const linkedFieldObj = (allFields || []).find(f => f.label === src.linkedField)
-            if (!linkedFieldObj) return 0
-            
-            // If the linked field is a vehicle-linked field, compute from vehicleData
-            if (linkedFieldObj.vehicleField && vehicle) {
-                const raw = vehicle[linkedFieldObj.vehicleField]
-                const sv = toNum(raw && typeof raw === 'object' ? raw.name : raw)
-                if (sv <= 0) return 0
-                if (lt.type === 'percentage') return sv * lt.rate / 100
-                if (lt.type === 'multiplier') return sv * lt.rate
-                return toNum(lt.rate)
-            }
-
-            // Otherwise read from the appropriate data store
-            const data = linkedFieldObj.belongsto === 'add-vehicles' ? (vehicleData || {}) : (accountData || {})
-            let sv = data[linkedFieldObj._id]
-            if (sv === undefined || sv === null || sv === '') sv = data[linkedFieldObj.label]
-            if (sv === undefined || sv === null || sv === '') sv = data[linkedFieldObj.label?.replace(/\./g, '')]
-            sv = toNum(sv)
-            
+            const sv = getSourceValue(src.linkedField, null, new Set(visited))   // fresh visited set so tax can resolve its source
             if (sv <= 0) return 0
             if (lt.type === 'percentage') return sv * lt.rate / 100
             if (lt.type === 'multiplier') return sv * lt.rate
             return toNum(lt.rate)
         }
-        
-        // Handle sum fields - ALWAYS recalculate to get fresh values
+
+        // ── Sum field: recalculate from all linked fields ───────────────────────
         if (src.type === 'sum') {
             return (src.linkedFields || []).reduce((acc, label) => {
-                const linkedField = (allFields || []).find(f => f.label === label)
-                if (!linkedField) return acc
-                return acc + getSourceValue(label, linkedField.belongsto, visited, insideFormula)
+                return acc + getSourceValue(label, null, new Set(visited))
             }, 0)
         }
-        
-        // Handle formula fields - ALWAYS recalculate instead of using stored value
+
+        // ── Formula field: recalculate ──────────────────────────────────────────
         if (src.type === 'formula') {
-            const formulaFieldsArr = src.formulaFields || []
             let result = null
-            formulaFieldsArr.forEach((formulaField, idx) => {
-                const val = getSourceValue(formulaField.field, src.belongsto, visited, true) // Mark as inside formula
-                if (result === null) {
-                    result = val
-                } else {
-                    const op = formulaField.operation || 'add'
-                    switch (op) {
-                        case 'add': result = result + val; break
-                        case 'subtract': result = result - val; break
-                        case 'multiply': result = result * val; break
-                        case 'divide': result = val !== 0 ? result / val : 0; break
-                        default: result = result + val; break
-                    }
+            for (const ff of (src.formulaFields || [])) {
+                const val = getSourceValue(ff.field, null, new Set(visited))
+                if (result === null) { result = val; continue }
+                switch (ff.operation || 'add') {
+                    case 'add':      result += val; break
+                    case 'subtract': result -= val; break
+                    case 'multiply': result *= val; break
+                    case 'divide':   result = val !== 0 ? result / val : 0; break
+                    default:         result += val
                 }
-            })
-            return result === null ? 0 : result
+            }
+            return result ?? 0
         }
-        
-        // For regular fields, determine which data source to use based on field's belongsto
-        // If it's a vehicle-linked field, compute from vehicle data
-        if (src.vehicleField && vehicle) {
-            const raw = vehicle[src.vehicleField]
-            return toNum(raw && typeof raw === 'object' ? raw.name : raw)
-        }
-        
+
+        // ── Regular field: read from appropriate data store ────────────────────
         const data = src.belongsto === 'add-vehicles' ? (vehicleData || {}) : (accountData || {})
-        let value = data[src._id]
-        if (value === undefined || value === null || value === '') value = data[src.label]
-        if (value === undefined || value === null || value === '') value = data[src.label?.replace(/\./g, '')]
-        if (value === undefined || value === null || value === '') value = data[src.label?.replace(/\s+/g, '_')]
-        return toNum(value)
+        const val = data[src._id] ?? data[src.label] ?? data[src.label?.replace(/\./g, '')]
+        return toNum(val)
     }
 
     if (field.vehicleField && vehicle) {
