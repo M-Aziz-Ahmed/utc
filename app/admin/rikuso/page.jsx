@@ -110,14 +110,7 @@ const AllocControls = ({ vehicle, rikusoCompanies, consignees, allocations,
                 {ALLOC_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
 
-            {/* Export / Khitai details badge — shown when set */}
-            {(alloc === 'export' || alloc === 'khitai') && vehicle.exportCountry && (
-                <div style={{ padding: '4px 8px', background: '#e8f0fe', borderRadius: '6px', fontSize: '11px', color: '#1a73e8', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 600 }}>{alloc === 'export' ? 'Export' : 'Khitai'} / {vehicle.exportCountry}</span>
-                    <button onClick={() => onExportSelect(vehicle, alloc)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1a73e8', fontSize: '10px', fontWeight: 600, padding: '0 2px' }}>Edit</button>
-                </div>
-            )}
+            {/* Warning if country not set */}
             {(alloc === 'export' || alloc === 'khitai') && !vehicle.exportCountry && (
                 <button onClick={() => onExportSelect(vehicle, alloc)}
                     style={{ padding: '4px 8px', background: '#fce8e6', border: '1px dashed #f5c6c2', borderRadius: '6px', fontSize: '11px', color: '#c5221f', cursor: 'pointer', fontWeight: 500, textAlign: 'left' }}>
@@ -352,12 +345,12 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                         {[
-                            { label: 'Export', active: alloc === 'export' },
-                            { label: 'Khitai', active: alloc === 'khitai' },
+                            { label: alloc === 'export' && vehicle.exportCountry ? `Export / ${vehicle.exportCountry}` : 'Export', active: alloc === 'export', onClick: alloc === 'export' && vehicle.exportCountry ? () => onExportSelect(vehicle, 'export') : undefined },
+                            { label: alloc === 'khitai' && vehicle.exportCountry ? `Khitai / ${vehicle.exportCountry}` : 'Khitai', active: alloc === 'khitai', onClick: alloc === 'khitai' && vehicle.exportCountry ? () => onExportSelect(vehicle, 'khitai') : undefined },
                             { label: 'Resale', active: alloc === 'resale-to-auction' },
                             { label: 'Rikso',  active: rikuso },
                         ].map(s => (
-                            <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: s.onClick ? 'pointer' : 'default' }} onClick={s.onClick}>
                                 <span style={{ width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0, background: s.active ? '#ef4444' : '#e2e8f0' }} />
                                 <span style={{ fontSize: '10px', fontWeight: s.active ? 700 : 400, color: s.active ? '#dc2626' : '#94a3b8' }}>{s.label}</span>
                             </div>
@@ -518,15 +511,18 @@ const AllocRow = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
             <td style={{ padding: '5px 8px', width: '60px' }}>
                 <div style={{ display: 'flex', gap: '3px', alignItems: 'center', flexWrap: 'wrap' }}>
                     {[
-                        { label: 'E', active: alloc === 'export', title: 'Export' },
-                        { label: 'K', active: alloc === 'khitai', title: 'Khitai' },
+                        { label: alloc === 'export' && vehicle.exportCountry ? `E/${vehicle.exportCountry}` : 'E', active: alloc === 'export', title: alloc === 'export' && vehicle.exportCountry ? `Export / ${vehicle.exportCountry}` : 'Export', onClick: alloc === 'export' && vehicle.exportCountry ? () => onExportSelect(vehicle, 'export') : undefined },
+                        { label: alloc === 'khitai' && vehicle.exportCountry ? `K/${vehicle.exportCountry}` : 'K', active: alloc === 'khitai', title: alloc === 'khitai' && vehicle.exportCountry ? `Khitai / ${vehicle.exportCountry}` : 'Khitai', onClick: alloc === 'khitai' && vehicle.exportCountry ? () => onExportSelect(vehicle, 'khitai') : undefined },
                         { label: 'R', active: alloc === 'resale-to-auction', title: 'Resale' },
                         { label: '⚙', active: rikuso, title: 'Rikuso' },
                         { label: 'P', active: isPresold, title: 'Presold' },
                         { label: 'I', active: !!vehicle.physicalIn, title: 'IGP' },
                         { label: 'O', active: !!vehicle.physicalOut, title: 'OGP' },
-                    ].map(s => (
-                        <span key={s.label} title={s.title} style={{ width: '14px', height: '14px', borderRadius: '3px', fontSize: '8px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', background: s.active ? '#1a73e8' : '#f1f3f4', color: s.active ? '#fff' : '#9aa0a6' }}>{s.label}</span>
+                    ].map((s, idx) => (
+                        <span key={idx} title={s.title} onClick={s.onClick} style={{ width: s.label.includes('/') ? 'auto' : '14px', minWidth: '14px', height: '14px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '3px', fontSize: '8px', fontWeight: 700, background: s.active ? '#dc2626' : '#e2e8f0', color: s.active ? '#fff' : '#94a3b8', padding: s.label.includes('/') ? '0 3px' : '0', cursor: s.onClick ? 'pointer' : 'default', whiteSpace: 'nowrap' }}>
+                            {s.label}
+                        </span>
+                    ))}t: '14px', borderRadius: '3px', fontSize: '8px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', background: s.active ? '#1a73e8' : '#f1f3f4', color: s.active ? '#fff' : '#9aa0a6' }}>{s.label}</span>
                     ))}
                 </div>
             </td>
