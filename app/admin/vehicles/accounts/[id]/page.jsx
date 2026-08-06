@@ -44,15 +44,22 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
     }
 
     const getSourceValue = (sourceFieldLabel, contextBelongsto = field.belongsto, visited = new Set()) => {
+        // Try to find field in specified context first, then in any context
         let src = (allFields || []).find(f => f.label === sourceFieldLabel && f.belongsto === contextBelongsto)
         if (!src) src = (allFields || []).find(f => f.label === sourceFieldLabel)
         if (!src || visited.has(src._id)) return 0
         visited.add(src._id)
+        
+        // Handle vehicle fields
         if (src.vehicleField && vehicle) {
             const raw = vehicle[src.vehicleField]
             return toNum(raw && typeof raw === 'object' ? raw.name : raw)
         }
+        
+        // Determine which data source to use based on field's belongsto
         const data = src.belongsto === 'add-vehicles' ? (vehicleData || {}) : (accountData || {})
+        
+        // Handle tax calculation fields
         if (src.type === 'tax') {
             const lt = taxes.find(t => t._id === src.linkedTax)
             const sv = getSourceValue(src.linkedField, src.belongsto, visited)
@@ -61,9 +68,19 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
             if (lt.type === 'multiplier') return sv * lt.rate
             return toNum(lt.rate)
         }
+        
+        // Handle sum fields - don't pass belongsto context to allow cross-context sums
         if (src.type === 'sum') {
-            return (src.linkedFields || []).reduce((acc, l) => acc + getSourceValue(l, src.belongsto, visited), 0)
+            return (src.linkedFields || []).reduce((acc, label) => {
+                // For each linked field, find it without forcing belongsto context
+                const linkedField = (allFields || []).find(f => f.label === label)
+                if (!linkedField) return acc
+                // Use the linked field's own belongsto context
+                return acc + getSourceValue(label, linkedField.belongsto, visited)
+            }, 0)
         }
+        
+        // Return the actual value from data
         return toNum(data[src._id])
     }
 
@@ -129,8 +146,9 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
             if (val !== 0) parts.push({ label, val })
         })
         const display = sum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        const title = parts.map(p => `${p.label}: ${p.val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`).join('\n')
         return (
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative' }} title={title}>
                 <input readOnly value={display} style={{ ...base, background: '#f5f3ff', border: '1px solid #c4b5fd', color: '#6d28d9', fontWeight: 700, fontSize: '14px', cursor: 'default' }} />
                 <span style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', fontSize: '9px', padding: '1px 5px', borderRadius: '6px', background: '#ede9fe', color: '#6d28d9', fontWeight: 600, pointerEvents: 'none' }}>Sum</span>
             </div>
