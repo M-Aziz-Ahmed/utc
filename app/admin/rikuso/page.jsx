@@ -306,6 +306,7 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
                         
                         {/* Regular admin fields */}
                         {adminFields.map(field => {
+                            const isReadOnly = field.type === 'sum' || field.type === 'formula' || field.type === 'tax' || !!field.vehicleField
                             const currentVal = editableValues[field._id] ?? ''
                             const hasValue = currentVal !== '' && currentVal !== null && currentVal !== undefined
                             const isEditing = editingField === field._id
@@ -319,9 +320,19 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
                             
                             return (
                             <div key={field._id}>
-                                <label style={{ display: 'block', fontSize: '8px', fontWeight: 700, color: '#78350f', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>{field.label}</label>
+                                <label style={{ display: 'block', fontSize: '8px', fontWeight: 700, color: isReadOnly ? '#1e40af' : '#78350f', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>
+                                    {field.label}
+                                    {isReadOnly && <span style={{ marginLeft: '4px', fontSize: '7px', background: '#dbeafe', color: '#1e40af', padding: '1px 4px', borderRadius: '3px', fontWeight: 600 }}>AUTO</span>}
+                                </label>
                                 
-                                {hasValue && !isEditing ? (
+                                {isReadOnly ? (
+                                    // Read-only display for calculated fields
+                                    <div style={{ padding: '4px 8px', border: '1px solid #bfdbfe', borderRadius: '4px', background: '#eff6ff', minHeight: '28px', display: 'flex', alignItems: 'center' }}>
+                                        <span style={{ fontSize: '12px', fontWeight: 700, color: hasValue ? '#1e40af' : '#94a3b8' }}>
+                                            {hasValue ? formatDisplayValue(currentVal) : '—'}
+                                        </span>
+                                    </div>
+                                ) : hasValue && !isEditing ? (
                                     // Show value as read-only display with edit button
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 6px', border: '1px solid #fcd34d', borderRadius: '4px', background: '#fff', cursor: 'pointer' }}
                                         onClick={() => setEditingField(field._id)}>
