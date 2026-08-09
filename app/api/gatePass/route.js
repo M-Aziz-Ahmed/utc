@@ -1,7 +1,7 @@
 import GatePass from "@/models/GatePass";
 import Vehicle from "@/models/Vehicle";
 import dbConnect from "@/utils/dbConnection";
-import { uploadToCloudinary } from "@/utils/cloudinary";
+import { saveImage } from "@/utils/uploadImage";
 import { NextResponse } from "next/server";
 
 async function nextGatePassNumber(type) {
@@ -48,16 +48,8 @@ export const POST = async (req) => {
             body = jsonRaw ? JSON.parse(jsonRaw) : {};
             const files = formData.getAll('images');
             for (const file of files) {
-                const bytes = await file.arrayBuffer();
-                const buffer = Buffer.from(bytes);
-                const result = await uploadToCloudinary(buffer, 'utc/gatePass');
-                uploadedImages.push({
-                    name: file.name,
-                    path: result.secure_url,
-                    publicId: result.public_id,
-                    size: file.size,
-                    type: file.type,
-                });
+                const image = await saveImage(file, 'gatePass');
+                uploadedImages.push(image);
             }
         } else {
             body = await req.json();
@@ -149,16 +141,8 @@ export const PATCH = async (req) => {
             body = jsonRaw ? JSON.parse(jsonRaw) : {};
             const files = formData.getAll('images');
             for (const file of files) {
-                const bytes = await file.arrayBuffer();
-                const buffer = Buffer.from(bytes);
-                const result = await uploadToCloudinary(buffer, 'utc/gatePass');
-                uploadedImages.push({
-                    name: file.name,
-                    path: result.secure_url,
-                    publicId: result.public_id,
-                    size: file.size,
-                    type: file.type,
-                });
+                const image = await saveImage(file, 'gatePass');
+                uploadedImages.push(image);
             }
         } else {
             body = await req.json();
