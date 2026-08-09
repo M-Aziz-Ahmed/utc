@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import imageFileSchema from "./imageFileSchema.js";
 
 const userSchema  = new mongoose.Schema({ 
     email:{ type: String},
@@ -18,12 +19,6 @@ const userSchema  = new mongoose.Schema({
     newpurchase:{ type: Boolean},
     role:{ type: String},
     verified:{ type: String},
-    files: [{ 
-        name: String,
-        path: String,
-        size: Number,
-        type: String,
-        uploadedAt: { type: Date, default: Date.now }
-    }]
+    files: [imageFileSchema]
 }, { strict: false })
 export default mongoose.models.User || mongoose.model('User', userSchema)

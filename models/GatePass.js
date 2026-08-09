@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import imageFileSchema from "./imageFileSchema.js";
 
 const gatePassSchema = new mongoose.Schema({
     vehicle:        { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle', required: true },
@@ -12,13 +13,7 @@ const gatePassSchema = new mongoose.Schema({
     status:         { type: String, enum: ['pending', 'approved', 'completed', 'cancelled'], default: 'pending' },
     remarks:        { type: String },
     createdBy:      { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    images: [{
-        name: String,
-        path: String,
-        size: Number,
-        type: String,
-        uploadedAt: { type: Date, default: Date.now }
-    }]
+    images: [imageFileSchema]
 }, { timestamps: true });
 
 export default mongoose.models.GatePass || mongoose.model('GatePass', gatePassSchema);
