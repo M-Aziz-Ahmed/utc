@@ -12,6 +12,8 @@ const GatePassPage = () => {
     const [search, setSearch] = useState('')
     const [showForm, setShowForm] = useState(false)
     const [form, setForm] = useState({ vehicle: '', yard: '', consignee: '', containerNumber: '', blNumber: '', remarks: '', date: new Date().toISOString().split('T')[0] })
+    const [images, setImages] = useState([])
+    const [uploading, setUploading] = useState(false)
 
     const loadData = async () => {
         setLoading(true)
@@ -32,6 +34,7 @@ const GatePassPage = () => {
 
     const openIGPForm = () => {
         setForm({ vehicle: '', yard: '', consignee: '', containerNumber: '', blNumber: '', remarks: '', date: new Date().toISOString().split('T')[0] })
+        setImages([])
         setShowForm(true)
     }
 
@@ -48,7 +51,16 @@ const GatePassPage = () => {
                 remarks: form.remarks || undefined,
                 date: form.date || new Date(),
             }
-            const res = await fetch('/api/gatePass', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+            setUploading(true)
+            let res
+            if (images.length > 0) {
+                const fd = new FormData()
+                fd.append('gatePass', JSON.stringify(payload))
+                images.forEach((file, i) => fd.append('images', file))
+                res = await fetch('/api/gatePass', { method: 'POST', body: fd })
+            } else {
+                res = await fetch('/api/gatePass', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+            }
             if (res.ok) {
                 const gp = await res.json()
                 setGatePasses(p => [gp, ...p])
@@ -57,18 +69,33 @@ const GatePassPage = () => {
                 } else {
                     setVehicles(p => p.map(v => v._id === form.vehicle ? { ...v, physicalOut: true, physicalOutDate: form.date, containerNumber: form.containerNumber, blNumber: form.blNumber } : v))
                 }
+                setImages([])
                 setShowForm(false)
             } else {
                 const data = await res.json()
                 alert(data.message || 'Failed to create gate pass')
             }
-        } catch (e) { alert('Failed to create gate pass') }
+        } catch (e) { alert('Failed to create gate pass') } finally { setUploading(false) }
     }
 
     const handleStatusChange = async (gpId, status) => {
         const res = await fetch('/api/gatePass', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gatePassId: gpId, status }) })
         if (res.ok) {
             setGatePasses(p => p.map(g => g._id === gpId ? { ...g, status } : g))
+        }
+    }
+
+    const addPhotos = async (gpId, files) => {
+        if (!files.length) return
+        const fd = new FormData()
+        fd.append('gatePass', JSON.stringify({ gatePassId: gpId }))
+        files.forEach(f => fd.append('images', f))
+        const res = await fetch('/api/gatePass', { method: 'PATCH', body: fd })
+        if (res.ok) {
+            const gp = await res.json()
+            setGatePasses(p => p.map(g => g._id === gpId ? gp : g))
+        } else {
+            alert('Failed to upload photos')
         }
     }
 
@@ -143,6 +170,7 @@ const GatePassPage = () => {
                                 <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Consignee</th>
                                 <th style={{ padding: '8px 10px', textAlign: 'center', fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Status</th>
                                 <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Remarks</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Photos</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -171,6 +199,27 @@ const GatePassPage = () => {
                                             </select>
                                         </td>
                                         <td style={{ padding: '8px 10px', fontSize: '11px', color: '#9aa0a6', maxWidth: '120px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.remarks || '—'}</td>
+                                        <td style={{ padding: '8px 10px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                {g.images?.length > 0 && (
+                                                    <div style={{ display: 'flex', gap: '4px' }}>
+                                                        {g.images.slice(0, 3).map((img, i) => (
+                                                            <a key={i} href={img.path} target="_blank" rel="noopener noreferrer" style={{ display: 'block' }}>
+                                                                <div style={{ width: '36px', height: '28px', borderRadius: '4px', overflow: 'hidden', background: '#f1f5f9', border: '1px solid #e2e8f0' }}>
+                                                                    <img src={img.path} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                                                </div>
+                                                            </a>
+                                                        ))}
+                                                        {g.images.length > 3 && <span style={{ fontSize: '10px', color: '#94a3b8', alignSelf: 'center' }}>+{g.images.length - 3}</span>}
+                                                    </div>
+                                                )}
+                                                <label style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 7px', fontSize: '10px', fontWeight: 600, background: '#e8f0fe', color: '#1a73e8', border: 'none', borderRadius: '6px', cursor: 'pointer', flexShrink: 0 }}>
+                                                    + Photos
+                                                    <input type="file" multiple accept="image/*" style={{ display: 'none' }}
+                                                        onChange={e => { addPhotos(g._id, Array.from(e.target.files)); e.target.value = '' }} />
+                                                </label>
+                                            </div>
+                                        </td>
                                     </tr>
                                 )
                             })}
@@ -245,9 +294,38 @@ const GatePassPage = () => {
                                 <textarea value={form.remarks} onChange={e => setForm(p => ({ ...p, remarks: e.target.value }))} rows={2}
                                     style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }} placeholder="Notes..." />
                             </div>
+                            {tab === 'IGP' && (
+                                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '10px' }}>
+                                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
+                                        Car Photos <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 'normal', fontSize: '10px' }}>taken when the car arrives - these replace the auction photos on the public site</span>
+                                    </label>
+                                    <input type="file" multiple accept="image/*"
+                                        onChange={e => {
+                                            const incoming = Array.from(e.target.files)
+                                            setImages(prev => [...prev, ...incoming])
+                                            e.target.value = ''
+                                        }}
+                                        style={{ width: '100%', padding: '6px 10px', border: '1px solid #86efac', borderRadius: '6px', fontSize: '12px', boxSizing: 'border-box', background: '#fff' }} />
+                                    {images.length > 0 && (
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                                            {images.map((file, idx) => (
+                                                <div key={idx} style={{ position: 'relative', width: '64px', height: '48px', borderRadius: '6px', overflow: 'hidden', border: '1px solid #86efac', flexShrink: 0 }}>
+                                                    {file.type?.startsWith('image/')
+                                                        ? <img src={URL.createObjectURL(file)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                                        : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f3f4', fontSize: '9px', color: '#9aa0a6' }}>{file.name}</div>}
+                                                    <button type="button" onClick={() => setImages(prev => prev.filter((_, i) => i !== idx))}
+                                                        style={{ position: 'absolute', top: '2px', right: '2px', width: '16px', height: '16px', borderRadius: '50%', background: '#ef4444', border: 'none', color: '#fff', fontSize: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>×</button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                             <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
                                 <button onClick={() => setShowForm(false)} style={{ flex: 1, padding: '8px', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '12px', cursor: 'pointer', background: '#fff', color: '#5f6368' }}>Cancel</button>
-                                <button onClick={handleCreate} style={{ flex: 1, padding: '8px', background: tab === 'IGP' ? '#059669' : '#7c3aed', color: '#fff', border: 'none', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Create {tab}</button>
+                                <button onClick={handleCreate} disabled={uploading} style={{ flex: 1, padding: '8px', background: tab === 'IGP' ? '#059669' : '#7c3aed', color: '#fff', border: 'none', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: uploading ? 'not-allowed' : 'pointer', opacity: uploading ? 0.7 : 1 }}>
+                                    {uploading ? 'Uploading...' : `Create ${tab}`}
+                                </button>
                             </div>
                         </div>
                     </div>

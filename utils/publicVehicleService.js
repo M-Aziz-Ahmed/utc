@@ -65,14 +65,22 @@ function mapVehicleToPublic(vehicle) {
 
   const images = vehicle[FIELD_MAPPING.images] || vehicle['Vehicle Images'] || []
   const thumbnail = vehicle[FIELD_MAPPING.thumbnailImage] || vehicle['Thumbnail Image'] || ''
-  const mainImage = vehicle.mainImageUrl || thumbnail || (Array.isArray(images) && images.length > 0 ? (typeof images[0] === 'string' ? images[0] : images[0]?.path) : '')
+  const gatePassPaths = (Array.isArray(vehicle.gatePassImages) ? vehicle.gatePassImages : []).map(img => img?.path).filter(Boolean)
 
   let allImages = []
-  if (Array.isArray(images)) {
-    allImages = images.map(img => typeof img === 'string' ? img : img?.path).filter(Boolean)
-  }
-  if (mainImage && !allImages.includes(mainImage)) {
-    allImages.unshift(mainImage)
+  let mainImage = ''
+  if (gatePassPaths.length > 0) {
+    // Public site shows only the photos taken when the car arrived (uploaded at In Gate Pass time)
+    allImages = gatePassPaths
+    mainImage = gatePassPaths[0]
+  } else {
+    mainImage = vehicle.mainImageUrl || thumbnail || (Array.isArray(images) && images.length > 0 ? (typeof images[0] === 'string' ? images[0] : images[0]?.path) : '')
+    if (Array.isArray(images)) {
+      allImages = images.map(img => typeof img === 'string' ? img : img?.path).filter(Boolean)
+    }
+    if (mainImage && !allImages.includes(mainImage)) {
+      allImages.unshift(mainImage)
+    }
   }
 
   const year = get('year')

@@ -13,14 +13,12 @@ export const GET = async (req, { params }) => {
             return NextResponse.json({ message: 'Vehicle not found' }, { status: 404 })
         }
 
-        const qrData = JSON.stringify({
-            type: 'UTC_VEHICLE',
-            id: vehicle._id.toString(),
-            manufacturer: vehicle.manufacturer || '',
-            model: vehicle.model || '',
-        })
+        // QR points at the public tracking page so a normal phone scan shows where the car is.
+        // The yard scanner also understands this URL format (see /admin/yard/scan).
+        const origin = new URL(req.url).origin
+        const trackUrl = `${origin}/track/${vehicle._id.toString()}`
 
-        const qrDataUrl = await QRCode.toDataURL(qrData, {
+        const qrDataUrl = await QRCode.toDataURL(trackUrl, {
             width: 300,
             margin: 2,
             color: { dark: '#000000', light: '#ffffff' },
@@ -30,6 +28,7 @@ export const GET = async (req, { params }) => {
             vehicleId: vehicle._id,
             manufacturer: vehicle.manufacturer,
             model: vehicle.model,
+            trackUrl,
             qr: qrDataUrl,
         }, { status: 200 })
     } catch (error) {

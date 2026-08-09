@@ -16,7 +16,15 @@ const vehicleSchema = new mongoose.Schema({
     allocationStatus: { type: Boolean, default: false },
     rikusoStatus: { type: Boolean, default: false },
     consignee: { type: mongoose.Schema.Types.ObjectId, ref: 'Consignee' },
-    rikusoCompany: { type: mongoose.Schema.Types.ObjectId, ref: 'Manufacturer' }
+    rikusoCompany: { type: mongoose.Schema.Types.ObjectId, ref: 'Manufacturer' },
+    // Photos taken when the car physically arrives (uploaded during In Gate Pass)
+    gatePassImages: [{
+        name: String,
+        path: String,
+        size: Number,
+        type: String,
+        uploadedAt: { type: Date, default: Date.now }
+    }]
 }, { 
     strict: false, // Allow dynamic fields
     timestamps: true 

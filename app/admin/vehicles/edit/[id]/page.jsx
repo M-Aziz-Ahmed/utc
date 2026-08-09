@@ -479,6 +479,12 @@ export default function EditVehiclePage({ params }) {
                                 <img src={qrData.qr} alt="QR Code" style={{ width: '140px', height: '140px', borderRadius: '8px', border: '2px solid #fff', background: '#fff', padding: '4px' }} />
                                 <div style={{ marginTop: '6px' }}>
                                     <a href={qrData.qr} download={`QR-${qrData.manufacturer}-${qrData.model}.png`} style={{ fontSize: '11px', color: '#1a73e8', textDecoration: 'underline', cursor: 'pointer' }}>Download QR</a>
+                                    {qrData.trackUrl && (
+                                        <>
+                                            {' · '}
+                                            <a href={qrData.trackUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '11px', color: '#1a73e8', textDecoration: 'underline', cursor: 'pointer' }}>Track Page</a>
+                                        </>
+                                    )}
                                 </div>
                                 {vehicle.physicalIn && (
                                     <div style={{ marginTop: '6px', padding: '4px 8px', background: '#dcfce7', borderRadius: '12px', fontSize: '10px', fontWeight: 600, color: '#166534', display: 'inline-block' }}>In Yard</div>

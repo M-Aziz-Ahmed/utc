@@ -25,6 +25,16 @@ const YardScanPage = () => {
         }).catch(() => setLoading(false))
     }, [])
 
+    const extractVehicleId = (decodedText) => {
+        try {
+            const parsed = JSON.parse(decodedText)
+            if (parsed.type === 'UTC_VEHICLE' && parsed.id) return parsed.id
+        } catch {}
+        const match = decodedText.match(/\/track\/([a-f0-9]{24})/i)
+        if (match) return match[1]
+        return null
+    }
+
     const processScan = async (decodedText) => {
         const yardId = selectedYardRef.current
         const currentYards = yardsRef.current
@@ -34,20 +44,20 @@ const YardScanPage = () => {
             return
         }
 
-        try {
-            const parsed = JSON.parse(decodedText)
-            if (parsed.type !== 'UTC_VEHICLE' || !parsed.id) {
-                setError('Invalid QR code. This is not a UTC vehicle QR code.')
-                return
-            }
+        const vehicleId = extractVehicleId(decodedText)
+        if (!vehicleId) {
+            setError('Invalid QR code. This is not a UTC vehicle QR code.')
+            return
+        }
 
+        try {
             setResult(null)
             setError(null)
 
             const res = await fetch('/api/qr/scan', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ vehicleId: parsed.id, yardId }),
+                body: JSON.stringify({ vehicleId, yardId }),
             })
 
             const data = await res.json()

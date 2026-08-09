@@ -1,6 +1,7 @@
 import GatePass from "@/models/GatePass";
 import Vehicle from "@/models/Vehicle";
 import dbConnect from "@/utils/dbConnection";
+import { uploadToCloudinary } from "@/utils/cloudinary";
 import { NextResponse } from "next/server";
 
 async function nextGatePassNumber(type) {
@@ -36,9 +37,38 @@ export const GET = async (req) => {
 export const POST = async (req) => {
     try {
         await dbConnect();
-        const body = await req.json();
+
+        const contentType = req.headers.get('content-type') || '';
+        let body;
+        let uploadedImages = [];
+
+        if (contentType.includes('multipart/form-data')) {
+            const formData = await req.formData();
+            const jsonRaw = formData.get('gatePass');
+            body = jsonRaw ? JSON.parse(jsonRaw) : {};
+            const files = formData.getAll('images');
+            for (const file of files) {
+                const bytes = await file.arrayBuffer();
+                const buffer = Buffer.from(bytes);
+                const result = await uploadToCloudinary(buffer, 'utc/gatePass');
+                uploadedImages.push({
+                    name: file.name,
+                    path: result.secure_url,
+                    publicId: result.public_id,
+                    size: file.size,
+                    type: file.type,
+                });
+            }
+        } else {
+            body = await req.json();
+        }
+
         if (!body.vehicle) return NextResponse.json({ message: 'Vehicle is required' }, { status: 400 });
         if (!body.type) return NextResponse.json({ message: 'Type is required' }, { status: 400 });
+
+        if (uploadedImages.length > 0) {
+            body.images = uploadedImages;
+        }
 
         const vehicle = await Vehicle.findById(body.vehicle).lean();
         if (!vehicle) return NextResponse.json({ message: 'Vehicle not found' }, { status: 404 });
@@ -68,11 +98,16 @@ export const POST = async (req) => {
         const gatePass = await GatePass.create(body);
 
         if (body.type === 'IGP') {
-            await Vehicle.findByIdAndUpdate(body.vehicle, {
+            const update = {
                 physicalIn: true,
                 physicalInDate: body.date || new Date(),
                 yard: body.yard || undefined,
-            });
+            };
+            if (uploadedImages.length > 0) {
+                const existing = Array.isArray(vehicle.gatePassImages) ? vehicle.gatePassImages : [];
+                update.gatePassImages = [...existing, ...uploadedImages];
+            }
+            await Vehicle.findByIdAndUpdate(body.vehicle, update);
         }
         if (body.type === 'OGP') {
             await Vehicle.findByIdAndUpdate(body.vehicle, {
@@ -103,13 +138,38 @@ const VALID_STATUS_TRANSITIONS = {
 export const PATCH = async (req) => {
     try {
         await dbConnect();
-        const body = await req.json();
+
+        const contentType = req.headers.get('content-type') || '';
+        let body;
+        let uploadedImages = [];
+
+        if (contentType.includes('multipart/form-data')) {
+            const formData = await req.formData();
+            const jsonRaw = formData.get('gatePass');
+            body = jsonRaw ? JSON.parse(jsonRaw) : {};
+            const files = formData.getAll('images');
+            for (const file of files) {
+                const bytes = await file.arrayBuffer();
+                const buffer = Buffer.from(bytes);
+                const result = await uploadToCloudinary(buffer, 'utc/gatePass');
+                uploadedImages.push({
+                    name: file.name,
+                    path: result.secure_url,
+                    publicId: result.public_id,
+                    size: file.size,
+                    type: file.type,
+                });
+            }
+        } else {
+            body = await req.json();
+        }
+
         const { gatePassId, status } = body;
 
         if (!gatePassId) {
             return NextResponse.json({ message: 'Gate Pass ID is required' }, { status: 400 });
         }
-        if (!status) {
+        if (!status && uploadedImages.length === 0) {
             return NextResponse.json({ message: 'Status is required' }, { status: 400 });
         }
 
@@ -118,16 +178,35 @@ export const PATCH = async (req) => {
             return NextResponse.json({ message: 'Gate pass not found' }, { status: 404 });
         }
 
-        const allowed = VALID_STATUS_TRANSITIONS[gatePass.status] || [];
-        if (!allowed.includes(status)) {
-            return NextResponse.json({
-                message: `Cannot transition from "${gatePass.status}" to "${status}". Allowed: ${allowed.join(', ') || 'none'}`,
-            }, { status: 400 });
+        if (status) {
+            const allowed = VALID_STATUS_TRANSITIONS[gatePass.status] || [];
+            if (!allowed.includes(status)) {
+                return NextResponse.json({
+                    message: `Cannot transition from "${gatePass.status}" to "${status}". Allowed: ${allowed.join(', ') || 'none'}`,
+                }, { status: 400 });
+            }
+        }
+
+        const set = {};
+        if (status) set.status = status;
+        if (uploadedImages.length > 0) {
+            const existing = Array.isArray(gatePass.images) ? gatePass.images : [];
+            set.images = [...existing, ...uploadedImages];
+
+            if (gatePass.vehicle) {
+                const veh = await Vehicle.findById(gatePass.vehicle).lean();
+                if (veh) {
+                    const vehExisting = Array.isArray(veh.gatePassImages) ? veh.gatePassImages : [];
+                    await Vehicle.findByIdAndUpdate(gatePass.vehicle, {
+                        $set: { gatePassImages: [...vehExisting, ...uploadedImages] },
+                    });
+                }
+            }
         }
 
         const updated = await GatePass.findByIdAndUpdate(
             gatePassId,
-            { $set: { status } },
+            { $set: set },
             { new: true }
         )
             .populate('vehicle', 'manufacturer model auctionGroup auctionVenue')
