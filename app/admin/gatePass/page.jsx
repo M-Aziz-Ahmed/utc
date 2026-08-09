@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import VoiceSearchButton from '@/components/VoiceSearchButton'
+import { compressImage } from '@/utils/imageCompress'
 
 const chassisOf = (v) => {
     const keys = ['chassisNumber', 'Chassis No.', 'Chassis No', 'Chassis Number', 'VIN', 'Chassis', 'chassis']
@@ -263,7 +264,12 @@ const GatePassPage = () => {
                                                 <label style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 7px', fontSize: '10px', fontWeight: 600, background: '#e8f0fe', color: '#1a73e8', border: 'none', borderRadius: '6px', cursor: 'pointer', flexShrink: 0 }}>
                                                     + Photos
                                                     <input type="file" multiple accept="image/*" style={{ display: 'none' }}
-                                                        onChange={e => { addPhotos(g._id, Array.from(e.target.files)); e.target.value = '' }} />
+                                                        onChange={async e => {
+                                                            const raw = Array.from(e.target.files)
+                                                            e.target.value = ''
+                                                            const compressed = await Promise.all(raw.map(f => compressImage(f)))
+                                                            addPhotos(g._id, compressed)
+                                                        }} />
                                                 </label>
                                             </div>
                                         </td>
@@ -354,10 +360,11 @@ const GatePassPage = () => {
                                         Car Photos <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 'normal', fontSize: '10px' }}>taken when the car arrives - these replace the auction photos on the public site</span>
                                     </label>
                                     <input type="file" multiple accept="image/*"
-                                        onChange={e => {
-                                            const incoming = Array.from(e.target.files)
-                                            setImages(prev => [...prev, ...incoming])
+                                        onChange={async e => {
+                                            const raw = Array.from(e.target.files)
                                             e.target.value = ''
+                                            const compressed = await Promise.all(raw.map(f => compressImage(f)))
+                                            setImages(prev => [...prev, ...compressed])
                                         }}
                                         style={{ width: '100%', padding: '6px 10px', border: '1px solid #86efac', borderRadius: '6px', fontSize: '12px', boxSizing: 'border-box', background: '#fff' }} />
                                     {images.length > 0 && (
