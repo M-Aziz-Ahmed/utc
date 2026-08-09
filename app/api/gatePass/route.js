@@ -116,7 +116,8 @@ export const POST = async (req) => {
             .populate('consignee', 'name company');
         return NextResponse.json(populated, { status: 201 });
     } catch (error) {
-        return NextResponse.json({ message: 'Error creating gate pass' }, { status: 500 });
+        console.error('Error creating gate pass:', error);
+        return NextResponse.json({ message: 'Error creating gate pass', error: error.message }, { status: 500 });
     }
 };
 
@@ -199,6 +200,7 @@ export const PATCH = async (req) => {
 
         return NextResponse.json(updated, { status: 200 });
     } catch (error) {
-        return NextResponse.json({ message: 'Error updating gate pass' }, { status: 500 });
+        console.error('Error updating gate pass:', error);
+        return NextResponse.json({ message: 'Error updating gate pass', error: error.message }, { status: 500 });
     }
 };

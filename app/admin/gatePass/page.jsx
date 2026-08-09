@@ -2,18 +2,36 @@
 import { useState, useEffect } from 'react'
 import VoiceSearchButton from '@/components/VoiceSearchButton'
 
+const chassisOf = (v) => {
+    const keys = ['chassisNumber', 'Chassis No.', 'Chassis No', 'Chassis Number', 'VIN', 'Chassis', 'chassis']
+    for (const k of keys) {
+        const val = v[k]
+        if (val !== undefined && val !== null && String(val).trim()) return String(val).trim()
+    }
+    for (const k of Object.keys(v)) {
+        const lk = k.toLowerCase()
+        if ((lk.includes('chassis') || lk.includes('vin')) && !lk.includes('image')) {
+            const val = v[k]
+            if (val !== undefined && val !== null && String(val).trim()) return String(val).trim()
+        }
+    }
+    return ''
+}
+
+const vehicleSearchText = (v) => [v.manufacturer, v.model, v.exportCountry, chassisOf(v)].filter(Boolean).join(' ').toLowerCase()
+
 const GatePassPage = () => {
     const [gatePasses, setGatePasses] = useState([])
     const [vehicles, setVehicles] = useState([])
     const [yards, setYards] = useState([])
-    const [consignees, setConsignees] = useState([])
     const [loading, setLoading] = useState(true)
     const [tab, setTab] = useState('IGP')
     const [search, setSearch] = useState('')
     const [showForm, setShowForm] = useState(false)
-    const [form, setForm] = useState({ vehicle: '', yard: '', consignee: '', containerNumber: '', blNumber: '', remarks: '', date: new Date().toISOString().split('T')[0] })
+    const [form, setForm] = useState({ vehicle: '', yard: '', containerNumber: '', blNumber: '', remarks: '', date: new Date().toISOString().split('T')[0] })
     const [images, setImages] = useState([])
     const [uploading, setUploading] = useState(false)
+    const [vehSearch, setVehSearch] = useState('')
 
     const loadData = async () => {
         setLoading(true)
@@ -21,19 +39,18 @@ const GatePassPage = () => {
             fetch('/api/gatePass').then(r => r.ok ? r.json() : []),
             fetch('/api/vehicles').then(r => r.ok ? r.json() : []),
             fetch('/api/yard').then(r => r.ok ? r.json() : []),
-            fetch('/api/consignee').then(r => r.ok ? r.json() : []),
-        ]).then(([g, v, y, c]) => {
+        ]).then(([g, v, y]) => {
             setGatePasses(Array.isArray(g) ? g : [])
             setVehicles(Array.isArray(v) ? v : [])
             setYards(Array.isArray(y) ? y : [])
-            setConsignees(Array.isArray(c) ? c : [])
         }).finally(() => setLoading(false))
     }
 
     useEffect(() => { loadData() }, [])
 
     const openIGPForm = () => {
-        setForm({ vehicle: '', yard: '', consignee: '', containerNumber: '', blNumber: '', remarks: '', date: new Date().toISOString().split('T')[0] })
+        setForm({ vehicle: '', yard: '', containerNumber: '', blNumber: '', remarks: '', date: new Date().toISOString().split('T')[0] })
+        setVehSearch('')
         setImages([])
         setShowForm(true)
     }
@@ -45,7 +62,6 @@ const GatePassPage = () => {
                 vehicle: form.vehicle,
                 type: tab,
                 yard: form.yard || undefined,
-                consignee: form.consignee || undefined,
                 containerNumber: form.containerNumber || undefined,
                 blNumber: form.blNumber || undefined,
                 remarks: form.remarks || undefined,
@@ -72,10 +88,11 @@ const GatePassPage = () => {
                 setImages([])
                 setShowForm(false)
             } else {
-                const data = await res.json()
-                alert(data.message || 'Failed to create gate pass')
+                let data = {}
+                try { data = await res.json() } catch {}
+                alert(data.error || data.message || 'Failed to create gate pass')
             }
-        } catch (e) { alert('Failed to create gate pass') } finally { setUploading(false) }
+        } catch (e) { alert(e.message || 'Failed to create gate pass') } finally { setUploading(false) }
     }
 
     const handleStatusChange = async (gpId, status) => {
@@ -109,8 +126,19 @@ const GatePassPage = () => {
         return true
     })
 
-    const igpVehicles = vehicles.filter(v => !v.physicalIn)
-    const ogpVehicles = vehicles.filter(v => v.physicalIn && !v.physicalOut)
+    const exportVehicles = vehicles.filter(v => v.allocation === 'export')
+    const igpVehicles = exportVehicles.filter(v => !v.physicalIn)
+    const ogpVehicles = exportVehicles.filter(v => v.physicalIn && !v.physicalOut)
+    const vehiclePool = tab === 'IGP' ? igpVehicles : ogpVehicles
+    const filteredVehicles = vehSearch ? vehiclePool.filter(v => vehicleSearchText(v).includes(vehSearch.toLowerCase())) : vehiclePool
+    const applyVehVoice = (text) => {
+        setVehSearch(text)
+        const s = String(text || '').toLowerCase().trim()
+        if (s) {
+            const match = vehiclePool.find(v => vehicleSearchText(v).includes(s))
+            if (match) setForm(p => ({ ...p, vehicle: match._id }))
+        }
+    }
     const isOgpReady = tab === 'OGP'
 
     return (
@@ -243,13 +271,22 @@ const GatePassPage = () => {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             <div>
                                 <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Vehicle *</label>
+                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '6px' }}>
+                                    <div style={{ position: 'relative', flex: 1 }}>
+                                        <svg style={{ position: 'absolute', left: '9px', top: '50%', transform: 'translateY(-50%)', width: '13px', height: '13px', color: '#9aa0a6' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                        <input type="text" placeholder="Search by make, model or chassis..." value={vehSearch} onChange={e => applyVehVoice(e.target.value)}
+                                            style={{ width: '100%', padding: '6px 10px 6px 28px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
+                                    </div>
+                                    <VoiceSearchButton onResult={applyVehVoice} size={30} />
+                                </div>
                                 <select value={form.vehicle} onChange={e => setForm(p => ({ ...p, vehicle: e.target.value }))}
                                     style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', background: '#fff', boxSizing: 'border-box', color: form.vehicle ? '#202124' : '#9aa0a6' }}>
                                     <option value="">{tab === 'IGP' ? 'Select vehicle to receive...' : 'Select vehicle to ship...'}</option>
-                                    {(tab === 'IGP' ? igpVehicles : ogpVehicles).map(v => (
-                                        <option key={v._id} value={v._id}>{[v.manufacturer, v.model].filter(Boolean).join(' ')} {v.exportCountry ? `(${v.exportCountry})` : ''}</option>
+                                    {filteredVehicles.map(v => (
+                                        <option key={v._id} value={v._id}>{[v.manufacturer, v.model].filter(Boolean).join(' ')}{chassisOf(v) ? ` · ${chassisOf(v)}` : ''}{v.exportCountry ? ` (${v.exportCountry})` : ''}</option>
                                     ))}
                                 </select>
+                                {tab === 'IGP' && vehSearch && filteredVehicles.length === 0 && <p style={{ fontSize: '10px', color: '#ef4444', marginTop: '4px' }}>No export vehicles match &quot;{vehSearch}&quot;.</p>}
                                 {tab === 'OGP' && ogpVehicles.length === 0 && <p style={{ fontSize: '10px', color: '#f59e0b', marginTop: '4px' }}>No vehicles with IGP. Complete IGP first.</p>}
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
@@ -266,14 +303,6 @@ const GatePassPage = () => {
                                         {yards.map(y => <option key={y._id} value={y._id}>{y.name}{y.location ? ` (${y.location})` : ''}</option>)}
                                     </select>
                                 </div>
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Consignee / Client</label>
-                                <select value={form.consignee} onChange={e => setForm(p => ({ ...p, consignee: e.target.value }))}
-                                    style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', background: '#fff', boxSizing: 'border-box', color: form.consignee ? '#202124' : '#9aa0a6' }}>
-                                    <option value="">Select consignee...</option>
-                                    {consignees.map(c => <option key={c._id} value={c._id}>{c.name}{c.company ? ` (${c.company})` : ''}</option>)}
-                                </select>
                             </div>
                             {isOgpReady && (
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
