@@ -4,7 +4,24 @@ import Yard from "@/models/Yard";
 import Consignee from "@/models/Consignee";
 import dbConnect from "@/utils/dbConnection";
 import { saveImage } from "@/utils/uploadImage";
+import { deleteFromCloudinary } from "@/utils/cloudinary";
+import { unlink } from "fs/promises";
+import path from "path";
 import { NextResponse } from "next/server";
+
+async function removeStoredImage(img) {
+    if (!img || !img.path) return;
+    try {
+        if (img.cloudinary && img.publicId) {
+            await deleteFromCloudinary(img.publicId);
+        } else if (img.path.startsWith('/uploads/')) {
+            const filePath = path.join(process.cwd(), 'public', img.path);
+            await unlink(filePath);
+        }
+    } catch (error) {
+        console.error('Failed to remove image file:', img.path, error.message);
+    }
+}
 
 async function nextGatePassNumber(type) {
     const prefix = type === 'IGP' ? 'IGP' : 'OGP';
@@ -151,12 +168,12 @@ export const PATCH = async (req) => {
             body = await req.json();
         }
 
-        const { gatePassId, status } = body;
+        const { gatePassId, status, removeImages } = body;
 
         if (!gatePassId) {
             return NextResponse.json({ message: 'Gate Pass ID is required' }, { status: 400 });
         }
-        if (!status && uploadedImages.length === 0) {
+        if (!status && uploadedImages.length === 0 && !(Array.isArray(removeImages) && removeImages.length > 0)) {
             return NextResponse.json({ message: 'Status is required' }, { status: 400 });
         }
 
@@ -176,16 +193,27 @@ export const PATCH = async (req) => {
 
         const set = {};
         if (status) set.status = status;
-        if (uploadedImages.length > 0) {
-            const existing = Array.isArray(gatePass.images) ? gatePass.images : [];
-            set.images = [...existing, ...uploadedImages];
+
+        const removedSet = Array.isArray(removeImages) ? new Set(removeImages) : new Set();
+
+        if (uploadedImages.length > 0 || removedSet.size > 0) {
+            const currentImages = Array.isArray(gatePass.images) ? gatePass.images : [];
+            const remaining = removedSet.size > 0 ? currentImages.filter(img => !removedSet.has(img?.path)) : currentImages;
+            set.images = [...remaining, ...uploadedImages];
+
+            if (removedSet.size > 0) {
+                for (const img of currentImages) {
+                    if (removedSet.has(img?.path)) await removeStoredImage(img);
+                }
+            }
 
             if (gatePass.vehicle) {
                 const veh = await Vehicle.findById(gatePass.vehicle).lean();
                 if (veh) {
-                    const vehExisting = Array.isArray(veh.gatePassImages) ? veh.gatePassImages : [];
+                    const vehCurrent = Array.isArray(veh.gatePassImages) ? veh.gatePassImages : [];
+                    const vehRemaining = removedSet.size > 0 ? vehCurrent.filter(img => !removedSet.has(img?.path)) : vehCurrent;
                     await Vehicle.findByIdAndUpdate(gatePass.vehicle, {
-                        $set: { gatePassImages: [...vehExisting, ...uploadedImages] },
+                        $set: { gatePassImages: [...vehRemaining, ...uploadedImages] },
                     });
                 }
             }
@@ -218,6 +246,10 @@ export const DELETE = async (req) => {
         const gatePass = await GatePass.findById(gatePassId).lean();
         if (!gatePass) {
             return NextResponse.json({ message: 'Gate pass not found' }, { status: 404 });
+        }
+
+        for (const img of gatePass.images || []) {
+            await removeStoredImage(img);
         }
 
         await GatePass.findByIdAndDelete(gatePassId);

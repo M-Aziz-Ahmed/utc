@@ -121,6 +121,21 @@ const GatePassPage = () => {
         } catch (e) { alert(e.message || 'Failed to upload photos') }
     }
 
+    const removePhoto = async (gpId, path) => {
+        if (!window.confirm('Remove this photo?')) return
+        try {
+            const res = await fetch('/api/gatePass', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gatePassId: gpId, removeImages: [path] }) })
+            if (res.ok) {
+                const gp = await res.json()
+                setGatePasses(p => p.map(g => g._id === gpId ? gp : g))
+            } else {
+                let data = {}
+                try { data = await res.json() } catch {}
+                alert(data.error || data.message || 'Failed to remove photo')
+            }
+        } catch (e) { alert(e.message || 'Failed to remove photo') }
+    }
+
     const handleDelete = async (gpId) => {
         if (!window.confirm('Delete this gate pass? This cannot be undone.')) return
         try {
@@ -250,15 +265,16 @@ const GatePassPage = () => {
                                         <td style={{ padding: '8px 10px' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                 {g.images?.length > 0 && (
-                                                    <div style={{ display: 'flex', gap: '4px' }}>
-                                                        {g.images.slice(0, 3).map((img, i) => (
-                                                            <a key={i} href={img.path} target="_blank" rel="noopener noreferrer" style={{ display: 'block' }}>
-                                                                <div style={{ width: '36px', height: '28px', borderRadius: '4px', overflow: 'hidden', background: '#f1f5f9', border: '1px solid #e2e8f0' }}>
+                                                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', maxWidth: '220px' }}>
+                                                        {g.images.map((img, i) => (
+                                                            <div key={i} style={{ position: 'relative', width: '36px', height: '28px', borderRadius: '4px', overflow: 'hidden', background: '#f1f5f9', border: '1px solid #e2e8f0' }}>
+                                                                <a href={img.path} target="_blank" rel="noopener noreferrer" style={{ display: 'block', width: '100%', height: '100%' }}>
                                                                     <img src={img.path} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                                                                </div>
-                                                            </a>
+                                                                </a>
+                                                                <button type="button" title="Remove photo" onClick={() => removePhoto(g._id, img.path)}
+                                                                    style={{ position: 'absolute', top: '1px', right: '1px', width: '13px', height: '13px', borderRadius: '50%', background: 'rgba(220,38,38,0.92)', border: 'none', color: '#fff', fontSize: '9px', lineHeight: '13px', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>×</button>
+                                                            </div>
                                                         ))}
-                                                        {g.images.length > 3 && <span style={{ fontSize: '10px', color: '#94a3b8', alignSelf: 'center' }}>+{g.images.length - 3}</span>}
                                                     </div>
                                                 )}
                                                 <label style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 7px', fontSize: '10px', fontWeight: 600, background: '#e8f0fe', color: '#1a73e8', border: 'none', borderRadius: '6px', cursor: 'pointer', flexShrink: 0 }}>
