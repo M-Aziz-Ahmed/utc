@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from "react";
+import { compressImage } from "@/utils/imageCompress";
 
 const Page = () => {
     const [values, setValues] = useState({
@@ -105,8 +106,9 @@ const Page = () => {
         addFiles(selectedFiles);
     };
 
-    const addFiles = (newFiles) => {
-        const filesWithPreview = newFiles.map(file => ({
+    const addFiles = async (newFiles) => {
+        const compressed = await Promise.all(newFiles.map(f => compressImage(f)));
+        const filesWithPreview = compressed.map(file => ({
             file,
             id: Math.random().toString(36).substr(2, 9),
             preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
@@ -359,9 +361,10 @@ const Page = () => {
                             accept={acceptTypes}
                             required={f.isRequired && fieldFiles.length === 0}
                             className="hidden"
-                            onChange={(e) => {
+                            onChange={async (e) => {
                                 const selectedFiles = Array.from(e.target.files);
-                                const filesWithPreview = selectedFiles.map(file => ({
+                                const compressed = await Promise.all(selectedFiles.map(f => compressImage(f)));
+                                const filesWithPreview = compressed.map(file => ({
                                     file,
                                     id: Math.random().toString(36).substr(2, 9),
                                     preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,

@@ -3,6 +3,7 @@ import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import BgEditorModal from '@/components/BgEditorModal'
+import { compressImage } from '@/utils/imageCompress'
 
 const FIELD_TYPES = ['text', 'number', 'boolean', 'email', 'date', 'file', 'image', 'dropdown', 'select-year', 'select-country', 'sum', 'tax']
 
@@ -574,8 +575,8 @@ export default function EditVehiclePage({ params }) {
                                                     </div>
                                                 )}
                                                 <input type="file" multiple accept={field.type === 'image' ? 'image/*' : '*'}
-                                                    onChange={e => {
-                                                        const incoming = Array.from(e.target.files)
+                                                    onChange={async e => {
+                                                        const incoming = await Promise.all(Array.from(e.target.files).map(f => compressImage(f)))
                                                         const existing = newImages[field._id] || []
                                                         setNewImages(prev => ({ ...prev, [field._id]: [...existing, ...incoming] }))
                                                         e.target.value = ''

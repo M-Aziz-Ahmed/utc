@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { compressImage } from '@/utils/imageCompress'
 
 const CONDITIONS = ['Excellent', 'Very Good', 'Good', 'Fair', 'For Parts']
 
@@ -26,13 +27,14 @@ export default function SellCarForm() {
     setForm(prev => ({ ...prev, [name]: value }))
   }
 
-  const handlePhotos = (e) => {
+  const handlePhotos = async (e) => {
     const files = Array.from(e.target.files || [])
     if (files.length > 10) {
       setResult({ type: 'error', message: 'Maximum 10 photos allowed.' })
       return
     }
-    setPhotos(files)
+    const compressed = await Promise.all(files.map(f => compressImage(f)))
+    setPhotos(compressed)
     setResult(null)
   }
 

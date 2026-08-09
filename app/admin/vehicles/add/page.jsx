@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import BgEditorModal from '@/components/BgEditorModal'
+import { compressImage } from '@/utils/imageCompress'
 
 const LETTERS = ['All', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')]
 
@@ -706,7 +707,12 @@ const AddVehiclePage = () => {
                     )}
                     {files.length > 0 && <p className="text-[10px] text-gray-400">★ = cover · cloud = remove bg · × = remove</p>}
                     <input type="file" multiple accept={field.type === 'image' ? 'image/*' : '*'}
-                        onChange={e => { const newFiles = Array.from(e.target.files).map(file => ({ file, id: Math.random().toString(36).substring(2), preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : null, name: file.name })); handleChange(field._id, [...files, ...newFiles]); e.target.value = '' }}
+                        onChange={async e => {
+                            const compressed = await Promise.all(Array.from(e.target.files).map(f => compressImage(f)))
+                            const newFiles = compressed.map(file => ({ file, id: Math.random().toString(36).substring(2), preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : null, name: file.name }))
+                            handleChange(field._id, [...files, ...newFiles])
+                            e.target.value = ''
+                        }}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition" />
                 </div>
             )

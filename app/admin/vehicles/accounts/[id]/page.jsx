@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
+import { compressImage } from '@/utils/imageCompress'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 const getExistingImagesForField = (vehicle, field) => {
@@ -464,7 +465,10 @@ const VehicleAccountPage = ({ params }) => {
                                                         </div>
                                                     </div>
                                                 )}
-                                                <input type="file" multiple accept={field.type === 'image' ? 'image/*' : '*'} onChange={e => setNewImages(prev => ({ ...prev, [field._id]: Array.from(e.target.files) }))} style={{ width: '100%', padding: '8px 10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '12px', boxSizing: 'border-box' }} />
+                                                <input type="file" multiple accept={field.type === 'image' ? 'image/*' : '*'} onChange={async e => {
+                                                    const compressed = await Promise.all(Array.from(e.target.files).map(f => compressImage(f)))
+                                                    setNewImages(prev => ({ ...prev, [field._id]: compressed }))
+                                                }} style={{ width: '100%', padding: '8px 10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '12px', boxSizing: 'border-box' }} />
                                                 {newImages[field._id]?.length > 0 && <p style={{ fontSize: '10px', color: '#1a73e8', marginTop: '4px', fontWeight: 600 }}>{newImages[field._id].length} new file{newImages[field._id].length > 1 ? 's' : ''} selected</p>}
                                             </div>
                                         )
