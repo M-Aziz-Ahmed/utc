@@ -1,5 +1,7 @@
 import GatePass from "@/models/GatePass";
 import Vehicle from "@/models/Vehicle";
+import Yard from "@/models/Yard";
+import Consignee from "@/models/Consignee";
 import dbConnect from "@/utils/dbConnection";
 import { saveImage } from "@/utils/uploadImage";
 import { NextResponse } from "next/server";
