@@ -206,3 +206,37 @@ export const PATCH = async (req) => {
         return NextResponse.json({ message: 'Error updating gate pass', error: error.message }, { status: 500 });
     }
 };
+
+export const DELETE = async (req) => {
+    try {
+        await dbConnect();
+        const { gatePassId } = await req.json();
+        if (!gatePassId) {
+            return NextResponse.json({ message: 'Gate Pass ID is required' }, { status: 400 });
+        }
+
+        const gatePass = await GatePass.findById(gatePassId).lean();
+        if (!gatePass) {
+            return NextResponse.json({ message: 'Gate pass not found' }, { status: 404 });
+        }
+
+        await GatePass.findByIdAndDelete(gatePassId);
+
+        if (gatePass.vehicle) {
+            if (gatePass.type === 'IGP') {
+                await Vehicle.findByIdAndUpdate(gatePass.vehicle, {
+                    $set: { physicalIn: false, physicalInDate: null, gatePassImages: [] },
+                });
+            } else if (gatePass.type === 'OGP') {
+                await Vehicle.findByIdAndUpdate(gatePass.vehicle, {
+                    $set: { physicalOut: false, physicalOutDate: null, containerNumber: '', blNumber: '' },
+                });
+            }
+        }
+
+        return NextResponse.json({ message: 'Gate pass deleted' }, { status: 200 });
+    } catch (error) {
+        console.error('Error deleting gate pass:', error);
+        return NextResponse.json({ message: 'Error deleting gate pass', error: error.message }, { status: 500 });
+    }
+};

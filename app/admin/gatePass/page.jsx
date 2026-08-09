@@ -104,16 +104,34 @@ const GatePassPage = () => {
 
     const addPhotos = async (gpId, files) => {
         if (!files.length) return
-        const fd = new FormData()
-        fd.append('gatePass', JSON.stringify({ gatePassId: gpId }))
-        files.forEach(f => fd.append('images', f))
-        const res = await fetch('/api/gatePass', { method: 'PATCH', body: fd })
-        if (res.ok) {
-            const gp = await res.json()
-            setGatePasses(p => p.map(g => g._id === gpId ? gp : g))
-        } else {
-            alert('Failed to upload photos')
-        }
+        try {
+            const fd = new FormData()
+            fd.append('gatePass', JSON.stringify({ gatePassId: gpId }))
+            files.forEach(f => fd.append('images', f))
+            const res = await fetch('/api/gatePass', { method: 'PATCH', body: fd })
+            if (res.ok) {
+                const gp = await res.json()
+                setGatePasses(p => p.map(g => g._id === gpId ? gp : g))
+            } else {
+                let data = {}
+                try { data = await res.json() } catch {}
+                alert(data.error || data.message || 'Failed to upload photos')
+            }
+        } catch (e) { alert(e.message || 'Failed to upload photos') }
+    }
+
+    const handleDelete = async (gpId) => {
+        if (!window.confirm('Delete this gate pass? This cannot be undone.')) return
+        try {
+            const res = await fetch('/api/gatePass', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gatePassId: gpId }) })
+            if (res.ok) {
+                setGatePasses(p => p.filter(g => g._id !== gpId))
+            } else {
+                let data = {}
+                try { data = await res.json() } catch {}
+                alert(data.error || data.message || 'Failed to delete gate pass')
+            }
+        } catch (e) { alert(e.message || 'Failed to delete gate pass') }
     }
 
     const filtered = gatePasses.filter(g => {
@@ -199,6 +217,7 @@ const GatePassPage = () => {
                                 <th style={{ padding: '8px 10px', textAlign: 'center', fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Status</th>
                                 <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Remarks</th>
                                 <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Photos</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'center', fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -247,6 +266,12 @@ const GatePassPage = () => {
                                                         onChange={e => { addPhotos(g._id, Array.from(e.target.files)); e.target.value = '' }} />
                                                 </label>
                                             </div>
+                                        </td>
+                                        <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                                            <button onClick={() => handleDelete(g._id)} title="Delete gate pass"
+                                                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', borderRadius: '6px', border: '1px solid #fee2e2', background: '#fef2f2', color: '#dc2626', cursor: 'pointer', flexShrink: 0 }}>
+                                                <svg style={{ width: '12px', height: '12px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
                                         </td>
                                     </tr>
                                 )
