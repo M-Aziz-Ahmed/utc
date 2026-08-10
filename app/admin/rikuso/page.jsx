@@ -168,7 +168,7 @@ const AllocControls = ({ vehicle, rikusoCompanies, consignees, allocations,
 }
 
 // ── Grid card (same thumbnail/header as vehicles page) ─────────────────────────
-const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
+const AllocCard = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, allocations,
     onAllocChange, onRikusoChange, onPresold, onRemovePresold, onExportSelect }) => {
     const [imgIdx, setImgIdx] = useState(0)
     const [hov, setHov]       = useState(false)
@@ -188,6 +188,13 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
             return isNaN(n) ? 0 : n
         }
         
+        const findFieldByLabel = (label, context = null) => {
+            if (!label) return null
+            let f = fields.find(x => x.label === label && x.belongsto === context)
+            if (!f) f = fields.find(x => x.label === label)
+            return f
+        }
+        
         const computeFieldValue = (field, visited = new Set()) => {
             if (visited.has(field._id)) return 0
             visited.add(field._id)
@@ -198,10 +205,23 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
                 return toNum(raw && typeof raw === 'object' ? raw.name : raw)
             }
             
+            // Tax field - compute from linked source field × linked tax rate
+            if (field.type === 'tax') {
+                const lt = taxes.find(t => t._id === field.linkedTax)
+                if (!lt) return 0
+                const src = findFieldByLabel(field.linkedField, field.belongsto)
+                if (!src) return 0
+                const sv = computeFieldValue(src, new Set(visited))
+                if (sv <= 0) return 0
+                if (lt.type === 'percentage') return sv * lt.rate / 100
+                if (lt.type === 'multiplier') return sv * lt.rate
+                return toNum(lt.rate)
+            }
+            
             // Sum field - compute from linked fields
             if (field.type === 'sum') {
                 return (field.linkedFields || []).reduce((acc, label) => {
-                    const linked = fields.find(f => f.label === label)
+                    const linked = findFieldByLabel(label, field.belongsto)
                     if (!linked) return acc
                     return acc + computeFieldValue(linked, new Set(visited))
                 }, 0)
@@ -211,7 +231,7 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
             if (field.type === 'formula') {
                 let result = null
                 for (const ff of (field.formulaFields || [])) {
-                    const linked = fields.find(f => f.label === ff.field)
+                    const linked = findFieldByLabel(ff.field, field.belongsto)
                     if (!linked) continue
                     const val = computeFieldValue(linked, new Set(visited))
                     if (result === null) { result = val; continue }
@@ -232,7 +252,7 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
         
         const initial = {}
         adminFields.forEach(f => {
-            if (f.type === 'sum' || f.type === 'formula') {
+            if (f.type === 'sum' || f.type === 'formula' || f.type === 'tax') {
                 const computed = computeFieldValue(f)
                 initial[f._id] = computed > 0 ? computed : ''
             } else {
@@ -240,7 +260,7 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
             }
         })
         setEditableValues(initial)
-    }, [vehicle, fields])
+    }, [vehicle, fields, taxes])
 
     const handleFieldSave = async (fieldId, value) => {
         setSaving(true)
@@ -525,7 +545,7 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
 }
 
 // ── List row ──────────────────────────────────────────────────────────────────
-const AllocRow = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
+const AllocRow = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, allocations,
     onAllocChange, onRikusoChange, onPresold, onRemovePresold, onExportSelect }) => {
     const [editableValues, setEditableValues] = useState({})
     const [saving, setSaving] = useState(false)
@@ -547,6 +567,12 @@ const AllocRow = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
             const n = parseFloat(String(v).replace(/[^0-9.\-]/g, ''))
             return isNaN(n) ? 0 : n
         }
+        const findFieldByLabel = (label, context = null) => {
+            if (!label) return null
+            let f = fields.find(x => x.label === label && x.belongsto === context)
+            if (!f) f = fields.find(x => x.label === label)
+            return f
+        }
         const computeFieldValue = (field, visited = new Set()) => {
             if (visited.has(field._id)) return 0
             visited.add(field._id)
@@ -554,9 +580,20 @@ const AllocRow = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
                 const raw = vehicle[field.vehicleField]
                 return toNum(raw && typeof raw === 'object' ? raw.name : raw)
             }
+            if (field.type === 'tax') {
+                const lt = taxes.find(t => t._id === field.linkedTax)
+                if (!lt) return 0
+                const src = findFieldByLabel(field.linkedField, field.belongsto)
+                if (!src) return 0
+                const sv = computeFieldValue(src, new Set(visited))
+                if (sv <= 0) return 0
+                if (lt.type === 'percentage') return sv * lt.rate / 100
+                if (lt.type === 'multiplier') return sv * lt.rate
+                return toNum(lt.rate)
+            }
             if (field.type === 'sum') {
                 return (field.linkedFields || []).reduce((acc, label) => {
-                    const linked = fields.find(f => f.label === label)
+                    const linked = findFieldByLabel(label, field.belongsto)
                     if (!linked) return acc
                     return acc + computeFieldValue(linked, new Set(visited))
                 }, 0)
@@ -564,7 +601,7 @@ const AllocRow = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
             if (field.type === 'formula') {
                 let result = null
                 for (const ff of (field.formulaFields || [])) {
-                    const linked = fields.find(f => f.label === ff.field)
+                    const linked = findFieldByLabel(ff.field, field.belongsto)
                     if (!linked) continue
                     const val = computeFieldValue(linked, new Set(visited))
                     if (result === null) { result = val; continue }
@@ -582,7 +619,7 @@ const AllocRow = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
         }
         const initial = {}
         adminFields.forEach(f => {
-            if (f.type === 'sum' || f.type === 'formula') {
+            if (f.type === 'sum' || f.type === 'formula' || f.type === 'tax') {
                 const computed = computeFieldValue(f)
                 initial[f._id] = computed > 0 ? computed : ''
             } else {
@@ -590,7 +627,7 @@ const AllocRow = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
             }
         })
         setEditableValues(initial)
-    }, [vehicle, fields])
+    }, [vehicle, fields, taxes])
 
     const handleFieldSave = async (fieldId, value) => {
         setSaving(true)
@@ -789,6 +826,7 @@ const AllocRow = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
 const RikusoManagementPage = () => {
     const [vehicles, setVehicles]           = useState([])
     const [fields, setFields]               = useState([])
+    const [taxes, setTaxes]                 = useState([])
     const [loading, setLoading]             = useState(true)
     const [viewMode, setViewMode]           = useState('grid')
     const [search, setSearch]               = useState('')
@@ -814,12 +852,14 @@ const RikusoManagementPage = () => {
         Promise.all([
             fetch('/api/vehicles').then(r => r.ok ? r.json() : []),
             fetch('/api/fields').then(r => r.ok ? r.json() : []),
+            fetch('/api/tax').then(r => r.ok ? r.json() : []),
             fetch('/api/manufacturer').then(r => r.ok ? r.json() : []),
             fetch('/api/consignee').then(r => r.ok ? r.json() : []),
-        ]).then(([v, f, m, c]) => {
+        ]).then(([v, f, t, m, c]) => {
             const vs = Array.isArray(v) ? v : []
             setVehicles(vs)
             setFields(Array.isArray(f) ? f : [])  // Load ALL fields regardless of belongsto
+            setTaxes(Array.isArray(t) ? t : [])
             setRikusoCompanies(Array.isArray(m) ? m.filter(x => x.isRikusoCompany) : [])
             setConsignees(Array.isArray(c) ? c : [])
             const init = {}
@@ -964,7 +1004,7 @@ const RikusoManagementPage = () => {
                 </div>
             ) : viewMode === 'grid' ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '12px' }}>
-                    {filtered.map(v => <AllocCard key={v._id} vehicle={v} fields={fields} {...controlProps} />)}
+                    {filtered.map(v => <AllocCard key={v._id} vehicle={v} fields={fields} taxes={taxes} {...controlProps} />)}
                 </div>
             ) : (
                 <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
@@ -987,7 +1027,7 @@ const RikusoManagementPage = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {filtered.map(v => <AllocRow key={v._id} vehicle={v} fields={fields} {...controlProps} />)}
+                            {filtered.map(v => <AllocRow key={v._id} vehicle={v} fields={fields} taxes={taxes} {...controlProps} />)}
                         </tbody>
                     </table>
                 </div>
