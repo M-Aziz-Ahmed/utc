@@ -18,8 +18,12 @@ export default async function VehicleTrackPage({ params }) {
   let gatePasses = []
   try {
     await dbConnect()
-    vehicle = await Vehicle.findById(vehicleId).populate('yard', 'name location').lean()
-    gatePasses = await GatePass.find({ vehicle: vehicleId }).populate('yard', 'name location').sort({ createdAt: 1 }).lean()
+    // Accept either the Mongo ObjectId (from QR) or the sequential stock ID (e.g. /track/5)
+    const isObjectId = /^[a-f0-9]{24}$/i.test(vehicleId)
+    const vehicleQuery = isObjectId ? { _id: vehicleId } : { stockId: parseInt(vehicleId, 10) }
+    vehicle = await Vehicle.findOne(vehicleQuery).populate('yard', 'name location').lean()
+    const gatePassQuery = vehicle ? (isObjectId ? { vehicle: vehicleId } : { vehicle: vehicle._id }) : { vehicle: vehicleId }
+    gatePasses = await GatePass.find(gatePassQuery).populate('yard', 'name location').sort({ createdAt: 1 }).lean()
   } catch (e) {
     vehicle = null
   }

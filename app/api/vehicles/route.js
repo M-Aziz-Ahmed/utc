@@ -126,6 +126,11 @@ export const POST = async (req) => {
             sanitizedData[k.replace(/\./g, '')] = v
         }
 
+        // Assign the next sequential stock ID (1, 2, 3, ...) so every vehicle has
+        // a short, human-friendly identifier that can be used across all searches.
+        const lastStock = await Vehicle.findOne({}, { stockId: 1 }).sort({ stockId: -1 }).lean();
+        sanitizedData.stockId = (lastStock?.stockId || 0) + 1;
+
         const newVehicle = await Vehicle.create(sanitizedData);
         
         return NextResponse.json(

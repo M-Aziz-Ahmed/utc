@@ -15,6 +15,8 @@ const vehicleSchema = new mongoose.Schema({
     // Whether the vehicle is visible on the public website
     // (only set once admin approves its gate pass photos in the review portal)
     published: { type: Boolean, default: false },
+    // Sequential, human-friendly stock number assigned automatically on creation (1, 2, 3, ...)
+    stockId: { type: Number },
     // Photos taken when the car physically arrives (uploaded during In Gate Pass)
     gatePassImages: [imageFileSchema]
 }, { 
@@ -27,6 +29,7 @@ vehicleSchema.index({ rikusoStatus: 1 });
 vehicleSchema.index({ createdBy: 1 });
 vehicleSchema.index({ consignee: 1 });
 vehicleSchema.index({ rikusoCompany: 1 });
+vehicleSchema.index({ stockId: 1 });
 
 vehicleSchema.virtual('id').get(function () {
     return this._id.toHexString();

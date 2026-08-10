@@ -29,7 +29,7 @@ const AccountVehicleCard = ({ vehicle, fields, accountFields, onClick }) => {
     const img = getMainImage(vehicle)
     const nameLine = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ').toUpperCase()
     const subtitle = vehicle.modelDescription || vehicle.variant || ''
-    const headerLine = [vehicle.auctionGroup, vehicle.auctionVenue].filter(Boolean).join(' / ')
+    const headerLine = [vehicle.stockId ? `#${vehicle.stockId}` : '', vehicle.auctionGroup, vehicle.auctionVenue].filter(Boolean).join(' / ')
 
     const chassisField = fields.find(f => f.label?.toLowerCase().includes('chassis'))
     const chassisVal   = chassisField ? (vehicle[chassisField._id] || vehicle[chassisField.label]) : ''
@@ -114,7 +114,7 @@ const AccountVehicleRow = ({ vehicle, fields, accountFields, onClick }) => {
     const img = getMainImage(vehicle)
     const nameLine = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ').toUpperCase()
     const subtitle = vehicle.modelDescription || vehicle.variant || ''
-    const headerLine = [vehicle.auctionGroup, vehicle.auctionVenue].filter(Boolean).join(' / ')
+    const headerLine = [vehicle.stockId ? `#${vehicle.stockId}` : '', vehicle.auctionGroup, vehicle.auctionVenue].filter(Boolean).join(' / ')
 
     const chassisField = fields.find(f => f.label?.toLowerCase().includes('chassis'))
     const chassisVal   = chassisField ? (vehicle[chassisField._id] || vehicle[chassisField.label]) : ''

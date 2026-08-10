@@ -19,7 +19,7 @@ const chassisOf = (v) => {
     return ''
 }
 
-const vehicleSearchText = (v) => [v.manufacturer, v.model, v.exportCountry, chassisOf(v)].filter(Boolean).join(' ').toLowerCase()
+const vehicleSearchText = (v) => [v.manufacturer, v.model, v.exportCountry, v.stockId, chassisOf(v)].filter(Boolean).join(' ').toLowerCase()
 
 const vehicleImages = (v) => {
     if (!v) return []

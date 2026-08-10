@@ -63,7 +63,7 @@ const VehicleCard = ({ vehicle, fields, onView, onDelete, showChassis }) => {
 
     const lotField   = fields.find(f => f.label?.toLowerCase().includes('lot'))
     const lotVal     = lotField ? (vehicle[lotField._id] || vehicle[lotField.label]) : null
-    const headerLine = [vehicle.auctionGroup, vehicle.auctionVenue, lotVal || null].filter(Boolean).join(' / ')
+    const headerLine = [vehicle.stockId ? `#${vehicle.stockId}` : '', vehicle.auctionGroup, vehicle.auctionVenue, lotVal || null].filter(Boolean).join(' / ')
     const nameLine   = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ').toUpperCase()
     const descLine = vehicle.modelDescription || vehicle.variant || vehicle['Description'] || vehicle['description'] || ''
     const isPreSold  = vehicle.allocationStatus === true
@@ -569,7 +569,7 @@ const VehicleRow = ({ vehicle, fields, onView, onDelete, showChassis }) => {
 
     const lotField = fields.find(f => f.label?.toLowerCase().includes('lot'))
     const lotVal   = lotField ? (vehicle[lotField._id] || vehicle[lotField.label]) : null
-    const headerLine = [vehicle.auctionGroup, vehicle.auctionVenue, lotVal || null].filter(Boolean).join(' / ')
+    const headerLine = [vehicle.stockId ? `#${vehicle.stockId}` : '', vehicle.auctionGroup, vehicle.auctionVenue, lotVal || null].filter(Boolean).join(' / ')
     const nameLine   = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ')
 
     const specs = getSpecs(vehicle, fields)

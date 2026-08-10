@@ -291,7 +291,7 @@ const AllocCard = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, a
 
     const lotField   = fields.find(f => f.label?.toLowerCase().includes('lot'))
     const lotVal     = lotField ? (vehicle[lotField._id] || vehicle[lotField.label]) : null
-    const headerLine = [vehicle.auctionGroup, vehicle.auctionVenue, lotVal].filter(Boolean).join(' / ')
+    const headerLine = [vehicle.stockId ? `#${vehicle.stockId}` : '', vehicle.auctionGroup, vehicle.auctionVenue, lotVal].filter(Boolean).join(' / ')
     const nameLine   = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ').toUpperCase()
     const descLine   = vehicle.modelDescription || vehicle.variant || ''
     const isPresold  = vehicle.allocationStatus || false
@@ -556,7 +556,7 @@ const AllocRow = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, al
 
     const lotField   = fields.find(f => f.label?.toLowerCase().includes('lot'))
     const lotVal     = lotField ? (vehicle[lotField._id] || vehicle[lotField.label]) : null
-    const headerLine = [vehicle.auctionGroup, vehicle.auctionVenue, lotVal].filter(Boolean).join(' / ')
+    const headerLine = [vehicle.stockId ? `#${vehicle.stockId}` : '', vehicle.auctionGroup, vehicle.auctionVenue, lotVal].filter(Boolean).join(' / ')
     const nameLine   = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ')
 
     // Initialize editable values from vehicle
