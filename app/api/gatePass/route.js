@@ -68,7 +68,7 @@ export const POST = async (req) => {
             const files = formData.getAll('images');
             for (const file of files) {
                 const image = await saveImage(file, 'gatePass');
-                uploadedImages.push(image);
+                uploadedImages.push({ ...image, approved: null });
             }
         } else {
             body = await req.json();
@@ -162,18 +162,19 @@ export const PATCH = async (req) => {
             const files = formData.getAll('images');
             for (const file of files) {
                 const image = await saveImage(file, 'gatePass');
-                uploadedImages.push(image);
+                uploadedImages.push({ ...image, approved: null });
             }
         } else {
             body = await req.json();
         }
 
-        const { gatePassId, status, removeImages } = body;
+        const { gatePassId, status, removeImages, approveImages, rejectImages } = body;
 
         if (!gatePassId) {
             return NextResponse.json({ message: 'Gate Pass ID is required' }, { status: 400 });
         }
-        if (!status && uploadedImages.length === 0 && !(Array.isArray(removeImages) && removeImages.length > 0)) {
+        const hasReview = (Array.isArray(approveImages) && approveImages.length > 0) || (Array.isArray(rejectImages) && rejectImages.length > 0);
+        if (!status && uploadedImages.length === 0 && !(Array.isArray(removeImages) && removeImages.length > 0) && !hasReview) {
             return NextResponse.json({ message: 'Status is required' }, { status: 400 });
         }
 
@@ -195,7 +196,10 @@ export const PATCH = async (req) => {
         if (status) set.status = status;
 
         const removedSet = Array.isArray(removeImages) ? new Set(removeImages) : new Set();
+        const approveSet = Array.isArray(approveImages) ? new Set(approveImages) : new Set();
+        const rejectSet  = Array.isArray(rejectImages) ? new Set(rejectImages) : new Set();
 
+        // ── Upload / remove photos ─────────────────────────────────────────────
         if (uploadedImages.length > 0 || removedSet.size > 0) {
             const currentImages = Array.isArray(gatePass.images) ? gatePass.images : [];
             const remaining = removedSet.size > 0 ? currentImages.filter(img => !removedSet.has(img?.path)) : currentImages;
@@ -215,6 +219,29 @@ export const PATCH = async (req) => {
                     await Vehicle.findByIdAndUpdate(gatePass.vehicle, {
                         $set: { gatePassImages: [...vehRemaining, ...uploadedImages] },
                     });
+                }
+            }
+        }
+
+        // ── Approve / reject photos (review portal) ────────────────────────────
+        if (hasReview) {
+            const applyReview = (imgs = []) => imgs.map(img => {
+                if (approveSet.has(img?.path)) return { ...img, approved: true };
+                if (rejectSet.has(img?.path)) return { ...img, approved: false };
+                return img;
+            });
+            set.images = applyReview(Array.isArray(set.images) ? set.images : (gatePass.images || []));
+
+            if (gatePass.vehicle) {
+                const veh = await Vehicle.findById(gatePass.vehicle).lean();
+                if (veh) {
+                    const vehImages = applyReview(Array.isArray(veh.gatePassImages) ? veh.gatePassImages : []);
+                    const vehicleUpdate = { gatePassImages: vehImages };
+                    // Publishing the vehicle to the website happens once any photo is approved.
+                    if (approveSet.size > 0 && vehImages.some(img => img?.approved === true)) {
+                        vehicleUpdate.published = true;
+                    }
+                    await Vehicle.findByIdAndUpdate(gatePass.vehicle, { $set: vehicleUpdate });
                 }
             }
         }

@@ -8,6 +8,7 @@ const imageFileSchema = new mongoose.Schema({
     path: String,
     size: Number,
     type: String,
+    approved: { type: Boolean, default: null },
     uploadedAt: { type: Date, default: Date.now }
 }, { strict: false });
 

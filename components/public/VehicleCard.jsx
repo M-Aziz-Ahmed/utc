@@ -108,6 +108,7 @@ export default function VehicleCard({ vehicle }) {
         </Link>
         <div className="vehicle-card-badges">
           {vehicle.isNewArrival && <span className="vehicle-badge badge-new">New</span>}
+          {vehicle.allocationStatus && <span className="vehicle-badge badge-presold">Pre-Sold</span>}
         </div>
         <button
           className={`vehicle-card-wishlist ${wishlisted ? 'active' : ''}`}

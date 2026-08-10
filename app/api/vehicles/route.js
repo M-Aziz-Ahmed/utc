@@ -284,6 +284,22 @@ export const DELETE = async (req) => {
             return NextResponse.json({ message: 'Vehicle ID is required' }, { status: 400 });
         }
 
+        const existing = await Vehicle.findById(vehicleId).lean();
+        if (!existing) {
+            return NextResponse.json({ message: 'Vehicle not found' }, { status: 404 });
+        }
+
+        if (existing.physicalIn) {
+            return NextResponse.json({
+                message: 'Vehicle has an Inward Gate Pass (IGP). Delete the IGP first before deleting this vehicle.',
+            }, { status: 400 });
+        }
+        if (existing.physicalOut) {
+            return NextResponse.json({
+                message: 'Vehicle has an Outward Gate Pass (OGP). Delete the OGP first before deleting this vehicle.',
+            }, { status: 400 });
+        }
+
         const deleted = await Vehicle.findByIdAndDelete(vehicleId);
         if (!deleted) {
             return NextResponse.json({ message: 'Vehicle not found' }, { status: 404 });

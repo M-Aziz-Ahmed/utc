@@ -21,6 +21,25 @@ const chassisOf = (v) => {
 
 const vehicleSearchText = (v) => [v.manufacturer, v.model, v.exportCountry, chassisOf(v)].filter(Boolean).join(' ').toLowerCase()
 
+const vehicleImages = (v) => {
+    if (!v) return []
+    const paths = []
+    const push = (imgs) => {
+        if (!imgs) return
+        const arr = Array.isArray(imgs) ? imgs : [imgs]
+        for (const it of arr) {
+            if (typeof it === 'string' && it.trim()) paths.push(it)
+            else if (it && typeof it.path === 'string' && it.path.trim()) paths.push(it.path)
+        }
+    }
+    push(v.gatePassImages)
+    push(v['Vehicle Images'])
+    push(v['Thumbnail Image'])
+    push(v.mainImageUrl)
+    push(v.files)
+    return [...new Set(paths)]
+}
+
 const GatePassPage = () => {
     const [gatePasses, setGatePasses] = useState([])
     const [vehicles, setVehicles] = useState([])
@@ -182,10 +201,16 @@ const GatePassPage = () => {
                     <h1 style={{ fontSize: '18px', fontWeight: 500, color: '#202124', margin: 0 }}>Gate Pass Management</h1>
                     <p style={{ fontSize: '12px', color: '#5f6368', marginTop: '2px' }}>IGP (Inward) & OGP (Outward) Gate Passes</p>
                 </div>
-                <button onClick={openIGPForm} style={{ padding: '8px 16px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <svg style={{ width: '12px', height: '12px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                    New {tab}
-                </button>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <a href="/admin/gatePass/review"
+                        style={{ padding: '8px 16px', background: '#fff', color: '#059669', border: '1px solid #bbf7d0', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', textDecoration: 'none' }}>
+                        Photo Review Portal
+                    </a>
+                    <button onClick={openIGPForm} style={{ padding: '8px 16px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <svg style={{ width: '12px', height: '12px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                        New {tab}
+                    </button>
+                </div>
             </div>
 
             <div style={{ display: 'flex', gap: '4px', marginBottom: '14px', background: '#f1f3f4', padding: '3px', borderRadius: '10px', width: 'fit-content' }}>
@@ -265,14 +290,18 @@ const GatePassPage = () => {
                                         <td style={{ padding: '8px 10px' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                 {g.images?.length > 0 && (
-                                                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', maxWidth: '220px' }}>
+                                                    <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', maxWidth: '300px' }}>
                                                         {g.images.map((img, i) => (
-                                                            <div key={i} style={{ position: 'relative', width: '36px', height: '28px', borderRadius: '4px', overflow: 'hidden', background: '#f1f5f9', border: '1px solid #e2e8f0' }}>
+                                                            <div key={i} style={{ position: 'relative', width: '56px', height: '44px', borderRadius: '6px', overflow: 'hidden', background: '#f1f5f9', border: '1px solid #e2e8f0' }}>
                                                                 <a href={img.path} target="_blank" rel="noopener noreferrer" style={{ display: 'block', width: '100%', height: '100%' }}>
                                                                     <img src={img.path} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                                                                 </a>
+                                                                <span title={img?.approved === true ? 'Approved (published)' : img?.approved === false ? 'Rejected' : 'Pending review'}
+                                                                    style={{ position: 'absolute', bottom: '2px', left: '2px', width: '8px', height: '8px', borderRadius: '50%',
+                                                                        background: img?.approved === true ? '#059669' : img?.approved === false ? '#dc2626' : '#f59e0b',
+                                                                        border: '1px solid #fff' }} />
                                                                 <button type="button" title="Remove photo" onClick={() => removePhoto(g._id, img.path)}
-                                                                    style={{ position: 'absolute', top: '1px', right: '1px', width: '13px', height: '13px', borderRadius: '50%', background: 'rgba(220,38,38,0.92)', border: 'none', color: '#fff', fontSize: '9px', lineHeight: '13px', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>×</button>
+                                                                    style={{ position: 'absolute', top: '1px', right: '1px', width: '14px', height: '14px', borderRadius: '50%', background: 'rgba(220,38,38,0.92)', border: 'none', color: '#fff', fontSize: '9px', lineHeight: '14px', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>×</button>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -287,6 +316,12 @@ const GatePassPage = () => {
                                                             addPhotos(g._id, compressed)
                                                         }} />
                                                 </label>
+                                                {g.type === 'IGP' && (
+                                                    <a href="/admin/gatePass/review" title="Open photo review portal"
+                                                        style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 7px', fontSize: '10px', fontWeight: 600, background: '#f0fdf4', color: '#059669', border: 'none', borderRadius: '6px', cursor: 'pointer', textDecoration: 'none', flexShrink: 0 }}>
+                                                        Review
+                                                    </a>
+                                                )}
                                             </div>
                                         </td>
                                         <td style={{ padding: '8px 10px', textAlign: 'center' }}>
@@ -335,6 +370,26 @@ const GatePassPage = () => {
                                 </select>
                                 {tab === 'IGP' && vehSearch && filteredVehicles.length === 0 && <p style={{ fontSize: '10px', color: '#ef4444', marginTop: '4px' }}>No export vehicles match &quot;{vehSearch}&quot;.</p>}
                                 {tab === 'OGP' && ogpVehicles.length === 0 && <p style={{ fontSize: '10px', color: '#f59e0b', marginTop: '4px' }}>No vehicles with IGP. Complete IGP first.</p>}
+                                {(() => {
+                                    const selected = vehicles.find(v => v._id === form.vehicle)
+                                    const imgs = vehicleImages(selected)
+                                    if (!imgs.length) return null
+                                    return (
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
+                                                Existing Photos <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 'normal', fontSize: '10px' }}>{tab === 'IGP' ? 'current auction photos - replaced once arrival photos are approved' : 'photos taken on arrival'}</span>
+                                            </label>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                                {imgs.map((p, idx) => (
+                                                    <a key={idx} href={p} target="_blank" rel="noopener noreferrer"
+                                                        style={{ width: '64px', height: '48px', borderRadius: '6px', overflow: 'hidden', border: '1px solid #e0e0e0', display: 'block' }}>
+                                                        <img src={p} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )
+                                })()}
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                                 <div>

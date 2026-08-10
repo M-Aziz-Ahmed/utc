@@ -860,6 +860,11 @@
   color: white;
 }
 
+.badge-presold {
+  background: #1a3060;
+  color: white;
+}
+
 .vehicle-card-wishlist {
   position: absolute;
   top: 12px;

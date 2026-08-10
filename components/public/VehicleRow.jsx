@@ -35,6 +35,7 @@ export default function VehicleRow({ vehicle }) {
           )}
         </Link>
         {vehicle.isNewArrival && <span className="vehicle-badge badge-new" style={{ position: 'absolute', top: 6, left: 6, fontSize: 10, padding: '2px 6px' }}>New</span>}
+        {vehicle.allocationStatus && <span className="vehicle-badge badge-presold" style={{ position: 'absolute', top: 6, left: vehicle.isNewArrival ? 48 : 6, fontSize: 10, padding: '2px 6px' }}>Pre-Sold</span>}
       </div>
 
       <div className="vehicle-row-info">

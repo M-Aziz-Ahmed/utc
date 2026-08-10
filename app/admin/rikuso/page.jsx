@@ -30,6 +30,13 @@ const ALLOC_OPTIONS = [
     { value: 'resale-to-auction', label: 'Resale to Auction' },
 ]
 
+// Fields shown in the Quick Edit section of allocation cards:
+// any field explicitly flagged showOnAdminCard, plus computed costing fields
+// (sum / formula / tax) from the Vehicle Accounts form.
+const adminCardFields = (fields) => fields.filter(f =>
+    f.showOnAdminCard || (f.belongsto === 'accounts' && ['sum', 'formula', 'tax'].includes(f.type))
+)
+
 // ── Export / Khitai details modal ──────────────────────────────────────────────
 const ExportModal = ({ vehicle, mode, countries, onSave, onClose }) => {
     const [country, setCountry] = useState(vehicle.exportCountry || '')
@@ -166,7 +173,7 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
     // Initialize editable values from vehicle
     // For sum/formula fields, compute the value from linked fields
     useEffect(() => {
-        const adminFields = fields.filter(f => f.showOnAdminCard)
+        const adminFields = adminCardFields(fields)
         
         const toNum = (v) => {
             if (v === null || v === undefined || v === '') return 0
@@ -275,7 +282,7 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
     }).filter(Boolean)
 
     // Get admin editable fields - include all contexts to support fields from any form
-    const adminFields = fields.filter(f => f.showOnAdminCard).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    const adminFields = adminCardFields(fields).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     const alloc  = (vehicle.allocation || '').toLowerCase()
     const rikuso = !!vehicle.rikusoStatus
 
@@ -527,10 +534,53 @@ const AllocRow = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
 
     // Initialize editable values from vehicle
     useEffect(() => {
-        const adminFields = fields.filter(f => f.showOnAdminCard)
+        const adminFields = adminCardFields(fields)
+        const toNum = (v) => {
+            if (v === null || v === undefined || v === '') return 0
+            const n = parseFloat(String(v).replace(/[^0-9.\-]/g, ''))
+            return isNaN(n) ? 0 : n
+        }
+        const computeFieldValue = (field, visited = new Set()) => {
+            if (visited.has(field._id)) return 0
+            visited.add(field._id)
+            if (field.vehicleField && vehicle) {
+                const raw = vehicle[field.vehicleField]
+                return toNum(raw && typeof raw === 'object' ? raw.name : raw)
+            }
+            if (field.type === 'sum') {
+                return (field.linkedFields || []).reduce((acc, label) => {
+                    const linked = fields.find(f => f.label === label)
+                    if (!linked) return acc
+                    return acc + computeFieldValue(linked, new Set(visited))
+                }, 0)
+            }
+            if (field.type === 'formula') {
+                let result = null
+                for (const ff of (field.formulaFields || [])) {
+                    const linked = fields.find(f => f.label === ff.field)
+                    if (!linked) continue
+                    const val = computeFieldValue(linked, new Set(visited))
+                    if (result === null) { result = val; continue }
+                    switch (ff.operation || 'add') {
+                        case 'add': result += val; break
+                        case 'subtract': result -= val; break
+                        case 'multiply': result *= val; break
+                        case 'divide': result = val !== 0 ? result / val : 0; break
+                    }
+                }
+                return result ?? 0
+            }
+            const val = vehicle[field._id] ?? vehicle[field.label] ?? vehicle[field.label?.replace(/\./g, '')]
+            return toNum(val)
+        }
         const initial = {}
         adminFields.forEach(f => {
-            initial[f._id] = vehicle[f._id] ?? vehicle[f.label] ?? ''
+            if (f.type === 'sum' || f.type === 'formula') {
+                const computed = computeFieldValue(f)
+                initial[f._id] = computed > 0 ? computed : ''
+            } else {
+                initial[f._id] = vehicle[f._id] ?? vehicle[f.label] ?? ''
+            }
         })
         setEditableValues(initial)
     }, [vehicle, fields])
@@ -562,7 +612,16 @@ const AllocRow = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
         }
     }
 
-    // same card fields logic
+    const formatRowValue = (v) => {
+        if (v === '' || v === null || v === undefined) return null
+        const num = parseFloat(v)
+        if (!isNaN(num)) {
+            if (Math.abs(num) >= 1_000_000) return `${(num / 1_000_000).toFixed(2).replace(/\.?0+$/, '')}M`
+            if (Math.abs(num) >= 1_000) return `${(num / 1_000).toFixed(1).replace(/\.?0+$/, '')}K`
+            return num.toLocaleString()
+        }
+        return String(v)
+    }
     const cardFields = fields
         .filter(f => f.showOnCard !== false && f.belongsto === 'add-vehicles')
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
@@ -575,7 +634,7 @@ const AllocRow = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
     }).filter(Boolean)
 
     // Get admin editable fields - include all contexts to support fields from any form
-    const adminFields = fields.filter(f => f.showOnAdminCard).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    const adminFields = adminCardFields(fields).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 
     return (
         <tr style={{ borderBottom: '1px solid #f0f4f8', transition: 'background 0.1s' }}
@@ -606,29 +665,40 @@ const AllocRow = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
             {/* Show admin editable fields if any, otherwise show regular card fields */}
             {adminFields.length > 0 ? (
                 <>
-                    {adminFields.slice(0, 5).map(field => (
+                    {adminFields.slice(0, 5).map(field => {
+                        const isReadOnly = field.type === 'sum' || field.type === 'formula' || field.type === 'tax' || !!field.vehicleField
+                        const currentVal = editableValues[field._id] ?? ''
+                        const hasValue = currentVal !== '' && currentVal !== null && currentVal !== undefined
+                        return (
                         <td key={field._id} style={{ padding: '5px 8px', minWidth: '70px', background: '#fffbf0' }}>
                             <div style={{ fontSize: '9px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1.2, marginBottom: '2px' }}>{field.label}</div>
-                            <input
-                                type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
-                                value={editableValues[field._id] ?? ''}
-                                onChange={e => setEditableValues(p => ({ ...p, [field._id]: e.target.value }))}
-                                onBlur={e => {
-                                    if (e.target.value !== (vehicle[field._id] ?? vehicle[field.label] ?? '')) {
-                                        handleFieldSave(field._id, e.target.value)
-                                    }
-                                }}
-                                onKeyDown={e => {
-                                    if (e.key === 'Enter') {
-                                        e.target.blur()
-                                    }
-                                }}
-                                disabled={saving}
-                                style={{ width: '100%', padding: '3px 5px', border: '1px solid #fcd34d', borderRadius: '4px', fontSize: '11px', outline: 'none', background: '#fff', color: '#202124', fontWeight: 600 }}
-                                placeholder={`${field.label}...`}
-                            />
+                            {isReadOnly ? (
+                                <div style={{ fontSize: '11px', fontWeight: 700, color: hasValue ? '#1e40af' : '#94a3b8', whiteSpace: 'nowrap', padding: '3px 2px' }}>
+                                    {hasValue ? formatRowValue(currentVal) : '—'}
+                                </div>
+                            ) : (
+                                <input
+                                    type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+                                    value={currentVal}
+                                    onChange={e => setEditableValues(p => ({ ...p, [field._id]: e.target.value }))}
+                                    onBlur={e => {
+                                        if (e.target.value !== (vehicle[field._id] ?? vehicle[field.label] ?? '')) {
+                                            handleFieldSave(field._id, e.target.value)
+                                        }
+                                    }}
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter') {
+                                            e.target.blur()
+                                        }
+                                    }}
+                                    disabled={saving}
+                                    style={{ width: '100%', padding: '3px 5px', border: '1px solid #fcd34d', borderRadius: '4px', fontSize: '11px', outline: 'none', background: '#fff', color: '#202124', fontWeight: 600 }}
+                                    placeholder={`${field.label}...`}
+                                />
+                            )}
                         </td>
-                    ))}
+                        )
+                    })}
                     {adminFields.length < 5 && Array.from({ length: 5 - adminFields.length }).map((_, i) => <td key={`p${i}`} style={{ padding: '5px 8px' }} />)}
                 </>
             ) : (

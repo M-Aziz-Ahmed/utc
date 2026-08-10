@@ -718,7 +718,11 @@ const Page = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ vehicleId }),
             })
-            if (!res.ok) throw new Error('Failed to delete')
+            if (!res.ok) {
+                let data = {}
+                try { data = await res.json() } catch {}
+                throw new Error(data.message || 'Failed to delete')
+            }
             setVehicles(prev => prev.filter(v => v._id !== vehicleId))
             if (selected?._id === vehicleId) setSelected(null)
         } catch (err) {

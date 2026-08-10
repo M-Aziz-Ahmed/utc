@@ -159,7 +159,10 @@ export default function VehicleDetailContent({ vehicle }) {
 
             <div className="vehicle-detail-info">
               <div className="detail-header">
-                <h1 className="detail-title">{vehicle.title}</h1>
+                <h1 className="detail-title">
+                  {vehicle.title}
+                  {vehicle.allocationStatus && <span className="vehicle-badge badge-presold" style={{ display: 'inline-block', verticalAlign: 'middle', marginLeft: 10 }}>Pre-Sold</span>}
+                </h1>
                 <div className="detail-price">{formatPrice(vehicle.price)}</div>
                 <div className="detail-id">Stock ID: {vehicle.stockId || vehicle.vehicleId}</div>
               </div>

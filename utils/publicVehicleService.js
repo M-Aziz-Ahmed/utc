@@ -1,8 +1,6 @@
 import dbConnect from './dbConnection'
 import Vehicle from '@/models/Vehicle'
 
-const PUBLIC_VEHICLE_STATUS = process.env.PUBLIC_VEHICLE_STATUS || 'export'
-
 const FIELD_MAPPING = {
   vehicleId: '_id',
   stockId: 'stockId',
@@ -65,7 +63,12 @@ function mapVehicleToPublic(vehicle) {
 
   const images = vehicle[FIELD_MAPPING.images] || vehicle['Vehicle Images'] || []
   const thumbnail = vehicle[FIELD_MAPPING.thumbnailImage] || vehicle['Thumbnail Image'] || ''
-  const gatePassPaths = (Array.isArray(vehicle.gatePassImages) ? vehicle.gatePassImages : []).map(img => img?.path).filter(Boolean)
+  // Only photos approved in the admin review portal are shown on the public site.
+  // Unapproved photos are held for review and never auto-published.
+  const gatePassPaths = (Array.isArray(vehicle.gatePassImages) ? vehicle.gatePassImages : [])
+    .filter(img => img?.approved === true)
+    .map(img => img?.path)
+    .filter(Boolean)
 
   let allImages = []
   let mainImage = ''
@@ -143,10 +146,12 @@ function buildFilterQuery(filters = {}) {
   const query = {}
   const orParts = []
 
+  // Only vehicles explicitly published (approved in the admin review portal)
+  // are visible on the public website.
+  query.published = true
+
   if (filters.status) {
     query.allocation = filters.status
-  } else {
-    query.allocation = PUBLIC_VEHICLE_STATUS
   }
 
   if (filters.make) {
@@ -245,7 +250,7 @@ export async function getPublicVehicles({
 export async function getPublicVehicleById(id) {
   try {
     await dbConnect()
-    const vehicle = await Vehicle.findOne({ _id: id, allocation: PUBLIC_VEHICLE_STATUS }).lean()
+    const vehicle = await Vehicle.findOne({ _id: id, published: true }).lean()
     if (!vehicle) return null
     return mapVehicleToPublic(vehicle)
   } catch (error) {
@@ -257,7 +262,7 @@ export async function getPublicVehicleById(id) {
 export async function getPublicVehicleBySlug(slug) {
   try {
     await dbConnect()
-    const vehicles = await Vehicle.find({ allocation: PUBLIC_VEHICLE_STATUS }).lean()
+    const vehicles = await Vehicle.find({ published: true }).lean()
     const mapped = vehicles.map(mapVehicleToPublic)
     return mapped.find(v => v.slug === slug || v.vehicleId === slug) || null
   } catch (error) {
@@ -269,7 +274,7 @@ export async function getPublicVehicleBySlug(slug) {
 export async function getVehicleCount() {
   try {
     await dbConnect()
-    return await Vehicle.countDocuments({ allocation: PUBLIC_VEHICLE_STATUS })
+    return await Vehicle.countDocuments({ published: true })
   } catch (error) {
     console.error('getVehicleCount error:', error.message)
     return 0
@@ -279,7 +284,7 @@ export async function getVehicleCount() {
 export async function getFeaturedVehicles(limit = 8) {
   try {
     await dbConnect()
-    const vehicles = await Vehicle.find({ allocation: PUBLIC_VEHICLE_STATUS })
+    const vehicles = await Vehicle.find({ published: true })
       .sort({ createdAt: -1 })
       .limit(parseInt(limit))
       .lean()
@@ -296,7 +301,7 @@ export async function getNewArrivals(limit = 8) {
     const twoWeeksAgo = new Date()
     twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
     const vehicles = await Vehicle.find({
-      allocation: PUBLIC_VEHICLE_STATUS,
+      published: true,
       createdAt: { $gte: twoWeeksAgo }
     }).sort({ createdAt: -1 }).limit(parseInt(limit)).lean()
     return vehicles.map(mapVehicleToPublic)
@@ -316,7 +321,7 @@ function getAnyField(vehicle, aliases) {
 export async function getFilterOptions() {
   try {
     await dbConnect()
-    const vehicles = await Vehicle.find({ allocation: PUBLIC_VEHICLE_STATUS }).lean()
+    const vehicles = await Vehicle.find({ published: true }).lean()
 
     const makes = [...new Set(vehicles.map(v => v['manufacturer'] || v['Make']).filter(Boolean))].sort()
     const fuelTypes = [...new Set(vehicles.map(v => getAnyField(v, FIELD_ALIASES.fuelType)).filter(Boolean))].sort()
