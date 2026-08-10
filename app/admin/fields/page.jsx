@@ -12,6 +12,7 @@ const Page = () => {
     const [message, setMessage] = useState(null);
     const [refreshKey, setRefreshKey] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [seeding, setSeeding] = useState(false);
     const [forms, setForms] = useState([]);
     const [showNewFormModal, setShowNewFormModal] = useState(false);
     const [newFormName, setNewFormName] = useState("");
@@ -195,6 +196,30 @@ const Page = () => {
         }
     };
 
+    const handleSeedDefaultFields = async () => {
+        if (!window.confirm('Seed the standard Vehicle Details & Account Details fields (and their taxes)? Existing fields are skipped.')) return;
+        setSeeding(true);
+        setMessage(null);
+        try {
+            const res = await fetch('/api/seed-fields', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data?.message || 'Seed failed');
+            const parts = [];
+            if (data.taxesCreated?.length) parts.push(`${data.taxesCreated.length} tax(es) created`);
+            if (data.created?.length) parts.push(`${data.created.length} fields created`);
+            if (data.skipped?.length) parts.push(`${data.skipped.length} already existed`);
+            setMessage({ type: 'success', text: `Seed complete — ${parts.join(', ') || 'nothing to do'}.` });
+            setRefreshKey(k => k + 1);
+        } catch (e) {
+            setMessage({ type: 'error', text: e.message });
+        } finally {
+            setSeeding(false);
+        }
+    };
+
     return (
         <div className="min-h-screen py-6 px-6" style={{background:'#f6f8fc'}}>
             <div className="max-w-7xl mx-auto">
@@ -207,6 +232,16 @@ const Page = () => {
                         <h1 className="font-medium" style={{fontSize:'var(--text-2xl)', color:'#202124'}}>Dynamic Fields</h1>
                         <p style={{fontSize:'var(--text-sm)', color:'#5f6368', marginTop:'2px'}}>Create and manage custom fields for your forms.</p>
                     </div>
+                    <button
+                        onClick={handleSeedDefaultFields}
+                        disabled={seeding}
+                        style={{marginLeft:'auto', display:'flex', alignItems:'center', gap:'8px', padding:'8px 16px', background: seeding ? '#9aa0a6' : '#1a73e8', color:'#fff', fontWeight:600, borderRadius:'20px', border:'none', cursor: seeding ? 'not-allowed' : 'pointer', fontSize:'var(--text-sm)', flexShrink:0}}
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        {seeding ? 'Seeding...' : 'Seed Default Fields'}
+                    </button>
                 </div>
 
                 <div className="grid gap-5 lg:grid-cols-3">
