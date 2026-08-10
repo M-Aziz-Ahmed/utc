@@ -254,7 +254,6 @@ const GatePassPage = () => {
                                 <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Yard</th>
                                 {tab === 'OGP' && <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Container</th>}
                                 {tab === 'OGP' && <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>B/L Number</th>}
-                                <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Consignee</th>
                                 <th style={{ padding: '8px 10px', textAlign: 'center', fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Status</th>
                                 <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Remarks</th>
                                 <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Photos</th>
@@ -276,7 +275,6 @@ const GatePassPage = () => {
                                         <td style={{ padding: '8px 10px', fontSize: '11px', color: '#5f6368' }}>{g.yard?.name || '—'}</td>
                                         {tab === 'OGP' && <td style={{ padding: '8px 10px', fontSize: '11px', fontWeight: 600, color: '#374151' }}>{g.containerNumber || '—'}</td>}
                                         {tab === 'OGP' && <td style={{ padding: '8px 10px', fontSize: '11px', fontWeight: 600, color: '#374151' }}>{g.blNumber || '—'}</td>}
-                                        <td style={{ padding: '8px 10px', fontSize: '11px', color: '#5f6368' }}>{g.consignee?.name || '—'}</td>
                                         <td style={{ padding: '8px 10px', textAlign: 'center' }}>
                                             <select value={g.status} onChange={e => handleStatusChange(g._id, e.target.value)}
                                                 style={{ padding: '3px 8px', borderRadius: '10px', border: 'none', fontSize: '10px', fontWeight: 600, color: sc.color, background: sc.bg, cursor: 'pointer', outline: 'none' }}>

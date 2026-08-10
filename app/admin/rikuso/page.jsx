@@ -37,6 +37,13 @@ const adminCardFields = (fields) => fields.filter(f =>
     f.showOnAdminCard || (f.belongsto === 'accounts' && ['sum', 'formula', 'tax'].includes(f.type))
 )
 
+// The Quick Edit section only shows the two figures the user cares about:
+// the cost price and the final price.
+const quickEditFields = (fields) => adminCardFields(fields).filter(f => {
+    const label = (f.label || '').toLowerCase()
+    return label.includes('final price') || label.includes('cost')
+})
+
 // ── Export / Khitai details modal ──────────────────────────────────────────────
 const ExportModal = ({ vehicle, mode, countries, onSave, onClose }) => {
     const [country, setCountry] = useState(vehicle.exportCountry || '')
@@ -173,7 +180,7 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
     // Initialize editable values from vehicle
     // For sum/formula fields, compute the value from linked fields
     useEffect(() => {
-        const adminFields = adminCardFields(fields)
+        const adminFields = quickEditFields(fields)
         
         const toNum = (v) => {
             if (v === null || v === undefined || v === '') return 0
@@ -282,7 +289,7 @@ const AllocCard = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
     }).filter(Boolean)
 
     // Get admin editable fields - include all contexts to support fields from any form
-    const adminFields = adminCardFields(fields).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    const adminFields = quickEditFields(fields).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     const alloc  = (vehicle.allocation || '').toLowerCase()
     const rikuso = !!vehicle.rikusoStatus
 
@@ -534,7 +541,7 @@ const AllocRow = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
 
     // Initialize editable values from vehicle
     useEffect(() => {
-        const adminFields = adminCardFields(fields)
+        const adminFields = quickEditFields(fields)
         const toNum = (v) => {
             if (v === null || v === undefined || v === '') return 0
             const n = parseFloat(String(v).replace(/[^0-9.\-]/g, ''))
@@ -634,7 +641,7 @@ const AllocRow = ({ vehicle, fields, rikusoCompanies, consignees, allocations,
     }).filter(Boolean)
 
     // Get admin editable fields - include all contexts to support fields from any form
-    const adminFields = adminCardFields(fields).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    const adminFields = quickEditFields(fields).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 
     return (
         <tr style={{ borderBottom: '1px solid #f0f4f8', transition: 'background 0.1s' }}
