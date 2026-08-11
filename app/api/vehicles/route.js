@@ -1,3 +1,4 @@
+import { readJson } from '@/utils/readJson'
 import Vehicle from "@/models/Vehicle"
 import dbConnect from "@/utils/dbConnection"
 import { uploadToCloudinary } from "@/utils/cloudinary"
@@ -165,7 +166,7 @@ export const GET = async () => {
 export const PATCH = async (req) => {
     try {
         await dbConnect();
-        const body = await req.json();
+        const body = await readJson(req);
         const { vehicleId, ...updateData } = body;
 
         if (!vehicleId) {
@@ -283,7 +284,7 @@ export const PUT = async (req) => {
 export const DELETE = async (req) => {
     try {
         await dbConnect();
-        const { vehicleId } = await req.json();
+        const { vehicleId } = await readJson(req);
 
         if (!vehicleId) {
             return NextResponse.json({ message: 'Vehicle ID is required' }, { status: 400 });

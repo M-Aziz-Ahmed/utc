@@ -1,3 +1,4 @@
+import { readJson } from '@/utils/readJson'
 import Supplier from "@/models/Supplier";
 import dbConnect from "@/utils/dbConnection";
 import { NextResponse } from "next/server";
@@ -15,7 +16,7 @@ export const GET = async () => {
 export const POST = async (req) => {
     try {
         await dbConnect();
-        const body = await req.json();
+        const body = await readJson(req);
         if (!body.name) return NextResponse.json({ message: 'Name is required' }, { status: 400 });
         const supplier = await Supplier.create(body);
         return NextResponse.json(supplier, { status: 201 });

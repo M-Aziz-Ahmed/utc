@@ -1,3 +1,4 @@
+import { readJson } from '@/utils/readJson'
 import { NextResponse } from 'next/server'
 import dbConnect from '@/utils/dbConnection'
 import User from '@/models/User'
@@ -9,7 +10,7 @@ const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'utc-secre
 export async function POST(req) {
   try {
     await dbConnect()
-    const { name, email, password, phone, country } = await req.json()
+    const { name, email, password, phone, country } = await readJson(req)
 
     if (!name || !email || !password) {
       return NextResponse.json({ message: 'Name, email, and password are required' }, { status: 400 })

@@ -1,3 +1,4 @@
+import { readJson } from '@/utils/readJson'
 import Dimensions from "@/models/Dimensions";
 import dbConnect from "@/utils/dbConnection";
 import { NextResponse } from "next/server";
@@ -15,7 +16,7 @@ export const GET = async () => {
 export const POST = async (req) => {
     try {
         await dbConnect();
-        const body = await req.json();
+        const body = await readJson(req);
         if (!body.name) return NextResponse.json({ message: 'Preset name is required' }, { status: 400 });
         const dim = await Dimensions.create(body);
         return NextResponse.json(dim, { status: 201 });

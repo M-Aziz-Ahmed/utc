@@ -1,3 +1,4 @@
+import { readJson } from '@/utils/readJson'
 import AuctionGroup from '@/models/AuctionGroup'
 import dbConnect from '@/utils/dbConnection'
 import { NextResponse } from 'next/server'
@@ -16,7 +17,7 @@ export const GET = async () => {
 export const POST = async (req) => {
     try {
         await dbConnect()
-        const body = await req.json()
+        const body = await readJson(req)
         const name = body.name?.trim() || body.options?.[0]?.group?.trim()
 
         if (!name) {
@@ -35,7 +36,7 @@ export const POST = async (req) => {
 export const PATCH = async (req) => {
     try {
         await dbConnect()
-        const { id, ...updates } = await req.json()
+        const { id, ...updates } = await readJson(req)
         if (!id) return NextResponse.json({ error: 'ID is required' }, { status: 400 })
 
         const updated = await AuctionGroup.findByIdAndUpdate(id, updates, { new: true })
@@ -51,7 +52,7 @@ export const PATCH = async (req) => {
 export const DELETE = async (req) => {
     try {
         await dbConnect()
-        const { id } = await req.json()
+        const { id } = await readJson(req)
         if (!id) return NextResponse.json({ error: 'ID is required' }, { status: 400 })
 
         const deleted = await AuctionGroup.findByIdAndDelete(id)

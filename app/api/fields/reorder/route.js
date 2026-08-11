@@ -1,3 +1,4 @@
+import { readJson } from '@/utils/readJson'
 import DynamicFeilds from "@/models/DynamicFeilds";
 import dbConnect from "@/utils/dbConnection";
 import { NextResponse } from "next/server";
@@ -7,7 +8,7 @@ import { NextResponse } from "next/server";
 export const PATCH = async (req) => {
     try {
         await dbConnect();
-        const { updates } = await req.json();
+        const { updates } = await readJson(req);
         if (!Array.isArray(updates)) {
             return NextResponse.json({ message: 'updates array required' }, { status: 400 });
         }

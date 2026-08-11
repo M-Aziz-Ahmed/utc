@@ -1,3 +1,4 @@
+import { readJson } from '@/utils/readJson'
 import Tax from "@/models/Tax";
 import dbConnect from "@/utils/dbConnection";
 import { NextResponse } from "next/server";
@@ -14,7 +15,7 @@ export const GET = async () => {
 };
 
 export const POST = async (req) => {
-    const body = await req.json();
+    const body = await readJson(req);
     const { name, rate, type, code, description, active } = body;
 
     if (!name || rate === undefined || rate === null) {

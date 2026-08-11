@@ -1,3 +1,4 @@
+import { readJson } from '@/utils/readJson'
 import { NextResponse } from 'next/server'
 
 const SHIPPING_RATES = {
@@ -21,7 +22,7 @@ export async function GET() {
 
 export async function POST(req) {
   try {
-    const body = await req.json()
+    const body = await readJson(req)
     const { country, method, vehiclePrice } = body
 
     if (!country) {

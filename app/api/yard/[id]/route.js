@@ -1,3 +1,4 @@
+import { readJson } from '@/utils/readJson'
 import Yard from "@/models/Yard";
 import dbConnect from "@/utils/dbConnection";
 import { NextResponse } from "next/server";
@@ -18,7 +19,7 @@ export const PATCH = async (req, { params }) => {
     try {
         await dbConnect();
         const { id } = await params;
-        const body = await req.json();
+        const body = await readJson(req);
         const yard = await Yard.findByIdAndUpdate(id, body, { new: true });
         if (!yard) return NextResponse.json({ message: 'Yard not found' }, { status: 404 });
         return NextResponse.json(yard, { status: 200 });

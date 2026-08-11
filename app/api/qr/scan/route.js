@@ -1,3 +1,4 @@
+import { readJson } from '@/utils/readJson'
 import GatePass from '@/models/GatePass'
 import Vehicle from '@/models/Vehicle'
 import dbConnect from '@/utils/dbConnection'
@@ -6,7 +7,7 @@ import { NextResponse } from 'next/server'
 export const POST = async (req) => {
     try {
         await dbConnect()
-        const { vehicleId, yardId } = await req.json()
+        const { vehicleId, yardId } = await readJson(req)
 
         if (!vehicleId) {
             return NextResponse.json({ message: 'Vehicle ID is required' }, { status: 400 })

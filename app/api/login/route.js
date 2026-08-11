@@ -1,3 +1,4 @@
+import { readJson } from '@/utils/readJson'
 import User from '@/models/User'
 import dbConnect from '@/utils/dbConnection'
 import { setSessionCookie } from '@/utils/auth'
@@ -6,7 +7,7 @@ import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 
 export const POST = async (req) => {
-    const { email, password } = await req.json()
+    const { email, password } = await readJson(req)
 
     if (!email || !password) {
         return NextResponse.json({ message: 'Email and password are required' }, { status: 400 })

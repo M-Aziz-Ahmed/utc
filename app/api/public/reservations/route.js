@@ -1,3 +1,4 @@
+import { readJson } from '@/utils/readJson'
 import { NextResponse } from 'next/server'
 import dbConnect from '@/utils/dbConnection'
 import mongoose from 'mongoose'
@@ -21,7 +22,7 @@ const Reservation = mongoose.models.Reservation || mongoose.model('Reservation',
 export async function POST(req) {
   try {
     await dbConnect()
-    const body = await req.json()
+    const body = await readJson(req)
     const { vehicleId, vehicleTitle, customerName, customerEmail, customerPhone, customerCountry, notes } = body
 
     if (!vehicleId || !customerName || !customerEmail) {

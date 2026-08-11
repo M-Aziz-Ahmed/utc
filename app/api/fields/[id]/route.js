@@ -1,3 +1,4 @@
+import { readJson } from '@/utils/readJson'
 import DynamicFeilds from "@/models/DynamicFeilds";
 import dbConnect from "@/utils/dbConnection";
 import { NextResponse } from "next/server";
@@ -6,7 +7,7 @@ export const PATCH = async (req, { params }) => {
     try {
         await dbConnect();
         const { id } = await params;
-        const body = await req.json();
+        const body = await readJson(req);
 
         // Build the $set object explicitly, preserving boolean false values
         const setObj = {};

@@ -1,9 +1,10 @@
+import { readJson } from '@/utils/readJson'
 import DynamicFeilds from "@/models/DynamicFeilds";
 import dbConnect from "@/utils/dbConnection";
 import { NextResponse } from "next/server";
 
 export const POST = async (req) => {
-    const body = await req.json();
+    const body = await readJson(req);
     const { label, type, isRequired, belongsto, options, linkedTax, linkedField, linkedFields, vehicleField, formulaFields, displayAsPrice, showOnPublicCard, showOnAdminCard } = body;
 
     if (!label || !type) {

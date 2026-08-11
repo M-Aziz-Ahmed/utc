@@ -1,3 +1,4 @@
+import { readJson } from '@/utils/readJson'
 import AuctionDetails from '@/models/AuctionDetails'
 import dbConnect from '@/utils/dbConnection'
 import { NextResponse } from 'next/server'
@@ -16,7 +17,7 @@ export const GET = async () => {
 export const POST = async (req) => {
     try {
         await dbConnect()
-        const body = await req.json()
+        const body = await readJson(req)
 
         if (!body || Object.keys(body).length === 0) {
             return NextResponse.json({ error: 'Request body is required' }, { status: 400 })

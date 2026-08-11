@@ -1,3 +1,4 @@
+import { readJson } from '@/utils/readJson'
 import GatePass from "@/models/GatePass";
 import Vehicle from "@/models/Vehicle";
 import Yard from "@/models/Yard";
@@ -71,7 +72,7 @@ export const POST = async (req) => {
                 uploadedImages.push({ ...image, approved: null });
             }
         } else {
-            body = await req.json();
+            body = await readJson(req);
         }
 
         if (!body.vehicle) return NextResponse.json({ message: 'Vehicle is required' }, { status: 400 });
@@ -165,7 +166,7 @@ export const PATCH = async (req) => {
                 uploadedImages.push({ ...image, approved: null });
             }
         } else {
-            body = await req.json();
+            body = await readJson(req);
         }
 
         const { gatePassId, status, removeImages, approveImages, rejectImages } = body;
@@ -265,7 +266,7 @@ export const PATCH = async (req) => {
 export const DELETE = async (req) => {
     try {
         await dbConnect();
-        const { gatePassId } = await req.json();
+        const { gatePassId } = await readJson(req);
         if (!gatePassId) {
             return NextResponse.json({ message: 'Gate Pass ID is required' }, { status: 400 });
         }

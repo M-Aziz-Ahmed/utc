@@ -1,3 +1,4 @@
+import { readJson } from '@/utils/readJson'
 import User from "@/models/User"
 import dbConnect from "@/utils/dbConnection"
 import { requireAdmin } from "@/utils/apiAuth"
@@ -68,7 +69,7 @@ export const PUT = async (req, { params }) => {
         await dbConnect();
         
         const { id } = await params;
-        const body = await req.json();
+        const body = await readJson(req);
         
         // Remove password from update if it's empty
         if (body.pass === '' || body.pass === undefined) {

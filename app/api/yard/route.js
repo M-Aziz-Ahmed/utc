@@ -1,3 +1,4 @@
+import { readJson } from '@/utils/readJson'
 import Yard from "@/models/Yard";
 import dbConnect from "@/utils/dbConnection";
 import { NextResponse } from "next/server";
@@ -15,7 +16,7 @@ export const GET = async () => {
 export const POST = async (req) => {
     try {
         await dbConnect();
-        const body = await req.json();
+        const body = await readJson(req);
         if (!body.name) return NextResponse.json({ message: 'Name is required' }, { status: 400 });
         const yard = await Yard.create(body);
         return NextResponse.json(yard, { status: 201 });

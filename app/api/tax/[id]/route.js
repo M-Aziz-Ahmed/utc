@@ -1,3 +1,4 @@
+import { readJson } from '@/utils/readJson'
 import Tax from "@/models/Tax";
 import dbConnect from "@/utils/dbConnection";
 import { NextResponse } from "next/server";
@@ -19,7 +20,7 @@ export const PATCH = async (req, { params }) => {
     try {
         await dbConnect();
         const { id } = await params;
-        const body = await req.json();
+        const body = await readJson(req);
         const updated = await Tax.findByIdAndUpdate(id, { $set: body }, { new: true });
         if (!updated) return NextResponse.json({ message: 'Tax not found' }, { status: 404 });
         return NextResponse.json(updated, { status: 200 });

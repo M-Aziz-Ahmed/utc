@@ -1,3 +1,4 @@
+import { readJson } from '@/utils/readJson'
 import Vehicle from "@/models/Vehicle"
 import dbConnect from "@/utils/dbConnection"
 import { NextResponse } from "next/server"
@@ -24,7 +25,7 @@ export const PATCH = async (req, { params }) => {
     try {
         await dbConnect()
         const { id } = await params
-        const body = await req.json()
+        const body = await readJson(req)
 
         // Strip dots from keys — MongoDB rejects field names with dots in $set
         const sanitized = {}

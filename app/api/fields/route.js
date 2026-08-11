@@ -1,3 +1,4 @@
+import { readJson } from '@/utils/readJson'
 import DynamicFeilds from "@/models/DynamicFeilds";
 import dbConnect from "@/utils/dbConnection";
 import { NextResponse } from "next/server";
@@ -14,7 +15,7 @@ export const GET = async () => {
 };
 
 export const POST = async (req) => {
-    const body = await req.json();
+    const body = await readJson(req);
     const { belongsto } = body;
     try {
         await dbConnect();
