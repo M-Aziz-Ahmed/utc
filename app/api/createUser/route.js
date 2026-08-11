@@ -1,9 +1,8 @@
 import User from '@/models/User'
 import dbConnect from '@/utils/dbConnection'
+import { uploadToCloudinary } from '@/utils/cloudinary'
 import { setSessionCookie } from '@/utils/auth'
 import { NextResponse } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
-import path from 'path'
 import bcrypt from 'bcryptjs'
 
 export const POST = async (req) => {
@@ -29,26 +28,25 @@ export const POST = async (req) => {
         // Handle file uploads
         const uploadedFiles = []
         const dynamicFieldFiles = {}
-        const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'users')
-
-        await mkdir(uploadDir, { recursive: true })
 
         for (const [key, value] of formData.entries()) {
             if (value instanceof File) {
                 const file = value
-                const timestamp = Date.now()
-                const randomStr = Math.random().toString(36).substring(2, 11)
-                const fileName = `${timestamp}_${randomStr}_${file.name}`
-                const filePath = path.join(uploadDir, fileName)
 
                 const bytes = await file.arrayBuffer()
-                await writeFile(filePath, Buffer.from(bytes))
+                const buffer = Buffer.from(bytes)
+
+                // Upload to Cloudinary (Vercel serverless FS is read-only)
+                const cloudinaryResult = await uploadToCloudinary(buffer, 'utc/users')
 
                 const fileInfo = {
                     name: file.name,
-                    path: `/uploads/users/${fileName}`,
+                    path: cloudinaryResult.secure_url,
+                    publicId: cloudinaryResult.public_id,
                     size: file.size,
                     type: file.type,
+                    width: cloudinaryResult.width,
+                    height: cloudinaryResult.height,
                 }
 
                 if (key.startsWith('dynamic_')) {
