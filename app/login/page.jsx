@@ -25,7 +25,7 @@ const LoginPage = () => {
             if (res.ok) {
                 setIsError(false)
                 setMessage('Login successful. Redirecting...')
-                setTimeout(() => router.push('/admin'), 800)
+                setTimeout(() => router.push(data.redirectTo || '/'), 800)
             } else {
                 setIsError(true)
                 setMessage(data.message || 'Login failed')

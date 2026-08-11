@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
+import { PORTALS } from '@/utils/permissions'
 
 const EditUserPage = () => {
     const router = useRouter()
@@ -28,7 +29,8 @@ const EditUserPage = () => {
         newpurchase: false,
         role: '',
         verified: false,
-        pass: ''
+        pass: '',
+        permissions: []
     })
 
     useEffect(() => {
@@ -57,7 +59,8 @@ const EditUserPage = () => {
                     newpurchase: data.newpurchase || false,
                     role: data.role || '',
                     verified: data.verified || false,
-                    pass: ''
+                    pass: '',
+                    permissions: data.permissions || []
                 })
             } else {
                 setError('Failed to fetch user')
@@ -76,6 +79,18 @@ const EditUserPage = () => {
             ...prev,
             [name]: type === 'checkbox' ? checked : value
         }))
+    }
+
+    const togglePermission = (key) => {
+        setFormData(prev => {
+            const has = prev.permissions.includes(key)
+            return {
+                ...prev,
+                permissions: has
+                    ? prev.permissions.filter(p => p !== key)
+                    : [...prev.permissions, key]
+            }
+        })
     }
 
     const handleSubmit = async (e) => {
@@ -390,6 +405,39 @@ const EditUserPage = () => {
                                     <span className="text-sm font-semibold text-gray-700 group-hover:text-gray-900">New Purchase Notifications</span>
                                 </label>
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Portal Access */}
+                    <div className="mb-8">
+                        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 8a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
+                            </svg>
+                            Portal Access
+                        </h2>
+                        <p className="text-sm text-gray-500 mb-4">
+                            Admins can access everything. For other users, tick which portals they are allowed to open.
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {PORTALS.map(portal => (
+                                <label
+                                    key={portal.key}
+                                    className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border transition"
+                                    style={{
+                                        borderColor: formData.permissions.includes(portal.key) ? '#DC2626' : '#E5E7EB',
+                                        background: formData.permissions.includes(portal.key) ? '#FEF2F2' : '#fff'
+                                    }}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.permissions.includes(portal.key)}
+                                        onChange={() => togglePermission(portal.key)}
+                                        className="w-5 h-5 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                                    />
+                                    <span className="text-sm font-semibold text-gray-700">{portal.label}</span>
+                                </label>
+                            ))}
                         </div>
                     </div>
 

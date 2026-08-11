@@ -1,6 +1,7 @@
 import User from '@/models/User'
 import dbConnect from '@/utils/dbConnection'
 import { setSessionCookie } from '@/utils/auth'
+import { getFirstPortalPath } from '@/utils/permissions'
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 
@@ -43,11 +44,21 @@ export const POST = async (req) => {
             email: user.email,
             name: user.name,
             role: user.role || 'User',
+            permissions: user.permissions || [],
         })
+
+        const sessionUser = {
+            id: user._id.toString(),
+            email: user.email,
+            name: user.name,
+            role: user.role || 'User',
+            permissions: user.permissions || [],
+        }
 
         return NextResponse.json({
             message: 'Login successful',
-            user: { email: user.email, name: user.name, role: user.role },
+            user: sessionUser,
+            redirectTo: getFirstPortalPath(sessionUser),
         }, { status: 200 })
 
     } catch (error) {

@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { portalLabel } from '@/utils/permissions'
 
 const UsersPage = () => {
     const [users, setUsers] = useState([])
@@ -239,6 +240,7 @@ const UsersPage = () => {
                                 <tr>
                                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">User</th>
                                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Role</th>
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Access</th>
                                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Created</th>
                                     <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
@@ -261,6 +263,19 @@ const UsersPage = () => {
                                         </td>
                                         <td className="px-4 py-3">
                                             <span className="jp-badge jp-badge-blue">{user.role || 'User'}</span>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            {String(user.role || '').toLowerCase() === 'admin' ? (
+                                                <span className="jp-badge jp-badge-green">All</span>
+                                            ) : (user.permissions || []).length === 0 ? (
+                                                <span className="jp-badge jp-badge-gray">Home only</span>
+                                            ) : (
+                                                <div className="flex flex-wrap gap-1 max-w-xs">
+                                                    {(user.permissions || []).map(p => (
+                                                        <span key={p} className="jp-badge jp-badge-blue" style={{fontSize:10}}>{portalLabel(p)}</span>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="px-4 py-3">
                                             <span className={`jp-badge ${user.verified ? 'jp-badge-green' : 'jp-badge-gray'}`}>

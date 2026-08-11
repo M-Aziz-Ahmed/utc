@@ -19,6 +19,7 @@ const userSchema  = new mongoose.Schema({
     newpurchase:{ type: Boolean},
     role:{ type: String},
     verified:{ type: String},
-    files: [imageFileSchema]
+    files: [imageFileSchema],
+    permissions: { type: [String], default: [] }
 }, { strict: false })
 export default mongoose.models.User || mongoose.model('User', userSchema)

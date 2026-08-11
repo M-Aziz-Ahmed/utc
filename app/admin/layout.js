@@ -1,5 +1,6 @@
 import Navbar from '@/components/admin/Navbar'
 import Sidebar from '@/components/admin/Sidebar'
+import PortalGate from '@/components/admin/PortalGate'
 import Me from '@/app/hooks/Me'
 import { redirect } from 'next/navigation'
 
@@ -17,11 +18,11 @@ export default async function AdminLayout({ children }) {
 
     return (
         <div className="flex h-screen overflow-hidden" style={{background:'#F8F9FB'}}>
-            <Sidebar />
+            <Sidebar user={user} />
             <div className="flex flex-col flex-1 min-w-0 overflow-y-auto" style={{background:'#F8F9FB'}}>
                 <Navbar user={user} />
                 <main className="flex-1">
-                    {children}
+                    <PortalGate user={user}>{children}</PortalGate>
                 </main>
             </div>
         </div>

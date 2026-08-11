@@ -1,9 +1,13 @@
 import User from "@/models/User"
 import dbConnect from "@/utils/dbConnection"
+import { requireAdmin } from "@/utils/apiAuth"
 import { NextResponse } from "next/server"
 
 export const DELETE = async (req, { params }) => {
     try {
+        const { error } = await requireAdmin()
+        if (error) return error
+
         await dbConnect();
         
         const { id } = await params;
@@ -31,6 +35,9 @@ export const DELETE = async (req, { params }) => {
 
 export const GET = async (req, { params }) => {
     try {
+        const { error } = await requireAdmin()
+        if (error) return error
+
         await dbConnect();
         
         const { id } = await params;
@@ -55,6 +62,9 @@ export const GET = async (req, { params }) => {
 
 export const PUT = async (req, { params }) => {
     try {
+        const { error } = await requireAdmin()
+        if (error) return error
+
         await dbConnect();
         
         const { id } = await params;

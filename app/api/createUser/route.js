@@ -72,6 +72,7 @@ export const POST = async (req) => {
             email: newUser.email,
             name: newUser.name,
             role: newUser.role || 'User',
+            permissions: newUser.permissions || [],
         })
 
         return NextResponse.json({

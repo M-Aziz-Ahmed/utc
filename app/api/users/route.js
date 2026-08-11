@@ -1,8 +1,12 @@
 import User from "@/models/User"
 import dbConnect from "@/utils/dbConnection"
+import { requireAdmin } from "@/utils/apiAuth"
 import { NextResponse } from "next/server"
 
 export const GET = async () => {
+    const { error } = await requireAdmin()
+    if (error) return error
+
     try {
         await dbConnect();
         
