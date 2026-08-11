@@ -82,6 +82,6 @@ export const POST = async (req) => {
 
     } catch (error) {
         console.error('createUser error:', error)
-        return NextResponse.json({ message: 'Error creating user' }, { status: 500 })
+        return NextResponse.json({ message: 'Error creating user', detail: String(error?.message || error) }, { status: 500 })
     }
 }

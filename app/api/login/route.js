@@ -22,17 +22,25 @@ export const POST = async (req) => {
             return NextResponse.json({ message: 'Invalid email or password' }, { status: 401 })
         }
 
+        // Some accounts store the hash in `password` (public register) instead of `pass` (admin create).
+        const storedHash = user.pass || user.password
+        if (!storedHash) {
+            return NextResponse.json({ message: 'Invalid email or password' }, { status: 401 })
+        }
+
         // Support both hashed passwords and legacy plaintext (for migration)
         let passwordValid = false
-        if (user.pass.startsWith('$2')) {
+        if (storedHash.startsWith('$2')) {
             // bcrypt hash
-            passwordValid = await bcrypt.compare(password, user.pass)
+            passwordValid = await bcrypt.compare(password, storedHash)
         } else {
             // Legacy plaintext — compare then upgrade to hash
-            passwordValid = user.pass === password
+            passwordValid = storedHash === password
             if (passwordValid) {
                 const hashed = await bcrypt.hash(password, 12)
-                await User.findByIdAndUpdate(user._id, { pass: hashed })
+                const update = { pass: hashed }
+                if (user.password) update.password = hashed
+                await User.findByIdAndUpdate(user._id, update)
             }
         }
 
@@ -64,6 +72,6 @@ export const POST = async (req) => {
 
     } catch (error) {
         console.error('Login error:', error)
-        return NextResponse.json({ message: 'An error occurred during login. Please try again.' }, { status: 500 })
+        return NextResponse.json({ message: 'An error occurred during login. Please try again.', detail: String(error?.message || error) }, { status: 500 })
     }
 }
