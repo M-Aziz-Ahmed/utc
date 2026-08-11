@@ -9,7 +9,12 @@ const SECRET = new TextEncoder().encode(
  * Sign a JWT and set it as an httpOnly cookie.
  */
 export async function setSessionCookie(payload) {
-    const token = await new SignJWT(payload)
+    // Spread permissions into a plain array: mongoose arrays fail jose's
+    // internal structuredClone(payload) with "could not be cloned".
+    const token = await new SignJWT({
+        ...payload,
+        permissions: [...(payload.permissions || [])],
+    })
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('7d')

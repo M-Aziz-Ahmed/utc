@@ -61,7 +61,7 @@ export const POST = async (req) => {
             email: user.email,
             name: user.name,
             role: user.role || 'User',
-            permissions: user.permissions || [],
+            permissions: [...(user.permissions || [])],
         }
 
         return NextResponse.json({
@@ -72,6 +72,6 @@ export const POST = async (req) => {
 
     } catch (error) {
         console.error('Login error:', error)
-        return NextResponse.json({ message: 'An error occurred during login. Please try again.', detail: String(error?.message || error) }, { status: 500 })
+        return NextResponse.json({ message: 'An error occurred during login. Please try again.' }, { status: 500 })
     }
 }
