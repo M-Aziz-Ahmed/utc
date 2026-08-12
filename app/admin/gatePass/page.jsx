@@ -337,96 +337,117 @@ const GatePassPage = () => {
                 </div>
             )}
 
-            {showForm && (
+            {showForm && (() => {
+                const selectedVehicle = vehicles.find(v => v._id === form.vehicle)
+                const existingImgs = vehicleImages(selectedVehicle)
+                return (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }} onClick={() => setShowForm(false)}>
-                    <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', maxWidth: '520px', width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }} onClick={e => e.stopPropagation()}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-                            <h3 style={{ fontSize: '14px', fontWeight: 600, color: tab === 'IGP' ? '#059669' : '#7c3aed', margin: 0 }}>
+                    <div style={{ background: '#fff', borderRadius: '14px', padding: '24px', maxWidth: '500px', width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.22)', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+
+                        {/* Header */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
+                            <h3 style={{ fontSize: '15px', fontWeight: 700, color: tab === 'IGP' ? '#059669' : '#7c3aed', margin: 0 }}>
                                 New {tab === 'IGP' ? 'Inward Gate Pass (IGP)' : 'Outward Gate Pass (OGP)'}
                             </h3>
-                            <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9aa0a6', display: 'flex' }}>
-                                <svg style={{ width: '14px', height: '14px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9aa0a6', display: 'flex', padding: '2px' }}>
+                                <svg style={{ width: '16px', height: '16px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+                            {/* Vehicle search + select */}
                             <div>
-                                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Vehicle *</label>
-                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '6px' }}>
-                                    <div style={{ position: 'relative', flex: 1 }}>
-                                        <svg style={{ position: 'absolute', left: '9px', top: '50%', transform: 'translateY(-50%)', width: '13px', height: '13px', color: '#9aa0a6' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                                        <input type="text" placeholder="Search by make, model or chassis..." value={vehSearch} onChange={e => applyVehVoice(e.target.value)}
-                                            style={{ width: '100%', padding: '6px 10px 6px 28px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
+                                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>Vehicle *</label>
+                                {/* Search row with mic */}
+                                <div style={{ position: 'relative', marginBottom: '6px' }}>
+                                    <svg style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '13px', height: '13px', color: '#9aa0a6', pointerEvents: 'none' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                    <input type="text" placeholder="Search by make, model or chassis..." value={vehSearch} onChange={e => applyVehVoice(e.target.value)}
+                                        style={{ width: '100%', padding: '8px 38px 8px 30px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: '#fafafa' }} />
+                                    <div style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)' }}>
+                                        <VoiceSearchButton onResult={applyVehVoice} size={26} />
                                     </div>
-                                    <VoiceSearchButton onResult={applyVehVoice} size={30} />
                                 </div>
+                                {/* Vehicle dropdown */}
                                 <select value={form.vehicle} onChange={e => setForm(p => ({ ...p, vehicle: e.target.value }))}
-                                    style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', background: '#fff', boxSizing: 'border-box', color: form.vehicle ? '#202124' : '#9aa0a6' }}>
+                                    style={{ width: '100%', padding: '8px 10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fff', boxSizing: 'border-box', color: form.vehicle ? '#202124' : '#9aa0a6', cursor: 'pointer' }}>
                                     <option value="">{tab === 'IGP' ? 'Select vehicle to receive...' : 'Select vehicle to ship...'}</option>
                                     {filteredVehicles.map(v => (
                                         <option key={v._id} value={v._id}>{[v.manufacturer, v.model].filter(Boolean).join(' ')}{chassisOf(v) ? ` · ${chassisOf(v)}` : ''}{v.exportCountry ? ` (${v.exportCountry})` : ''}</option>
                                     ))}
                                 </select>
-                                {tab === 'IGP' && vehSearch && filteredVehicles.length === 0 && <p style={{ fontSize: '10px', color: '#ef4444', marginTop: '4px' }}>No export vehicles match &quot;{vehSearch}&quot;.</p>}
-                                {tab === 'OGP' && ogpVehicles.length === 0 && <p style={{ fontSize: '10px', color: '#f59e0b', marginTop: '4px' }}>No vehicles with IGP. Complete IGP first.</p>}
-                                {(() => {
-                                    const selected = vehicles.find(v => v._id === form.vehicle)
-                                    const imgs = vehicleImages(selected)
-                                    if (!imgs.length) return null
-                                    return (
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
-                                                Existing Photos <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 'normal', fontSize: '10px' }}>{tab === 'IGP' ? 'current auction photos - replaced once arrival photos are approved' : 'photos taken on arrival'}</span>
-                                            </label>
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                                {imgs.map((p, idx) => (
-                                                    <a key={idx} href={p} target="_blank" rel="noopener noreferrer"
-                                                        style={{ width: '64px', height: '48px', borderRadius: '6px', overflow: 'hidden', border: '1px solid #e0e0e0', display: 'block' }}>
-                                                        <img src={p} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                                                    </a>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )
-                                })()}
+                                {tab === 'IGP' && vehSearch && filteredVehicles.length === 0 && <p style={{ fontSize: '10px', color: '#ef4444', marginTop: '4px', margin: '4px 0 0' }}>No export vehicles match &quot;{vehSearch}&quot;.</p>}
+                                {tab === 'OGP' && ogpVehicles.length === 0 && <p style={{ fontSize: '10px', color: '#f59e0b', marginTop: '4px', margin: '4px 0 0' }}>No vehicles with IGP. Complete IGP first.</p>}
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+
+                            {/* Existing photos label (only when a vehicle with photos is selected) */}
+                            {existingImgs.length > 0 && (
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Date</label>
-                                    <input type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
-                                        style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+                                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '2px' }}>
+                                        Existing Photos{' '}
+                                        <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 'normal', fontSize: '10px', color: '#9aa0a6' }}>
+                                            {tab === 'IGP' ? 'current auction photos - replaced once arrival photos are approved' : 'photos taken on arrival'}
+                                        </span>
+                                    </label>
                                 </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Yard</label>
-                                    <select value={form.yard} onChange={e => setForm(p => ({ ...p, yard: e.target.value }))}
-                                        style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', background: '#fff', boxSizing: 'border-box', color: form.yard ? '#202124' : '#9aa0a6' }}>
-                                        <option value="">Select yard...</option>
-                                        {yards.map(y => <option key={y._id} value={y._id}>{y.name}{y.location ? ` (${y.location})` : ''}</option>)}
-                                    </select>
+                            )}
+
+                            {/* Date + (existing photo) side by side */}
+                            <div style={{ display: 'grid', gridTemplateColumns: existingImgs.length > 0 ? '1fr auto' : '1fr', gap: '12px', alignItems: 'start' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Date</label>
+                                        <input type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
+                                            style={{ width: '100%', padding: '8px 10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Yard</label>
+                                        <select value={form.yard} onChange={e => setForm(p => ({ ...p, yard: e.target.value }))}
+                                            style={{ width: '100%', padding: '8px 10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fff', boxSizing: 'border-box', color: form.yard ? '#202124' : '#9aa0a6', cursor: 'pointer' }}>
+                                            <option value="">Select yard...</option>
+                                            {yards.map(y => <option key={y._id} value={y._id}>{y.name}{y.location ? ` (${y.location})` : ''}</option>)}
+                                        </select>
+                                    </div>
                                 </div>
+                                {existingImgs.length > 0 && (
+                                    <a href={existingImgs[0]} target="_blank" rel="noopener noreferrer"
+                                        style={{ width: '120px', height: '88px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e0e0e0', display: 'block', flexShrink: 0 }}>
+                                        <img src={existingImgs[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                    </a>
+                                )}
                             </div>
+
+                            {/* OGP-only fields */}
                             {isOgpReady && (
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Container Number *</label>
+                                        <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Container Number *</label>
                                         <input type="text" value={form.containerNumber} onChange={e => setForm(p => ({ ...p, containerNumber: e.target.value }))}
-                                            style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g. MSKU1234567" />
+                                            style={{ width: '100%', padding: '8px 10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g. MSKU1234567" />
                                     </div>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>B/L Number</label>
+                                        <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>B/L Number</label>
                                         <input type="text" value={form.blNumber} onChange={e => setForm(p => ({ ...p, blNumber: e.target.value }))}
-                                            style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g. BL-2026-001" />
+                                            style={{ width: '100%', padding: '8px 10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g. BL-2026-001" />
                                     </div>
                                 </div>
                             )}
+
+                            {/* Remarks */}
                             <div>
-                                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Remarks</label>
-                                <textarea value={form.remarks} onChange={e => setForm(p => ({ ...p, remarks: e.target.value }))} rows={2}
-                                    style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }} placeholder="Notes..." />
+                                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Remarks</label>
+                                <textarea value={form.remarks} onChange={e => setForm(p => ({ ...p, remarks: e.target.value }))} rows={3}
+                                    style={{ width: '100%', padding: '8px 10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }} placeholder="Notes..." />
                             </div>
+
+                            {/* IGP Car Photos */}
                             {tab === 'IGP' && (
-                                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '10px' }}>
-                                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
-                                        Car Photos <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 'normal', fontSize: '10px' }}>taken when the car arrives - these replace the auction photos on the public site</span>
+                                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '12px' }}>
+                                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>
+                                        Car Photos{' '}
+                                        <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 'normal', fontSize: '10px', color: '#166534', opacity: 0.8 }}>
+                                            taken when the car arrives - these replace the auction photos on the public site
+                                        </span>
                                     </label>
                                     <input type="file" multiple accept="image/*"
                                         onChange={async e => {
@@ -435,11 +456,11 @@ const GatePassPage = () => {
                                             const compressed = await Promise.all(raw.map(f => compressImage(f)))
                                             setImages(prev => [...prev, ...compressed])
                                         }}
-                                        style={{ width: '100%', padding: '6px 10px', border: '1px solid #86efac', borderRadius: '6px', fontSize: '12px', boxSizing: 'border-box', background: '#fff' }} />
+                                        style={{ width: '100%', padding: '7px 10px', border: '1px solid #86efac', borderRadius: '8px', fontSize: '12px', boxSizing: 'border-box', background: '#fff' }} />
                                     {images.length > 0 && (
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}>
                                             {images.map((file, idx) => (
-                                                <div key={idx} style={{ position: 'relative', width: '64px', height: '48px', borderRadius: '6px', overflow: 'hidden', border: '1px solid #86efac', flexShrink: 0 }}>
+                                                <div key={idx} style={{ position: 'relative', width: '66px', height: '50px', borderRadius: '6px', overflow: 'hidden', border: '1px solid #86efac', flexShrink: 0 }}>
                                                     {file.type?.startsWith('image/')
                                                         ? <img src={URL.createObjectURL(file)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                                                         : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f3f4', fontSize: '9px', color: '#9aa0a6' }}>{file.name}</div>}
@@ -451,16 +472,23 @@ const GatePassPage = () => {
                                     )}
                                 </div>
                             )}
-                            <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                                <button onClick={() => setShowForm(false)} style={{ flex: 1, padding: '8px', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '12px', cursor: 'pointer', background: '#fff', color: '#5f6368' }}>Cancel</button>
-                                <button onClick={handleCreate} disabled={uploading} style={{ flex: 1, padding: '8px', background: tab === 'IGP' ? '#059669' : '#7c3aed', color: '#fff', border: 'none', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: uploading ? 'not-allowed' : 'pointer', opacity: uploading ? 0.7 : 1 }}>
+
+                            {/* Action buttons */}
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                                <button onClick={() => setShowForm(false)}
+                                    style={{ flex: 1, padding: '10px', border: '1px solid #e0e0e0', borderRadius: '24px', fontSize: '13px', cursor: 'pointer', background: '#fff', color: '#5f6368', fontWeight: 500 }}>
+                                    Cancel
+                                </button>
+                                <button onClick={handleCreate} disabled={uploading}
+                                    style={{ flex: 1, padding: '10px', background: tab === 'IGP' ? '#059669' : '#7c3aed', color: '#fff', border: 'none', borderRadius: '24px', fontSize: '13px', fontWeight: 700, cursor: uploading ? 'not-allowed' : 'pointer', opacity: uploading ? 0.7 : 1, boxShadow: uploading ? 'none' : `0 2px 8px ${tab === 'IGP' ? 'rgba(5,150,105,0.3)' : 'rgba(124,58,237,0.3)'}` }}>
                                     {uploading ? 'Uploading...' : `Create ${tab}`}
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
-            )}
+                )
+            })()}
             <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
         </div>
     )

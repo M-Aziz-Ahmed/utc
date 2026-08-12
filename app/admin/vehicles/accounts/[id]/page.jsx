@@ -336,11 +336,20 @@ const VehicleAccountPage = ({ params }) => {
     const imageFields  = vehicleFields.filter(f => f.type === 'file' || f.type === 'image')
     const allFields    = [...vehicleFields, ...accountFields]
 
+    // Compact vehicle detail rows for the left panel table
+    const detailRows = textFields.map(f => {
+        const raw = formData[f._id] ?? vehicle[f._id] ?? vehicle[f.label]
+        let display = raw !== undefined && raw !== null && raw !== '' ? String(raw) : '—'
+        if (f.type === 'date' && raw) display = new Date(raw).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+        return { label: f.label, value: display, fieldId: f._id, field: f }
+    })
+
     return (
         <div style={{ padding: '16px', minHeight: '100vh', background: '#f6f8fc' }}>
             <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-            {/* Header */}
-            <div style={{ marginBottom: '20px' }}>
+
+            {/* Page header: breadcrumbs + title */}
+            <div style={{ marginBottom: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', flexWrap: 'wrap' }}>
                     <Link href="/admin/vehicles/accounts" style={{ fontSize: '12px', color: '#9aa0a6', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
                         onMouseEnter={e => e.currentTarget.style.color='#1a73e8'} onMouseLeave={e => e.currentTarget.style.color='#9aa0a6'}>
@@ -354,111 +363,101 @@ const VehicleAccountPage = ({ params }) => {
                         </span>
                     ))}
                 </div>
-                <h1 style={{ fontSize: '20px', fontWeight: 700, color: '#202124', margin: 0 }}>{nameLine || 'Vehicle Account'}</h1>
+                <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#202124', margin: 0 }}>{nameLine || 'Vehicle Account'}</h1>
                 {subtitle && <p style={{ fontSize: '13px', color: '#9aa0a6', margin: '3px 0 0' }}>{subtitle}</p>}
             </div>
 
-            <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e8eaed', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                <form onSubmit={handleSave} style={{ display: 'grid', gridTemplateColumns: '260px 1fr', minHeight: '560px' }}>
+            <form onSubmit={handleSave}>
+                {/* ── Two-column card ── */}
+                <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e8eaed', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', overflow: 'hidden', display: 'grid', gridTemplateColumns: '280px 1fr' }}>
 
-                    {/* ── Left sidebar ── */}
-                    <div style={{ background: '#f8f9fa', borderRight: '1px solid #e8eaed', padding: '28px 20px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <p style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9aa0a6', margin: '0 0 10px' }}>Summary</p>
-                        {[
-                            { label: 'Group',   value: vehicle.auctionGroup },
-                            { label: 'Venue',   value: vehicle.auctionVenue },
-                            { label: 'Maker',   value: vehicle.manufacturer },
-                            { label: 'Model',   value: vehicle.model },
-                            { label: 'Variant', value: vehicle.variant || vehicle.modelDescription },
-                        ].map(({ label, value }) => (
-                            <div key={label} style={{ padding: '9px 12px', borderRadius: '8px' }}>
-                                <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#9aa0a6' }}>{label}</div>
-                                <div style={{ fontSize: '13px', fontWeight: 600, color: value ? '#1a73e8' : '#dadce0', marginTop: '2px' }}>{value || '—'}</div>
-                            </div>
-                        ))}
-                        <div style={{ marginTop: '14px', padding: '12px', background: 'rgba(26,115,232,0.06)', borderRadius: '8px', border: '1px solid #d2e3fc' }}>
-                            <p style={{ fontSize: '11px', color: '#5f6368', margin: 0, lineHeight: 1.5 }}>
-                                Edit vehicle fields &amp; account details.<br />
-                                Add from Vehicle Entry Form.
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* ── Right panel ── */}
-                    <div style={{ padding: '28px 32px', overflowY: 'auto' }}>
-
-                        {/* Image carousel */}
-                        {imgs.length > 0 && (
-                            <div style={{ marginBottom: '20px', borderRadius: '10px', overflow: 'hidden', position: 'relative', height: '220px', background: '#0f172a' }}>
-                                <img src={imgs[imgIdx]} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
-                                {imgs.length > 1 && (
-                                    <>
-                                        <button type="button" onClick={() => setImgIdx((imgIdx - 1 + imgs.length) % imgs.length)} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', borderRadius: '50%', width: '30px', height: '30px', fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
-                                        <button type="button" onClick={() => setImgIdx((imgIdx + 1) % imgs.length)} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', borderRadius: '50%', width: '30px', height: '30px', fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
-                                        <div style={{ position: 'absolute', bottom: '10px', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '5px' }}>
-                                            {imgs.map((_, i) => <span key={i} onClick={() => setImgIdx(i)} style={{ width: i === imgIdx ? '16px' : '6px', height: '6px', borderRadius: '4px', background: i === imgIdx ? '#fff' : 'rgba(255,255,255,0.4)', transition: 'all 0.2s', cursor: 'pointer', display: 'inline-block' }} />)}
-                                        </div>
-                                        <div style={{ position: 'absolute', top: '8px', left: '8px', background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: '10px', fontWeight: 600, padding: '2px 8px', borderRadius: '20px' }}>{imgIdx + 1}/{imgs.length}</div>
-                                    </>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Subtitle / Variant */}
-                        <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #f1f3f4' }}>
-                            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>
-                                Subtitle / Variant <span style={{ fontWeight: 400, color: '#9aa0a6', textTransform: 'none', letterSpacing: 'normal' }}>shown below title on card</span>
-                            </label>
-                            <input type="text" value={formData['__variant'] ?? vehicle.variant ?? vehicle.modelDescription ?? ''}
-                                onChange={e => setFormData(p => ({ ...p, __variant: e.target.value }))}
-                                placeholder="e.g. Hybrid, 4WD 2.0"
-                                style={{ width: '100%', maxWidth: '360px', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none' }}
-                                onFocus={e => { e.target.style.borderColor='#1a73e8'; e.target.style.boxShadow='0 0 0 3px rgba(26,115,232,0.1)' }}
-                                onBlur={e => { e.target.style.borderColor='#e0e0e0'; e.target.style.boxShadow='none' }} />
+                    {/* ── LEFT: photo + vehicle details table ── */}
+                    <div style={{ borderRight: '1px solid #e8eaed', display: 'flex', flexDirection: 'column' }}>
+                        {/* Photo carousel */}
+                        <div style={{ position: 'relative', height: '200px', background: '#0f172a', flexShrink: 0 }}>
+                            {imgs.length > 0
+                                ? <img src={imgs[imgIdx]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.2)', flexDirection: 'column', gap: '8px' }}>
+                                    <svg width="36" height="36" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                    <span style={{ fontSize: '11px' }}>No Image</span>
+                                  </div>
+                            }
+                            {imgs.length > 1 && (
+                                <>
+                                    <button type="button" onClick={() => setImgIdx((imgIdx - 1 + imgs.length) % imgs.length)}
+                                        style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', borderRadius: '50%', width: '28px', height: '28px', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+                                    <button type="button" onClick={() => setImgIdx((imgIdx + 1) % imgs.length)}
+                                        style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', borderRadius: '50%', width: '28px', height: '28px', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+                                    <div style={{ position: 'absolute', top: '8px', left: '8px', background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: '9px', fontWeight: 600, padding: '2px 7px', borderRadius: '20px' }}>{imgIdx + 1}/{imgs.length}</div>
+                                </>
+                            )}
                         </div>
 
-                        {/* Vehicle fields (editable) */}
-                        {textFields.length > 0 && (
-                            <div style={{ marginBottom: '24px' }}>
-                                <p style={{ fontSize: '11px', fontWeight: 700, color: '#9aa0a6', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 12px' }}>Vehicle Details</p>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '14px' }}>
-                                    {textFields.map(field => (
-                                        <div key={field._id} style={field.type === 'boolean' ? { gridColumn: 'span 2' } : {}}>
-                                            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>
-                                                {field.label}{field.isRequired && <span style={{ color: '#c5221f', marginLeft: '2px' }}>*</span>}
-                                            </label>
-                                            <FieldInput field={field} value={formData[field._id]} onChange={v => setFormData(p => ({ ...p, [field._id]: v }))} taxes={taxes} vehicleData={formData} accountData={accountData} vehicleFields={vehicleFields} accountFields={accountFields} allFields={allFields} vehicle={vehicle} />
-                                        </div>
-                                    ))}
+                        {/* Chassis number highlight */}
+                        {(() => {
+                            const chField = vehicleFields.find(f => f.label?.toLowerCase().includes('chassis'))
+                            const chVal = chField ? (formData[chField._id] || vehicle[chField._id] || vehicle[chField.label]) : null
+                            return chVal ? (
+                                <div style={{ padding: '8px 14px', background: '#1e293b', borderBottom: '1px solid #0f172a' }}>
+                                    <p style={{ margin: 0, fontSize: '11px', fontWeight: 700, color: '#38bdf8', letterSpacing: '0.06em', fontFamily: 'monospace' }}>CHASSIS NO. {chVal}</p>
                                 </div>
-                            </div>
-                        )}
+                            ) : null
+                        })()}
 
-                        {/* Image fields (editable) */}
+                        {/* Vehicle details table */}
+                        <div style={{ flex: 1, overflowY: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <tbody>
+                                    {detailRows.filter(r => !r.field.label?.toLowerCase().includes('chassis')).map(({ label, value, fieldId, field }) => (
+                                        <tr key={fieldId} style={{ borderBottom: '1px solid #f0f4f8' }}>
+                                            <td style={{ padding: '6px 14px', fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap', width: '45%' }}>{label}</td>
+                                            <td style={{ padding: '6px 14px', fontSize: '12px', fontWeight: 700, color: '#0f172a' }}>
+                                                {(field.type === 'dropdown' || field.type === 'select-year' || field.type === 'date' || field.type === 'number' || field.type === 'text') ? (
+                                                    field.type === 'dropdown' ? (
+                                                        <select value={formData[fieldId] ?? ''} onChange={e => setFormData(p => ({ ...p, [fieldId]: e.target.value }))}
+                                                            style={{ border: 'none', background: 'transparent', fontSize: '12px', fontWeight: 700, color: '#0f172a', outline: 'none', cursor: 'pointer', padding: 0, width: '100%' }}>
+                                                            <option value="">—</option>
+                                                            {(field.options || []).map((o, i) => <option key={i} value={o}>{o}</option>)}
+                                                        </select>
+                                                    ) : (
+                                                        <input
+                                                            type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+                                                            value={formData[fieldId] ?? ''}
+                                                            onChange={e => setFormData(p => ({ ...p, [fieldId]: e.target.value }))}
+                                                            style={{ border: 'none', background: 'transparent', fontSize: '12px', fontWeight: 700, color: '#0f172a', outline: 'none', padding: 0, width: '100%' }}
+                                                        />
+                                                    )
+                                                ) : value}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Image fields (editable) – tucked at bottom of left panel */}
                         {imageFields.length > 0 && (
-                            <div style={{ borderTop: '2px solid #f1f3f4', paddingTop: '20px', marginBottom: '24px' }}>
-                                <p style={{ fontSize: '13px', fontWeight: 700, color: '#202124', margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    Files &amp; Images <span style={{ fontSize: '11px', color: '#1a73e8', background: '#e8f0fe', padding: '2px 8px', borderRadius: '10px', fontWeight: 500 }}>editable</span>
-                                </p>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+                            <div style={{ padding: '12px 14px', borderTop: '2px solid #f1f3f4' }}>
+                                <p style={{ fontSize: '10px', fontWeight: 700, color: '#9aa0a6', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 10px' }}>Files &amp; Images</p>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                     {imageFields.map(field => {
                                         const existing  = getExistingImagesForField(vehicle, field)
                                         const keptCount = existing.length - (deletedImages[field._id]?.size || 0)
                                         return (
                                             <div key={field._id}>
-                                                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>{field.label}{field.isRequired && <span style={{ color: '#c5221f', marginLeft: '2px' }}>*</span>}</label>
+                                                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>{field.label}{field.isRequired && <span style={{ color: '#c5221f', marginLeft: '2px' }}>*</span>}</label>
                                                 {existing.length > 0 && (
-                                                    <div style={{ marginBottom: '8px' }}>
-                                                        <p style={{ fontSize: '10px', color: '#9aa0a6', marginBottom: '6px', fontWeight: 600 }}>{keptCount}/{existing.length} kept{(deletedImages[field._id]?.size || 0) > 0 && <span style={{ color: '#ef4444', marginLeft: '6px' }}>· {deletedImages[field._id].size} to remove</span>} · ★ cover · × remove</p>
-                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                                    <div style={{ marginBottom: '6px' }}>
+                                                        <p style={{ fontSize: '9px', color: '#9aa0a6', marginBottom: '5px', fontWeight: 600 }}>{keptCount}/{existing.length} kept{(deletedImages[field._id]?.size || 0) > 0 && <span style={{ color: '#ef4444', marginLeft: '5px' }}>· {deletedImages[field._id].size} to remove</span>} · ★ cover · × remove</p>
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                                                             {existing.map((f, idx) => {
                                                                 const deleted = !!(deletedImages[field._id]?.has(idx))
                                                                 const isMain  = mainImageUrl === f.path
                                                                 return (
-                                                                    <div key={idx} style={{ position: 'relative', width: '80px', height: '62px', borderRadius: '8px', overflow: 'hidden', border: `2px solid ${isMain ? '#f59e0b' : deleted ? '#ef4444' : '#e5e7eb'}`, opacity: deleted ? 0.35 : 1, flexShrink: 0, transition: 'all 0.15s' }}>
+                                                                    <div key={idx} style={{ position: 'relative', width: '52px', height: '40px', borderRadius: '6px', overflow: 'hidden', border: `2px solid ${isMain ? '#f59e0b' : deleted ? '#ef4444' : '#e5e7eb'}`, opacity: deleted ? 0.35 : 1, flexShrink: 0 }}>
                                                                         <img src={f.path} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                                                                        {!deleted && <button type="button" onClick={() => setMainImageUrl(isMain ? '' : f.path)} style={{ position: 'absolute', top: '2px', left: '2px', width: '18px', height: '18px', borderRadius: '50%', background: isMain ? '#f59e0b' : 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', fontSize: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>★</button>}
-                                                                        <button type="button" onClick={() => toggleDeleteImage(field._id, idx)} style={{ position: 'absolute', top: '2px', right: '2px', width: '18px', height: '18px', borderRadius: '50%', background: deleted ? '#16a34a' : '#ef4444', border: 'none', color: '#fff', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>{deleted ? '↺' : '×'}</button>
+                                                                        {!deleted && <button type="button" onClick={() => setMainImageUrl(isMain ? '' : f.path)} style={{ position: 'absolute', top: '1px', left: '1px', width: '14px', height: '14px', borderRadius: '50%', background: isMain ? '#f59e0b' : 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', fontSize: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>★</button>}
+                                                                        <button type="button" onClick={() => toggleDeleteImage(field._id, idx)} style={{ position: 'absolute', top: '1px', right: '1px', width: '14px', height: '14px', borderRadius: '50%', background: deleted ? '#16a34a' : '#ef4444', border: 'none', color: '#fff', fontSize: '9px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>{deleted ? '↺' : '×'}</button>
                                                                     </div>
                                                                 )
                                                             })}
@@ -468,65 +467,90 @@ const VehicleAccountPage = ({ params }) => {
                                                 <input type="file" multiple accept={field.type === 'image' ? 'image/*' : '*'} onChange={async e => {
                                                     const compressed = await Promise.all(Array.from(e.target.files).map(f => compressImage(f)))
                                                     setNewImages(prev => ({ ...prev, [field._id]: compressed }))
-                                                }} style={{ width: '100%', padding: '8px 10px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '12px', boxSizing: 'border-box' }} />
-                                                {newImages[field._id]?.length > 0 && <p style={{ fontSize: '10px', color: '#1a73e8', marginTop: '4px', fontWeight: 600 }}>{newImages[field._id].length} new file{newImages[field._id].length > 1 ? 's' : ''} selected</p>}
+                                                }} style={{ width: '100%', padding: '5px 8px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '11px', boxSizing: 'border-box' }} />
+                                                {newImages[field._id]?.length > 0 && <p style={{ fontSize: '10px', color: '#1a73e8', marginTop: '3px', fontWeight: 600 }}>{newImages[field._id].length} new file{newImages[field._id].length > 1 ? 's' : ''} selected</p>}
                                             </div>
                                         )
                                     })}
                                 </div>
                             </div>
                         )}
+                    </div>
 
-                        {/* Account Details */}
-                        <div style={{ borderTop: '2px solid #e8f0fe', paddingTop: '20px', marginBottom: '8px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                                <div>
-                                    <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#202124', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '6px', background: '#e8f0fe' }}>
-                                            <svg style={{ width: '13px', height: '13px', color: '#1a73e8' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        </span>
-                                        Account Details
-                                    </h3>
-                                    <p style={{ fontSize: '12px', color: '#9aa0a6', margin: '3px 0 0' }}>{accountFields.length} field{accountFields.length !== 1 ? 's' : ''} · save when done</p>
-                                </div>
+                    {/* ── RIGHT: account details ── */}
+                    <div style={{ padding: '24px 28px', overflowY: 'auto' }}>
+
+                        {/* Account Details header */}
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px', paddingBottom: '14px', borderBottom: '1px solid #f1f3f4' }}>
+                            <div>
+                                <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#202124', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', borderRadius: '6px', background: '#e8f0fe' }}>
+                                        <svg style={{ width: '14px', height: '14px', color: '#1a73e8' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    </span>
+                                    Account Details
+                                </h3>
+                                <p style={{ fontSize: '12px', color: '#9aa0a6', margin: '3px 0 0' }}>
+                                    {accountFields.length} field{accountFields.length !== 1 ? 's' : ''} · save when done
+                                </p>
                             </div>
-                            {accountFields.length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: '32px 16px', background: '#f8f9fa', borderRadius: '10px', border: '2px dashed #e0e0e0' }}>
-                                    <p style={{ fontSize: '13px', color: '#9aa0a6', margin: '0 0 8px' }}>No account fields yet</p>
-                                    <Link href="/admin/fields" style={{ fontSize: '12px', color: '#1a73e8', fontWeight: 600, textDecoration: 'none' }}>Go to Dynamic Fields →</Link>
-                                </div>
-                            ) : (
-                                <>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '14px' }}>
-                                    {accountFields.filter(f => f.type !== 'file' && f.type !== 'image').map(field => (
-                                        <div key={field._id} style={field.type === 'boolean' ? { gridColumn: 'span 2' } : {}}>
-                                            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>{field.label}{field.isRequired && <span style={{ color: '#c5221f', marginLeft: '2px' }}>*</span>}</label>
-                                            <FieldInput field={field} value={accountData[field._id]} onChange={v => setAccountData(p => ({ ...p, [field._id]: v }))} taxes={taxes} vehicleData={formData} accountData={accountData} vehicleFields={vehicleFields} accountFields={accountFields} allFields={allFields} vehicle={vehicle} />
-                                        </div>
-                                    ))}
-                                </div>
-                                </>
-                            )}
                         </div>
 
-                        {/* Save msg + button */}
+                        {/* Account fields — 4-column grid */}
+                        {accountFields.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '40px 16px', background: '#f8f9fa', borderRadius: '10px', border: '2px dashed #e0e0e0' }}>
+                                <p style={{ fontSize: '13px', color: '#9aa0a6', margin: '0 0 8px' }}>No account fields yet</p>
+                                <Link href="/admin/fields" style={{ fontSize: '12px', color: '#1a73e8', fontWeight: 600, textDecoration: 'none' }}>Go to Dynamic Fields →</Link>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px 16px' }}>
+                                {accountFields.filter(f => f.type !== 'file' && f.type !== 'image').map(field => (
+                                    <div key={field._id} style={field.type === 'boolean' ? { gridColumn: 'span 2' } : {}}>
+                                        <label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>
+                                            {field.label}{field.isRequired && <span style={{ color: '#c5221f', marginLeft: '2px' }}>*</span>}
+                                        </label>
+                                        <FieldInput
+                                            field={field}
+                                            value={accountData[field._id]}
+                                            onChange={v => setAccountData(p => ({ ...p, [field._id]: v }))}
+                                            taxes={taxes}
+                                            vehicleData={formData}
+                                            accountData={accountData}
+                                            vehicleFields={vehicleFields}
+                                            accountFields={accountFields}
+                                            allFields={allFields}
+                                            vehicle={vehicle}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Save message */}
                         {saveMsg && (
-                            <div style={{ margin: '16px 0 0', padding: '12px 14px', borderRadius: '8px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', background: saveMsg.type === 'success' ? '#e6f4ea' : '#fce8e6', color: saveMsg.type === 'success' ? '#137333' : '#c5221f', border: `1px solid ${saveMsg.type === 'success' ? '#b7dfbe' : '#f5c6c2'}` }}>
-                                {saveMsg.type === 'success' ? <svg style={{ width: '15px', height: '15px', flexShrink: 0 }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> : <svg style={{ width: '15px', height: '15px', flexShrink: 0 }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01" /></svg>}
+                            <div style={{ margin: '20px 0 0', padding: '12px 14px', borderRadius: '8px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', background: saveMsg.type === 'success' ? '#e6f4ea' : '#fce8e6', color: saveMsg.type === 'success' ? '#137333' : '#c5221f', border: `1px solid ${saveMsg.type === 'success' ? '#b7dfbe' : '#f5c6c2'}` }}>
+                                {saveMsg.type === 'success'
+                                    ? <svg style={{ width: '15px', height: '15px', flexShrink: 0 }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                    : <svg style={{ width: '15px', height: '15px', flexShrink: 0 }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01" /></svg>}
                                 {saveMsg.text}
                             </div>
                         )}
+
+                        {/* Cancel + Save buttons */}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '20px', marginTop: '20px', borderTop: '1px solid #f1f3f4' }}>
-                            <Link href="/admin/vehicles/accounts" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '9px 20px', fontSize: '13px', fontWeight: 500, color: '#5f6368', border: '1px solid #e0e0e0', borderRadius: '24px', background: '#fff', textDecoration: 'none' }}
-                                onMouseEnter={e => e.currentTarget.style.background='#f1f3f4'} onMouseLeave={e => e.currentTarget.style.background='#fff'}>Cancel</Link>
-                            <button type="submit" disabled={saving} style={{ padding: '10px 28px', fontSize: '14px', fontWeight: 600, color: '#fff', background: saving ? '#9aa0a6' : '#1a73e8', border: 'none', borderRadius: '24px', cursor: saving ? 'not-allowed' : 'pointer', boxShadow: saving ? 'none' : '0 2px 8px rgba(26,115,232,0.3)', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Link href="/admin/vehicles/accounts"
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '9px 22px', fontSize: '13px', fontWeight: 500, color: '#5f6368', border: '1px solid #e0e0e0', borderRadius: '24px', background: '#fff', textDecoration: 'none' }}
+                                onMouseEnter={e => e.currentTarget.style.background='#f1f3f4'} onMouseLeave={e => e.currentTarget.style.background='#fff'}>
+                                Cancel
+                            </Link>
+                            <button type="submit" disabled={saving}
+                                style={{ padding: '10px 28px', fontSize: '14px', fontWeight: 600, color: '#fff', background: saving ? '#9aa0a6' : '#1a73e8', border: 'none', borderRadius: '24px', cursor: saving ? 'not-allowed' : 'pointer', boxShadow: saving ? 'none' : '0 2px 8px rgba(26,115,232,0.3)', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 {saving && <svg style={{ width: '14px', height: '14px', animation: 'spin 0.8s linear infinite' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 12a8 8 0 018-8v8H4z" /></svg>}
                                 {saving ? 'Saving...' : 'Save Account Details →'}
                             </button>
                         </div>
                     </div>
-                </form>
-            </div>
+                </div>
+            </form>
         </div>
     )
 }
