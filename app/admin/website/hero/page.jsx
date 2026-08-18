@@ -1,26 +1,45 @@
 'use client'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Page, PageHeader, Card, Btn, Field, Input, Textarea, Select, Modal, Alert, T } from '@/components/admin/ui'
 import { compressImage } from '@/utils/imageCompress'
 
+// Strip HTML tags → plain text for previews
+const stripHtml = (html) => {
+    if (!html) return ''
+    return html.replace(/<[^>]*>/g, '')
+}
+
 // ── Rich text input with inline color picker ──────────────────────────────────
-// Stores HTML (with <span style="color:..."> tags). Shows a mini toolbar on selection.
-const PRESET_COLORS = ['#ffffff', '#ef4444', '#f97316', '#facc15', '#4ade80', '#38bdf8', '#818cf8', '#f472b6', '#000000']
+const PRESET_COLORS = [
+    { color: '#ffffff', label: 'White' },
+    { color: '#ef4444', label: 'Red' },
+    { color: '#f97316', label: 'Orange' },
+    { color: '#facc15', label: 'Yellow' },
+    { color: '#4ade80', label: 'Green' },
+    { color: '#38bdf8', label: 'Sky Blue' },
+    { color: '#818cf8', label: 'Indigo' },
+    { color: '#f472b6', label: 'Pink' },
+    { color: '#000000', label: 'Black' },
+]
 
 const RichTextInput = ({ value, onChange, placeholder, singleLine = false }) => {
     const ref = useRef(null)
-    const [toolbar, setToolbar] = useState(null)   // { top, left } or null
-    const [pickerColor, setPickerColor] = useState('#ef4444')
+    const toolbarRef = useRef(null)
+    const [showToolbar, setShowToolbar] = useState(false)
+    const [toolbarPos, setToolbarPos] = useState({ top: 0, left: 0 })
+    const [customColor, setCustomColor] = useState('#ef4444')
+    const savedRangeRef = useRef(null)
     const lastHtml = useRef(value || '')
-    const savedRange = useRef(null)
+    const isMounted = useRef(false)
 
-    // Sync external value → DOM (only on first mount or when value changes from outside)
+    // Set initial content
     useEffect(() => {
-        if (ref.current && ref.current.innerHTML !== (value || '')) {
+        if (ref.current) {
             ref.current.innerHTML = value || ''
             lastHtml.current = value || ''
+            isMounted.current = true
         }
-    }, [value])
+    }, []) // eslint-disable-line
 
     const syncValue = () => {
         const html = ref.current?.innerHTML || ''
@@ -30,135 +49,220 @@ const RichTextInput = ({ value, onChange, placeholder, singleLine = false }) => 
         }
     }
 
-    const saveSelection = () => {
+    const saveRange = () => {
         const sel = window.getSelection()
         if (sel && sel.rangeCount > 0) {
-            savedRange.current = sel.getRangeAt(0).cloneRange()
+            savedRangeRef.current = sel.getRangeAt(0).cloneRange()
         }
     }
 
-    const restoreSelection = () => {
-        if (savedRange.current) {
-            ref.current?.focus()
-            const sel = window.getSelection()
-            sel.removeAllRanges()
-            sel.addRange(savedRange.current)
-        }
-    }
-
-    const handleSelect = () => {
+    const restoreRange = () => {
+        if (!savedRangeRef.current) return false
+        ref.current?.focus()
         const sel = window.getSelection()
-        if (!sel || sel.isCollapsed || !sel.toString().trim()) {
-            setToolbar(null)
-            return
-        }
-        saveSelection()
+        sel.removeAllRanges()
+        sel.addRange(savedRangeRef.current)
+        return true
+    }
+
+    const handleMouseUp = () => {
+        const sel = window.getSelection()
+        if (!sel || sel.isCollapsed || !sel.toString().trim()) return
+
+        saveRange()
+
         // Position toolbar above the selection
         const range = sel.getRangeAt(0)
-        const rect = range.getBoundingClientRect()
-        const containerRect = ref.current?.closest('[data-rti-container]')?.getBoundingClientRect() || { top: 0, left: 0 }
-        setToolbar({
-            top: rect.top - containerRect.top - 44,
-            left: Math.max(0, rect.left - containerRect.left),
-        })
+        const rangeRect = range.getBoundingClientRect()
+        const containerRect = ref.current?.closest('[data-rti-wrap]')?.getBoundingClientRect()
+        if (!containerRect) return
+
+        const top = rangeRect.top - containerRect.top - 54
+        const left = Math.max(4, Math.min(rangeRect.left - containerRect.left, containerRect.width - 280))
+        setToolbarPos({ top, left })
+        setShowToolbar(true)
     }
 
+    const handleKeyUp = () => handleMouseUp()
+
     const applyColor = (color) => {
-        restoreSelection()
+        if (!restoreRange()) return
         document.execCommand('styleWithCSS', false, true)
         document.execCommand('foreColor', false, color)
         syncValue()
-        setToolbar(null)
+        setShowToolbar(false)
+        savedRangeRef.current = null
     }
 
-    const clearColor = () => {
-        restoreSelection()
+    const clearFormat = () => {
+        if (!restoreRange()) return
         document.execCommand('removeFormat', false, null)
         syncValue()
-        setToolbar(null)
-    }
-
-    const handleKeyDown = (e) => {
-        if (singleLine && e.key === 'Enter') { e.preventDefault(); return }
+        setShowToolbar(false)
+        savedRangeRef.current = null
     }
 
     return (
-        <div data-rti-container style={{ position: 'relative' }}>
-            {/* Mini toolbar */}
-            {toolbar && (
-                <div style={{
-                    position: 'absolute',
-                    top: toolbar.top, left: toolbar.left,
-                    zIndex: 100,
-                    background: '#1e293b', borderRadius: 8,
-                    padding: '6px 8px',
-                    display: 'flex', alignItems: 'center', gap: 5,
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    flexWrap: 'wrap', maxWidth: 260,
-                }}>
+        <div data-rti-wrap style={{ position: 'relative' }}>
+
+            {/* ── Floating toolbar ── */}
+            {showToolbar && (
+                <div
+                    ref={toolbarRef}
+                    onMouseDown={e => e.preventDefault()} // prevent blur on click
+                    style={{
+                        position: 'absolute',
+                        top: toolbarPos.top,
+                        left: toolbarPos.left,
+                        zIndex: 200,
+                        background: '#0f172a',
+                        border: '1px solid #334155',
+                        borderRadius: 10,
+                        padding: '8px 10px',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                        display: 'flex', alignItems: 'center',
+                        gap: 6, flexWrap: 'wrap',
+                        minWidth: 220,
+                    }}
+                >
+                    {/* Arrow pointer */}
+                    <div style={{
+                        position: 'absolute', bottom: -6, left: 16,
+                        width: 12, height: 12,
+                        background: '#0f172a',
+                        border: '1px solid #334155',
+                        borderTop: 'none', borderLeft: 'none',
+                        transform: 'rotate(45deg)',
+                    }} />
+
+                    {/* Colour label */}
+                    <span style={{ fontSize: 9, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', width: '100%', marginBottom: 2 }}>
+                        Text Colour
+                    </span>
+
                     {/* Preset swatches */}
-                    {PRESET_COLORS.map(c => (
-                        <button key={c} onMouseDown={e => e.preventDefault()} onClick={() => applyColor(c)} title={c}
+                    {PRESET_COLORS.map(({ color, label }) => (
+                        <button
+                            key={color}
+                            title={label}
+                            onClick={() => applyColor(color)}
                             style={{
-                                width: 20, height: 20, borderRadius: '50%',
-                                background: c, border: c === '#ffffff' ? '1px solid #475569' : '1px solid rgba(255,255,255,0.2)',
-                                cursor: 'pointer', flexShrink: 0, padding: 0,
-                                boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-                            }} />
+                                width: 22, height: 22, borderRadius: '50%',
+                                background: color,
+                                border: color === '#ffffff'
+                                    ? '2px solid #475569'
+                                    : color === '#000000'
+                                    ? '2px solid #64748b'
+                                    : '2px solid transparent',
+                                cursor: 'pointer', padding: 0, flexShrink: 0,
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                                transition: 'transform 0.1s',
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.25)'}
+                            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                        />
                     ))}
-                    {/* Custom color */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 2 }}>
-                        <input type="color" value={pickerColor}
-                            onMouseDown={e => e.preventDefault()}
-                            onChange={e => setPickerColor(e.target.value)}
-                            style={{ width: 24, height: 24, padding: 1, borderRadius: 4, border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', background: 'transparent' }} />
-                        <button onMouseDown={e => e.preventDefault()} onClick={() => applyColor(pickerColor)}
-                            style={{ fontSize: 9, fontWeight: 700, color: '#fff', background: '#334155', border: 'none', borderRadius: 4, padding: '3px 6px', cursor: 'pointer' }}>
+
+                    {/* Divider */}
+                    <div style={{ width: 1, height: 20, background: '#334155', flexShrink: 0 }} />
+
+                    {/* Custom colour */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <input
+                            type="color"
+                            value={customColor}
+                            onChange={e => setCustomColor(e.target.value)}
+                            title="Custom colour"
+                            style={{
+                                width: 26, height: 26, padding: 2,
+                                borderRadius: 6,
+                                border: '2px solid #475569',
+                                cursor: 'pointer', background: 'none',
+                            }}
+                        />
+                        <button
+                            onClick={() => applyColor(customColor)}
+                            style={{
+                                fontSize: 10, fontWeight: 700,
+                                color: '#fff', background: '#1a73e8',
+                                border: 'none', borderRadius: 6,
+                                padding: '4px 8px', cursor: 'pointer',
+                            }}>
                             Apply
                         </button>
                     </div>
-                    {/* Clear */}
-                    <button onMouseDown={e => e.preventDefault()} onClick={clearColor} title="Remove colour"
-                        style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', background: 'none', border: '1px solid #475569', borderRadius: 4, padding: '3px 6px', cursor: 'pointer' }}>
-                        Clear
+
+                    {/* Clear button */}
+                    <button
+                        onClick={clearFormat}
+                        title="Remove colour"
+                        style={{
+                            fontSize: 10, fontWeight: 600,
+                            color: '#94a3b8',
+                            background: 'none',
+                            border: '1px solid #334155',
+                            borderRadius: 6,
+                            padding: '4px 8px',
+                            cursor: 'pointer',
+                        }}>
+                        ✕ Clear
+                    </button>
+
+                    {/* Dismiss */}
+                    <button
+                        onClick={() => setShowToolbar(false)}
+                        title="Close"
+                        style={{
+                            fontSize: 11, fontWeight: 700,
+                            color: '#64748b',
+                            background: 'none', border: 'none',
+                            cursor: 'pointer', marginLeft: 'auto',
+                            padding: '2px 4px',
+                        }}>
+                        ✕
                     </button>
                 </div>
             )}
 
-            {/* Editable area */}
+            {/* ── Editable area — dark background so white text is visible ── */}
             <div
                 ref={ref}
                 contentEditable
                 suppressContentEditableWarning
                 onInput={syncValue}
-                onBlur={() => { syncValue(); setToolbar(null) }}
-                onMouseUp={handleSelect}
-                onKeyUp={handleSelect}
-                onKeyDown={handleKeyDown}
+                onBlur={syncValue}          // don't close toolbar on blur
+                onMouseUp={handleMouseUp}
+                onKeyUp={handleKeyUp}
+                onKeyDown={e => { if (singleLine && e.key === 'Enter') e.preventDefault() }}
                 data-placeholder={placeholder}
                 style={{
-                    width: '100%', minHeight: singleLine ? 36 : 36,
-                    padding: '8px 11px',
-                    border: `1px solid ${T.border}`, borderRadius: 8,
-                    fontSize: 13, outline: 'none',
-                    boxSizing: 'border-box', background: '#fff',
-                    color: T.text, fontFamily: 'inherit',
+                    width: '100%',
+                    minHeight: 38,
+                    padding: '8px 12px',
+                    border: `1px solid ${T.border}`,
+                    borderRadius: 8,
+                    fontSize: 13,
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    // Dark background so white/coloured text is always visible
+                    background: '#1e293b',
+                    color: '#f1f5f9',
+                    fontFamily: 'inherit',
                     lineHeight: 1.5,
                     cursor: 'text',
                     whiteSpace: singleLine ? 'nowrap' : 'normal',
-                    overflow: singleLine ? 'hidden' : 'auto',
+                    overflow: singleLine ? 'hidden' : 'visible',
+                    transition: 'border-color 0.14s',
                 }}
-                onFocus={e => { e.target.style.borderColor = T.blue; e.target.style.boxShadow = '0 0 0 3px rgba(26,115,232,0.1)' }}
+                onFocus={e => e.currentTarget.style.borderColor = T.blue}
             />
+
             <style>{`
-                [data-rti-container] [contenteditable]:empty:before {
+                [data-rti-wrap] [contenteditable]:empty:before {
                     content: attr(data-placeholder);
-                    color: #9aa0a6;
+                    color: #475569;
                     pointer-events: none;
-                }
-                [data-rti-container] [contenteditable]:focus {
-                    border-color: #1a73e8 !important;
+                    display: block;
                 }
             `}</style>
         </div>
@@ -213,16 +317,16 @@ const SlideCard = ({ slide, idx, onEdit, onDelete, onToggle, onMoveUp, onMoveDow
                 <div style={{
                     position: 'absolute', inset: 0, padding: '10px 12px',
                     display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-                    color: slide.textColor || '#fff',
+                    color: '#fff',
                 }}>
                     {slide.badgeText && (
-                        <p style={{ fontSize: 9, margin: '0 0 4px', opacity: 0.85, fontWeight: 600 }}>{slide.badgeText}</p>
+                        <p style={{ fontSize: 9, margin: '0 0 4px', opacity: 0.85, fontWeight: 600 }}>{stripHtml(slide.badgeText)}</p>
                     )}
                     <p style={{ fontSize: 13, fontWeight: 800, margin: 0, lineHeight: 1.2, textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
-                        {slide.heading || '—'}
+                        {stripHtml(slide.heading) || '—'}
                     </p>
                     {slide.subheading && (
-                        <p style={{ fontSize: 10, margin: '2px 0 0', opacity: 0.8 }}>{slide.subheading}</p>
+                        <p style={{ fontSize: 10, margin: '2px 0 0', opacity: 0.8 }}>{stripHtml(slide.subheading)}</p>
                     )}
                 </div>
                 {/* order badge */}
@@ -592,21 +696,26 @@ export default function HeroCarouselPage() {
                             }}>
                                 <div style={{ position: 'absolute', inset: 0, background: `rgba(0,0,0,${(s.overlay ?? 50) / 100})` }} />
                                 <div style={{ position: 'absolute', inset: 0, padding: '24px 36px', display: 'flex', flexDirection: 'column', justifyContent: 'center', color: s.textColor || '#fff' }}>
-                                    {s.badgeText && <span style={{ fontSize: 11, background: 'rgba(220,38,38,0.85)', color: '#fff', padding: '3px 10px', borderRadius: 20, display: 'inline-block', marginBottom: 10, fontWeight: 600, width: 'fit-content' }}>{s.badgeText}</span>}
-                                    <h2 style={{ fontSize: 28, fontWeight: 900, margin: '0 0 4px', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
-                                        {s.heading?.includes('<')
-                                            ? <span dangerouslySetInnerHTML={{ __html: s.heading }} />
-                                            : (s.headingAccent && s.heading?.includes(s.headingAccent)
-                                                ? <>{s.heading?.replace(s.headingAccent, '')}<span style={{ color: '#ef4444' }}> {s.headingAccent}</span></>
-                                                : s.heading)
-                                        }
+                                    {s.badgeText && (
+                                        <span style={{ fontSize: 11, background: 'rgba(220,38,38,0.85)', color: '#fff', padding: '3px 10px', borderRadius: 20, display: 'inline-block', marginBottom: 10, fontWeight: 600, width: 'fit-content' }}
+                                            dangerouslySetInnerHTML={{ __html: s.badgeText }} />
+                                    )}
+                                    <h2 style={{ fontSize: 28, fontWeight: 900, margin: '0 0 4px', lineHeight: 1.1, letterSpacing: '-0.02em', color: s.textColor || '#fff' }}>
+                                        <span dangerouslySetInnerHTML={{ __html:
+                                            s.headingAccent && !s.heading?.includes('<') && s.heading?.includes(s.headingAccent)
+                                                ? s.heading.replace(s.headingAccent, `<span style="color:#ef4444">${s.headingAccent}</span>`)
+                                                : (s.heading || '')
+                                        }} />
                                     </h2>
-                                    {s.subheading && <p style={{ fontSize: 13, margin: '0 0 12px', opacity: 0.85, letterSpacing: '0.12em' }}>{s.subheading}</p>}
+                                    {s.subheading && (
+                                        <p style={{ fontSize: 13, margin: '0 0 12px', letterSpacing: '0.12em', color: s.textColor || '#fff' }}
+                                            dangerouslySetInnerHTML={{ __html: s.subheading }} />
+                                    )}
                                     <div style={{ display: 'flex', gap: 16 }}>
                                         {(s.features || []).map((f, i) => (
-                                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600 }}>
+                                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: s.textColor || '#fff' }}>
                                                 <span style={{ fontSize: 16 }}>{f.icon}</span>
-                                                <span style={{ opacity: 0.9 }}>{f.text}</span>
+                                                <span dangerouslySetInnerHTML={{ __html: f.text || '' }} />
                                             </div>
                                         ))}
                                     </div>
