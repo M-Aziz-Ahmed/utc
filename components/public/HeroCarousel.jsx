@@ -76,6 +76,13 @@ export default function HeroCarousel({ vehicleCount = 0, initialSlides = [] }) {
     const renderHeading = () => {
         const full = (slide.heading || '').trim()
         const accent = (slide.headingAccent || '').trim()
+
+        // If heading contains HTML (from rich-text editor), render it directly
+        // Accent word can't reliably match across HTML tags
+        if (full.includes('<')) {
+            return <span dangerouslySetInnerHTML={{ __html: full }} />
+        }
+
         if (accent && full.includes(accent)) {
             const idx = full.indexOf(accent)
             return (
@@ -85,10 +92,6 @@ export default function HeroCarousel({ vehicleCount = 0, initialSlides = [] }) {
                     {full.slice(idx + accent.length)}
                 </>
             )
-        }
-        // heading may contain HTML from rich-text editor
-        if (full.includes('<')) {
-            return <span dangerouslySetInnerHTML={{ __html: full }} />
         }
         return full
     }

@@ -5,6 +5,8 @@ import HeroCarousel from '@/components/public/HeroCarousel'
 import dbConnect from '@/utils/dbConnection'
 import HeroSlide from '@/models/HeroSlide'
 
+export const dynamic = 'force-dynamic'
+
 const formatPrice = (price) => {
   if (!price) return 'Price on Request'
   const num = parseFloat(price)

@@ -12,6 +12,7 @@ const RichTextInput = ({ value, onChange, placeholder, singleLine = false }) => 
     const [toolbar, setToolbar] = useState(null)   // { top, left } or null
     const [pickerColor, setPickerColor] = useState('#ef4444')
     const lastHtml = useRef(value || '')
+    const savedRange = useRef(null)
 
     // Sync external value → DOM (only on first mount or when value changes from outside)
     useEffect(() => {
@@ -29,12 +30,29 @@ const RichTextInput = ({ value, onChange, placeholder, singleLine = false }) => 
         }
     }
 
+    const saveSelection = () => {
+        const sel = window.getSelection()
+        if (sel && sel.rangeCount > 0) {
+            savedRange.current = sel.getRangeAt(0).cloneRange()
+        }
+    }
+
+    const restoreSelection = () => {
+        if (savedRange.current) {
+            ref.current?.focus()
+            const sel = window.getSelection()
+            sel.removeAllRanges()
+            sel.addRange(savedRange.current)
+        }
+    }
+
     const handleSelect = () => {
         const sel = window.getSelection()
         if (!sel || sel.isCollapsed || !sel.toString().trim()) {
             setToolbar(null)
             return
         }
+        saveSelection()
         // Position toolbar above the selection
         const range = sel.getRangeAt(0)
         const rect = range.getBoundingClientRect()
@@ -46,7 +64,7 @@ const RichTextInput = ({ value, onChange, placeholder, singleLine = false }) => 
     }
 
     const applyColor = (color) => {
-        ref.current?.focus()
+        restoreSelection()
         document.execCommand('styleWithCSS', false, true)
         document.execCommand('foreColor', false, color)
         syncValue()
@@ -54,7 +72,7 @@ const RichTextInput = ({ value, onChange, placeholder, singleLine = false }) => 
     }
 
     const clearColor = () => {
-        ref.current?.focus()
+        restoreSelection()
         document.execCommand('removeFormat', false, null)
         syncValue()
         setToolbar(null)
@@ -81,7 +99,7 @@ const RichTextInput = ({ value, onChange, placeholder, singleLine = false }) => 
                 }}>
                     {/* Preset swatches */}
                     {PRESET_COLORS.map(c => (
-                        <button key={c} onClick={() => applyColor(c)} title={c}
+                        <button key={c} onMouseDown={e => e.preventDefault()} onClick={() => applyColor(c)} title={c}
                             style={{
                                 width: 20, height: 20, borderRadius: '50%',
                                 background: c, border: c === '#ffffff' ? '1px solid #475569' : '1px solid rgba(255,255,255,0.2)',
@@ -92,15 +110,16 @@ const RichTextInput = ({ value, onChange, placeholder, singleLine = false }) => 
                     {/* Custom color */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 2 }}>
                         <input type="color" value={pickerColor}
+                            onMouseDown={e => e.preventDefault()}
                             onChange={e => setPickerColor(e.target.value)}
                             style={{ width: 24, height: 24, padding: 1, borderRadius: 4, border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', background: 'transparent' }} />
-                        <button onClick={() => applyColor(pickerColor)}
+                        <button onMouseDown={e => e.preventDefault()} onClick={() => applyColor(pickerColor)}
                             style={{ fontSize: 9, fontWeight: 700, color: '#fff', background: '#334155', border: 'none', borderRadius: 4, padding: '3px 6px', cursor: 'pointer' }}>
                             Apply
                         </button>
                     </div>
                     {/* Clear */}
-                    <button onClick={clearColor} title="Remove colour"
+                    <button onMouseDown={e => e.preventDefault()} onClick={clearColor} title="Remove colour"
                         style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', background: 'none', border: '1px solid #475569', borderRadius: 4, padding: '3px 6px', cursor: 'pointer' }}>
                         Clear
                     </button>
@@ -575,9 +594,12 @@ export default function HeroCarouselPage() {
                                 <div style={{ position: 'absolute', inset: 0, padding: '24px 36px', display: 'flex', flexDirection: 'column', justifyContent: 'center', color: s.textColor || '#fff' }}>
                                     {s.badgeText && <span style={{ fontSize: 11, background: 'rgba(220,38,38,0.85)', color: '#fff', padding: '3px 10px', borderRadius: 20, display: 'inline-block', marginBottom: 10, fontWeight: 600, width: 'fit-content' }}>{s.badgeText}</span>}
                                     <h2 style={{ fontSize: 28, fontWeight: 900, margin: '0 0 4px', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
-                                        {s.headingAccent
-                                            ? s.heading?.replace(s.headingAccent, '') : s.heading}
-                                        {s.headingAccent && <span style={{ color: '#ef4444' }}> {s.headingAccent}</span>}
+                                        {s.heading?.includes('<')
+                                            ? <span dangerouslySetInnerHTML={{ __html: s.heading }} />
+                                            : (s.headingAccent && s.heading?.includes(s.headingAccent)
+                                                ? <>{s.heading?.replace(s.headingAccent, '')}<span style={{ color: '#ef4444' }}> {s.headingAccent}</span></>
+                                                : s.heading)
+                                        }
                                     </h2>
                                     {s.subheading && <p style={{ fontSize: 13, margin: '0 0 12px', opacity: 0.85, letterSpacing: '0.12em' }}>{s.subheading}</p>}
                                     <div style={{ display: 'flex', gap: 16 }}>
