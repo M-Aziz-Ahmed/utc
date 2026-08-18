@@ -1,5 +1,6 @@
 'use client'
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { usePathname } from 'next/navigation'
 
 const AuthContext = createContext({
     loggedIn: false,
@@ -16,6 +17,7 @@ export function AuthProvider({ children }) {
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(true)
     const [modalOpen, setModalOpen] = useState(false)
+    const pathname = usePathname()
 
     const refreshAuth = useCallback(async () => {
         try {
@@ -35,25 +37,23 @@ export function AuthProvider({ children }) {
         refreshAuth()
     }, [refreshAuth])
 
-    // Show the modal once per browser session for guests.
-    // Uses sessionStorage so closing it won't re-open on page navigations,
-    // but will show again on a fresh tab / browser open.
+    // On the "/" route: always pop the modal for guests (every visit, no dismissal memory).
+    // On other routes: never auto-open (user can still trigger it manually via price lock).
     useEffect(() => {
         if (loading) return
         if (loggedIn) return
-        const dismissed = sessionStorage.getItem('utc_modal_dismissed')
-        if (!dismissed) {
-            // Small delay so page content renders first
-            const t = setTimeout(() => setModalOpen(true), 800)
-            return () => clearTimeout(t)
-        }
-    }, [loading, loggedIn])
+        if (pathname !== '/') return
+
+        const t = setTimeout(() => setModalOpen(true), 600)
+        return () => clearTimeout(t)
+    }, [loading, loggedIn, pathname])
 
     const openAuthModal = useCallback(() => setModalOpen(true), [])
 
+    // Closing just hides the modal — no sessionStorage flag,
+    // so it will re-appear the next time they visit "/".
     const closeAuthModal = useCallback(() => {
         setModalOpen(false)
-        sessionStorage.setItem('utc_modal_dismissed', '1')
     }, [])
 
     return (

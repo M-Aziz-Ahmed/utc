@@ -1,6 +1,22 @@
 'use client'
 import { useState, useEffect } from 'react'
 
+// Extract chassis number from the vehicle document regardless of which key it was saved under
+const getChassisNo = (vehicle) => {
+    if (!vehicle) return ''
+    const keys = ['chassisNumber', 'Chassis No.', 'Chassis No', 'ChassisNo', 'VIN', 'chassis']
+    for (const k of keys) {
+        const v = vehicle[k]
+        if (v && String(v).trim()) return String(v).trim()
+    }
+    // Fallback: scan all keys for anything that looks like a chassis field
+    for (const [k, v] of Object.entries(vehicle)) {
+        if ((k.toLowerCase().includes('chassis') || k.toLowerCase() === 'vin') && v && String(v).trim())
+            return String(v).trim()
+    }
+    return ''
+}
+
 const PhotoReviewPage = () => {
     const [gatePasses, setGatePasses] = useState([])
     const [loading, setLoading] = useState(true)
@@ -40,10 +56,12 @@ const PhotoReviewPage = () => {
     for (const g of gatePasses) {
         if (!g.images?.length) continue
         let name = '—'
+        let chassis = ''
         if (g.vehicle) {
             name = [g.vehicle.manufacturer, g.vehicle.model].filter(Boolean).join(' ') || '—'
+            chassis = getChassisNo(g.vehicle)
         }
-        vehicles.push({ g, name })
+        vehicles.push({ g, name, chassis })
     }
 
     const filtered = search
@@ -86,12 +104,17 @@ const PhotoReviewPage = () => {
                 </div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {filtered.map(({ g, name }) => (
+                    {filtered.map(({ g, name, chassis }) => (
                         <div key={g._id} style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#f8fafc', borderBottom: '1px solid #f0f4f8', flexWrap: 'wrap', gap: '6px' }}>
                                 <div>
                                     <span style={{ fontSize: '11px', fontWeight: 700, color: '#059669', marginRight: '10px' }}>{g.gatePassNumber}</span>
-                                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>{name}</span>
+                                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>{name.toUpperCase()}</span>
+                                    {chassis && (
+                                        <span style={{ marginLeft: '10px', fontSize: '11px', fontWeight: 700, color: '#38bdf8', fontFamily: 'monospace', background: '#0f172a', padding: '2px 8px', borderRadius: '4px', letterSpacing: '0.04em' }}>
+                                            {chassis}
+                                        </span>
+                                    )}
                                 </div>
                                 <span style={{ fontSize: '10px', color: '#64748b' }}>
                                     {g.images.filter(i => i?.approved === true).length} approved · {g.images.filter(i => i?.approved === false).length} rejected · {g.images.filter(i => i?.approved !== true && i?.approved !== false).length} pending

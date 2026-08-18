@@ -44,11 +44,10 @@ export const GET = async (req) => {
         if (type) filter.type = type;
         if (vehicleId) filter.vehicle = vehicleId;
         const gatePasses = await GatePass.find(filter)
-            .populate('vehicle', 'manufacturer model auctionGroup auctionVenue')
+            .populate('vehicle')
             .populate('yard', 'name location')
             .populate('consignee', 'name company')
             .sort({ createdAt: -1 });
-        return NextResponse.json(gatePasses, { status: 200 });
     } catch (error) {
         return NextResponse.json({ message: 'Error fetching gate passes' }, { status: 500 });
     }
@@ -131,7 +130,7 @@ export const POST = async (req) => {
         }
 
         const populated = await GatePass.findById(gatePass._id)
-            .populate('vehicle', 'manufacturer model auctionGroup auctionVenue')
+            .populate('vehicle')
             .populate('yard', 'name location')
             .populate('consignee', 'name company');
         return NextResponse.json(populated, { status: 201 });
@@ -252,7 +251,7 @@ export const PATCH = async (req) => {
             { $set: set },
             { new: true }
         )
-            .populate('vehicle', 'manufacturer model auctionGroup auctionVenue')
+            .populate('vehicle')
             .populate('yard', 'name location')
             .populate('consignee', 'name company');
 
