@@ -4,17 +4,19 @@ import VoiceSearchButton from '@/components/VoiceSearchButton'
 import { compressImage } from '@/utils/imageCompress'
 
 const chassisOf = (v) => {
-    const keys = ['chassisNumber', 'Chassis No.', 'Chassis No', 'Chassis Number', 'VIN', 'Chassis', 'chassis']
-    for (const k of keys) {
+    if (!v) return ''
+    // Check common hardcoded keys first
+    const staticKeys = ['chassisNumber', 'Chassis No.', 'Chassis No', 'Chassis Number', 'VIN', 'Chassis', 'chassis']
+    for (const k of staticKeys) {
         const val = v[k]
-        if (val !== undefined && val !== null && String(val).trim()) return String(val).trim()
+        if (val && String(val).trim()) return String(val).trim()
     }
-    for (const k of Object.keys(v)) {
-        const lk = k.toLowerCase()
-        if ((lk.includes('chassis') || lk.includes('vin')) && !lk.includes('image')) {
-            const val = v[k]
-            if (val !== undefined && val !== null && String(val).trim()) return String(val).trim()
-        }
+    // Scan all keys dynamically — covers any admin-defined field label
+    for (const [k, val] of Object.entries(v)) {
+        if (!val || typeof val === 'object') continue
+        const lk = k.toLowerCase().replace(/[\s._-]/g, '')
+        if ((lk.includes('chassis') || lk === 'vin') && String(val).trim())
+            return String(val).trim()
     }
     return ''
 }
@@ -291,6 +293,11 @@ const GatePassPage = () => {
                                         <td style={{ padding: '8px 10px' }}><span style={{ fontSize: '11px', fontWeight: 700, color: g.type === 'IGP' ? '#059669' : '#7c3aed' }}>{g.gatePassNumber}</span></td>
                                         <td style={{ padding: '8px 10px' }}>
                                             <div style={{ fontSize: '12px', fontWeight: 600, color: '#0f172a' }}>{g.vehicle ? [g.vehicle.manufacturer, g.vehicle.model].filter(Boolean).join(' ') : '—'}</div>
+                                            {g.vehicle && chassisOf(g.vehicle) && (
+                                                <div style={{ fontSize: '10px', fontWeight: 700, color: '#38bdf8', fontFamily: 'monospace', marginTop: '2px', background: '#0f172a', display: 'inline-block', padding: '1px 6px', borderRadius: '3px', letterSpacing: '0.04em' }}>
+                                                    {chassisOf(g.vehicle)}
+                                                </div>
+                                            )}
                                         </td>
                                         <td style={{ padding: '8px 10px', fontSize: '11px', color: '#5f6368' }}>{gpDate}</td>
                                         <td style={{ padding: '8px 10px', fontSize: '11px', color: '#5f6368' }}>{g.yard?.name || '—'}</td>
