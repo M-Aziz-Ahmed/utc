@@ -15,6 +15,7 @@ export const PORTALS = [
     { key: 'fields',     label: 'Dynamic Fields',        href: '/admin/fields' },
     { key: 'users',      label: 'Users',                 href: '/admin/users' },
     { key: 'manage',     label: 'Clients / Consignees',  href: '/admin/manage' },
+    { key: 'website',    label: 'Website Management',    href: '/admin/website/hero' },
 ]
 
 // Route prefix -> portal key. Longest / most specific entries must come first.
@@ -31,6 +32,7 @@ const RULES = [
     ['/admin/yard', 'yard'],
     ['/admin/setup', 'setup'],
     ['/admin/fields', 'fields'],
+    ['/admin/website', 'website'],
 ]
 
 const normalize = (p) => (p && p.length > 1 && p.endsWith('/') ? p.slice(0, -1) : p || '')

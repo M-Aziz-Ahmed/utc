@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import SearchPanel from '@/components/public/SearchPanel'
 import VehicleCard from '@/components/public/VehicleCard'
+import HeroCarousel from '@/components/public/HeroCarousel'
 
 const formatPrice = (price) => {
   if (!price) return 'Price on Request'
@@ -19,11 +20,13 @@ const formatMileage = (mileage) => {
 export default async function HomePage() {
   let vehicleCount = 0
   let featuredVehicles = []
+  let heroSlides = []
 
   try {
-    const [countRes, vehiclesRes] = await Promise.all([
+    const [countRes, vehiclesRes, slidesRes] = await Promise.all([
       fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/public/vehicles/count`, { next: { revalidate: 60 } }),
       fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/public/vehicles?limit=8`, { next: { revalidate: 60 } }),
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/heroSlides?active=true`, { next: { revalidate: 30 } }),
     ])
 
     if (countRes.ok) {
@@ -35,6 +38,11 @@ export default async function HomePage() {
       const vehiclesData = await vehiclesRes.json()
       featuredVehicles = vehiclesData.vehicles || vehiclesData.data || vehiclesData || []
       if (!Array.isArray(featuredVehicles)) featuredVehicles = []
+    }
+
+    if (slidesRes.ok) {
+      const slidesData = await slidesRes.json()
+      heroSlides = Array.isArray(slidesData) ? slidesData : []
     }
   } catch {
     // API may not be available yet
@@ -57,54 +65,8 @@ export default async function HomePage() {
 
   return (
     <>
-      {/* Hero Section */}
-      <section className="hero-section">
-        <div className="hero-bg">
-          <div style={{
-            width: '100%',
-            height: '100%',
-            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #0f172a 100%)',
-          }} />
-        </div>
-        <div className="hero-overlay" />
-
-        <div className="hero-content">
-          <div className="hero-badge">
-            &#127471;&#127477; Premium Japanese Vehicle Exports
-          </div>
-
-          <h1 className="hero-title">
-            FIND YOUR <span>DREAM CAR</span>
-          </h1>
-          <p className="hero-subtitle">DIRECT FROM JAPAN</p>
-
-          <div className="hero-features">
-            <div className="hero-feature">
-              <div className="hero-feature-icon">&#127775;</div>
-              <span>Japanese Auction Direct</span>
-            </div>
-            <div className="hero-feature">
-              <div className="hero-feature-icon">&#9989;</div>
-              <span>Best Quality Vehicles</span>
-            </div>
-            <div className="hero-feature">
-              <div className="hero-feature-icon">&#128666;</div>
-              <span>Worldwide Shipping</span>
-            </div>
-          </div>
-
-          <Link href="/stock" className="btn-primary" style={{ fontSize: 15, padding: '14px 32px' }}>
-            Browse All Vehicles
-          </Link>
-        </div>
-
-        <div className="hero-stats">
-          <div className="hero-stat-card">
-            <div className="hero-stat-number">{vehicleCount.toLocaleString()}</div>
-            <div className="hero-stat-label">Vehicles in Stock</div>
-          </div>
-        </div>
-      </section>
+      {/* Hero Section — dynamic carousel */}
+      <HeroCarousel vehicleCount={vehicleCount} initialSlides={heroSlides} />
 
       {/* Search Panel */}
       <SearchPanel />
