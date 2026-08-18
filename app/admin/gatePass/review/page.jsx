@@ -1,21 +1,52 @@
 'use client'
 import { useState, useEffect } from 'react'
 
-// Extract chassis number from the vehicle document regardless of which key it was saved under
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 const getChassisNo = (vehicle) => {
     if (!vehicle) return ''
-    const keys = ['chassisNumber', 'Chassis No.', 'Chassis No', 'ChassisNo', 'VIN', 'chassis']
-    for (const k of keys) {
+    const staticKeys = ['chassisNumber', 'Chassis No.', 'Chassis No', 'ChassisNo', 'VIN', 'chassis']
+    for (const k of staticKeys) {
         const v = vehicle[k]
         if (v && String(v).trim()) return String(v).trim()
     }
-    // Fallback: scan all keys for anything that looks like a chassis field
     for (const [k, v] of Object.entries(vehicle)) {
-        if ((k.toLowerCase().includes('chassis') || k.toLowerCase() === 'vin') && v && String(v).trim())
+        if (!v || typeof v === 'object') continue
+        if ((k.toLowerCase().includes('chassis') || k.toLowerCase() === 'vin') && String(v).trim())
             return String(v).trim()
     }
     return ''
 }
+
+const yearOf = (vehicle) => {
+    if (!vehicle) return ''
+    const staticKeys = ['year', 'Year', 'yearMake', 'Year Make', 'year_make', 'modelYear']
+    for (const k of staticKeys) {
+        const v = vehicle[k]
+        if (v && String(v).trim()) return String(v).trim()
+    }
+    for (const [k, v] of Object.entries(vehicle)) {
+        if (!v || typeof v === 'object') continue
+        const lk = k.toLowerCase().replace(/[\s._-]/g, '')
+        if ((lk === 'yearmake' || lk === 'year') && String(v).trim())
+            return String(v).trim()
+    }
+    return ''
+}
+
+// "TOYOTA LAND CRUISER PRADO / 2021 / TRJ150-0133943"
+const vehicleLabel = (vehicle) => {
+    if (!vehicle) return '—'
+    const name = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ')
+    const year = yearOf(vehicle)
+    const chassis = getChassisNo(vehicle)
+    const parts = [name || '—']
+    if (year) parts.push(year)
+    if (chassis) parts.push(chassis)
+    return parts.join(' / ')
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 const PhotoReviewPage = () => {
     const [gatePasses, setGatePasses] = useState([])
@@ -52,34 +83,31 @@ const PhotoReviewPage = () => {
         } catch (e) { alert(e.message || 'Failed to update photo') } finally { setBusy(null) }
     }
 
-    const vehicles = []
-    for (const g of gatePasses) {
-        if (!g.images?.length) continue
-        let name = '—'
-        let chassis = ''
-        if (g.vehicle) {
-            name = [g.vehicle.manufacturer, g.vehicle.model].filter(Boolean).join(' ') || '—'
-            chassis = getChassisNo(g.vehicle)
-        }
-        vehicles.push({ g, name, chassis })
-    }
+    const entries = gatePasses
+        .filter(g => g.images?.length)
+        .map(g => ({ g, label: vehicleLabel(g.vehicle) }))
 
     const filtered = search
-        ? vehicles.filter(v => [v.name, v.g.gatePassNumber, v.g.containerNumber].filter(Boolean).join(' ').toLowerCase().includes(search.toLowerCase()))
-        : vehicles
+        ? entries.filter(({ g, label }) =>
+            [label, g.gatePassNumber, g.containerNumber]
+                .filter(Boolean).join(' ').toLowerCase()
+                .includes(search.toLowerCase()))
+        : entries
 
     const statusBadge = (img) => {
-        if (img?.approved === true) return { label: 'Approved · Published', color: '#059669', bg: '#d1fae5' }
-        if (img?.approved === false) return { label: 'Rejected', color: '#ef4444', bg: '#fee2e2' }
-        return { label: 'Pending Review', color: '#f59e0b', bg: '#fef3c7' }
+        if (img?.approved === true)  return { label: 'Approved · Published', color: '#059669', bg: '#d1fae5' }
+        if (img?.approved === false) return { label: 'Rejected',             color: '#ef4444', bg: '#fee2e2' }
+        return                              { label: 'Pending Review',        color: '#f59e0b', bg: '#fef3c7' }
     }
+
     return (
         <div style={{ padding: '16px', minHeight: '100vh', background: '#f6f8fc' }}>
+            {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
                 <div>
                     <h1 style={{ fontSize: '18px', fontWeight: 500, color: '#202124', margin: 0 }}>Photo Review Portal</h1>
                     <p style={{ fontSize: '12px', color: '#5f6368', marginTop: '2px' }}>
-                        Approve IGP photos individually. Approved photos are published to the website and replace the auction photos.
+                        Approve IGP photos individually. Approved photos replace the auction photos on the public site.
                     </p>
                 </div>
                 <button onClick={loadData}
@@ -88,12 +116,16 @@ const PhotoReviewPage = () => {
                 </button>
             </div>
 
-            <div style={{ position: 'relative', maxWidth: '320px', marginBottom: '14px' }}>
-                <svg style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '13px', height: '13px', color: '#9aa0a6' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                <input type="text" placeholder="Search vehicle or gate pass..." value={search} onChange={e => setSearch(e.target.value)}
-                    style={{ width: '100%', paddingLeft: '30px', padding: '7px 10px 7px 30px', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '12px', outline: 'none', background: '#fff', boxSizing: 'border-box' }} />
+            {/* Search */}
+            <div style={{ position: 'relative', maxWidth: '360px', marginBottom: '14px' }}>
+                <svg style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '13px', height: '13px', color: '#9aa0a6' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input type="text" placeholder="Search vehicle, chassis or gate pass..." value={search} onChange={e => setSearch(e.target.value)}
+                    style={{ width: '100%', padding: '7px 10px 7px 30px', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '12px', outline: 'none', background: '#fff', boxSizing: 'border-box' }} />
             </div>
 
+            {/* Body */}
             {loading ? (
                 <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '80px' }}>
                     <div style={{ width: '32px', height: '32px', border: '3px solid #e8f0fe', borderTopColor: '#1a73e8', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
@@ -104,22 +136,25 @@ const PhotoReviewPage = () => {
                 </div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {filtered.map(({ g, name, chassis }) => (
+                    {filtered.map(({ g, label }) => (
                         <div key={g._id} style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#f8fafc', borderBottom: '1px solid #f0f4f8', flexWrap: 'wrap', gap: '6px' }}>
-                                <div>
-                                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#059669', marginRight: '10px' }}>{g.gatePassNumber}</span>
-                                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>{name.toUpperCase()}</span>
-                                    {chassis && (
-                                        <span style={{ marginLeft: '10px', fontSize: '11px', fontWeight: 700, color: '#38bdf8', fontFamily: 'monospace', background: '#0f172a', padding: '2px 8px', borderRadius: '4px', letterSpacing: '0.04em' }}>
-                                            {chassis}
-                                        </span>
-                                    )}
+
+                            {/* Row header */}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#f8fafc', borderBottom: '1px solid #f0f4f8', flexWrap: 'wrap', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#059669', letterSpacing: '0.04em' }}>{g.gatePassNumber}</span>
+                                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', letterSpacing: '0.02em' }}>
+                                        {label.toUpperCase()}
+                                    </span>
                                 </div>
                                 <span style={{ fontSize: '10px', color: '#64748b' }}>
-                                    {g.images.filter(i => i?.approved === true).length} approved · {g.images.filter(i => i?.approved === false).length} rejected · {g.images.filter(i => i?.approved !== true && i?.approved !== false).length} pending
+                                    {g.images.filter(i => i?.approved === true).length} approved &nbsp;·&nbsp;
+                                    {g.images.filter(i => i?.approved === false).length} rejected &nbsp;·&nbsp;
+                                    {g.images.filter(i => i?.approved !== true && i?.approved !== false).length} pending
                                 </span>
                             </div>
+
+                            {/* Photo grid */}
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', padding: '14px' }}>
                                 {g.images.map((img, i) => {
                                     const badge = statusBadge(img)

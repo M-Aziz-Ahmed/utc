@@ -23,6 +23,35 @@ const chassisOf = (v) => {
 
 const vehicleSearchText = (v) => [v.manufacturer, v.model, v.exportCountry, v.stockId, chassisOf(v)].filter(Boolean).join(' ').toLowerCase()
 
+// Extract year from vehicle regardless of which dynamic key it's stored under
+const yearOf = (v) => {
+    if (!v) return ''
+    const staticKeys = ['year', 'Year', 'yearMake', 'Year Make', 'year_make', 'modelYear']
+    for (const k of staticKeys) {
+        const val = v[k]
+        if (val && String(val).trim()) return String(val).trim()
+    }
+    for (const [k, val] of Object.entries(v)) {
+        if (!val || typeof val === 'object') continue
+        const lk = k.toLowerCase().replace(/[\s._-]/g, '')
+        if ((lk === 'yearmake' || lk === 'year') && String(val).trim())
+            return String(val).trim()
+    }
+    return ''
+}
+
+// Format: MAKE MODEL / YEAR / CHASSIS
+const vehicleLabel = (v) => {
+    if (!v) return '—'
+    const name = [v.manufacturer, v.model].filter(Boolean).join(' ')
+    const year = yearOf(v)
+    const chassis = chassisOf(v)
+    const parts = [name || '—']
+    if (year) parts.push(year)
+    if (chassis) parts.push(chassis)
+    return parts.join(' / ')
+}
+
 const vehicleImages = (v) => {
     if (!v) return []
     const paths = []
@@ -196,7 +225,7 @@ const GatePassPage = () => {
         if (g.type !== tab) return false
         if (search) {
             const s = search.toLowerCase()
-            const vName = g.vehicle ? [g.vehicle.manufacturer, g.vehicle.model].filter(Boolean).join(' ').toLowerCase() : ''
+            const vName = g.vehicle ? vehicleLabel(g.vehicle).toLowerCase() : ''
             if (!vName.includes(s) && !(g.gatePassNumber || '').toLowerCase().includes(s) && !(g.containerNumber || '').toLowerCase().includes(s)) return false
         }
         return true
@@ -292,12 +321,9 @@ const GatePassPage = () => {
                                     <tr key={g._id} style={{ borderBottom: '1px solid #f0f4f8' }}>
                                         <td style={{ padding: '8px 10px' }}><span style={{ fontSize: '11px', fontWeight: 700, color: g.type === 'IGP' ? '#059669' : '#7c3aed' }}>{g.gatePassNumber}</span></td>
                                         <td style={{ padding: '8px 10px' }}>
-                                            <div style={{ fontSize: '12px', fontWeight: 600, color: '#0f172a' }}>{g.vehicle ? [g.vehicle.manufacturer, g.vehicle.model].filter(Boolean).join(' ') : '—'}</div>
-                                            {g.vehicle && chassisOf(g.vehicle) && (
-                                                <div style={{ fontSize: '10px', fontWeight: 700, color: '#38bdf8', fontFamily: 'monospace', marginTop: '2px', background: '#0f172a', display: 'inline-block', padding: '1px 6px', borderRadius: '3px', letterSpacing: '0.04em' }}>
-                                                    {chassisOf(g.vehicle)}
-                                                </div>
-                                            )}
+                                            <div style={{ fontSize: '12px', fontWeight: 600, color: '#0f172a' }}>
+                                                {g.vehicle ? vehicleLabel(g.vehicle) : '—'}
+                                            </div>
                                         </td>
                                         <td style={{ padding: '8px 10px', fontSize: '11px', color: '#5f6368' }}>{gpDate}</td>
                                         <td style={{ padding: '8px 10px', fontSize: '11px', color: '#5f6368' }}>{g.yard?.name || '—'}</td>
