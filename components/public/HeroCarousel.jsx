@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 
-const FALLBACK = [{
+const FALLBACK_SLIDE = {
     _id: 'fallback',
     backgroundImage: '',
     overlay: 55,
@@ -18,129 +18,124 @@ const FALLBACK = [{
         { icon: '✅', text: 'Best Quality Vehicles' },
         { icon: '🚚', text: 'Worldwide Shipping' },
     ],
-}]
+}
 
 export default function HeroCarousel({ vehicleCount = 0, initialSlides = [] }) {
-    const [slides, setSlides] = useState(FALLBACK)   // always start with fallback
-    const [loaded, setLoaded] = useState(false)
+    const [slides, setSlides] = useState([])
     const [current, setCurrent] = useState(0)
-    const [animating, setAnimating] = useState(false)
-    const timerRef = useRef(null)
+    const [fading, setFading] = useState(false)
+    const timer = useRef(null)
 
-    // Merge server slides once available, then fetch from client if still empty
+    // Load slides: server-provided → client fetch → fallback
     useEffect(() => {
         if (initialSlides && initialSlides.length > 0) {
             setSlides(initialSlides)
-            setLoaded(true)
             return
         }
-        // Server had no slides — try client-side fetch
         fetch('/api/heroSlides?active=true')
             .then(r => r.ok ? r.json() : [])
             .then(data => {
-                if (Array.isArray(data) && data.length > 0) {
-                    setSlides(data)
-                }
-                setLoaded(true)
+                setSlides(Array.isArray(data) && data.length > 0 ? data : [FALLBACK_SLIDE])
             })
-            .catch(() => setLoaded(true))
-    }, [initialSlides])
+            .catch(() => setSlides([FALLBACK_SLIDE]))
+    }, [])  // eslint-disable-line
 
     const total = slides.length
 
     const goTo = useCallback((idx) => {
-        if (animating) return
-        setAnimating(true)
-        setTimeout(() => {
-            setCurrent(idx)
-            setAnimating(false)
-        }, 350)
-    }, [animating])
+        if (fading || !total) return
+        setFading(true)
+        setTimeout(() => { setCurrent(idx); setFading(false) }, 400)
+    }, [fading, total])
 
     const prev = useCallback(() => goTo((current - 1 + total) % total), [current, total, goTo])
     const next = useCallback(() => goTo((current + 1) % total), [current, total, goTo])
 
-    // Auto-advance
-    useEffect(() => {
-        if (total <= 1) return
-        timerRef.current = setInterval(next, 6000)
-        return () => clearInterval(timerRef.current)
+    const resetTimer = useCallback(() => {
+        clearInterval(timer.current)
+        if (total > 1) timer.current = setInterval(next, 6000)
     }, [total, next])
 
-    const resetTimer = () => {
-        clearInterval(timerRef.current)
-        if (total > 1) timerRef.current = setInterval(next, 6000)
-    }
+    useEffect(() => {
+        if (total > 1) timer.current = setInterval(next, 6000)
+        return () => clearInterval(timer.current)
+    }, [total, next])
 
-    const slide = slides[current] || slides[0]
-    if (!slide) return null
+    if (!total) return (
+        <section className="hero-section" style={{ background: 'linear-gradient(135deg,#0f172a 0%,#1e293b 40%,#0f172a 100%)' }} />
+    )
 
-    const overlayOpacity = ((slide.overlay ?? 55) / 100).toFixed(2)
+    const slide = slides[current]
+    const overlayRgba = `rgba(0,0,0,${((slide.overlay ?? 55) / 100).toFixed(2)})`
     const textColor = slide.textColor || '#ffffff'
+    const sectionBg = slide.backgroundImage
+        ? 'transparent'
+        : 'linear-gradient(135deg,#0f172a 0%,#1e293b 40%,#0f172a 100%)'
 
+    // Build heading: if headingAccent present, wrap it in red span
     const renderHeading = () => {
         const full = (slide.heading || '').trim()
         const accent = (slide.headingAccent || '').trim()
-        if (!accent || !full.includes(accent)) return <>{full}</>
-        const [before, ...afterParts] = full.split(accent)
-        return (
-            <>
-                {before}
-                <span style={{ color: '#ef4444' }}>{accent}</span>
-                {afterParts.join(accent)}
-            </>
-        )
+        if (accent && full.includes(accent)) {
+            const idx = full.indexOf(accent)
+            return (
+                <>
+                    {full.slice(0, idx)}
+                    <span style={{ color: '#ef4444' }}>{accent}</span>
+                    {full.slice(idx + accent.length)}
+                </>
+            )
+        }
+        // heading may contain HTML from rich-text editor
+        if (full.includes('<')) {
+            return <span dangerouslySetInnerHTML={{ __html: full }} />
+        }
+        return full
     }
 
     return (
-        <section className="hero-section">
-
-            {/* ── Background image layer ── */}
-            <div style={{
-                position: 'absolute', inset: 0, zIndex: 0,
-                transition: 'opacity 0.35s',
-                opacity: animating ? 0 : 1,
-            }}>
-                {slide.backgroundImage ? (
+        <section
+            className="hero-section"
+            style={{ background: sectionBg }}
+        >
+            {/* Background image */}
+            {slide.backgroundImage && (
+                <div style={{
+                    position: 'absolute', inset: 0, zIndex: 0,
+                    opacity: fading ? 0 : 1,
+                    transition: 'opacity 0.4s ease',
+                }}>
                     <img
+                        key={slide._id}
                         src={slide.backgroundImage}
                         alt=""
-                        style={{
-                            width: '100%', height: '100%',
-                            objectFit: 'cover', objectPosition: 'center',
-                            display: 'block',
-                        }}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', display: 'block' }}
                     />
-                ) : (
-                    // Fallback gradient when no image
-                    <div style={{
-                        width: '100%', height: '100%',
-                        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #0f172a 100%)',
-                    }} />
-                )}
-            </div>
+                </div>
+            )}
 
-            {/* ── Dark overlay ── */}
+            {/* Overlay */}
             <div style={{
                 position: 'absolute', inset: 0, zIndex: 1,
-                background: `rgba(0,0,0,${overlayOpacity})`,
-                transition: 'opacity 0.35s',
-                opacity: animating ? 0 : 1,
+                background: overlayRgba,
+                opacity: fading ? 0 : 1,
+                transition: 'opacity 0.4s ease',
             }} />
 
-            {/* ── Content ── */}
+            {/* Content */}
             <div
                 className="hero-content"
                 style={{
                     position: 'relative', zIndex: 2,
                     color: textColor,
-                    opacity: animating ? 0 : 1,
-                    transform: animating ? 'translateY(10px)' : 'translateY(0)',
-                    transition: 'opacity 0.35s, transform 0.35s',
+                    opacity: fading ? 0 : 1,
+                    transform: fading ? 'translateY(8px)' : 'translateY(0)',
+                    transition: 'opacity 0.4s ease, transform 0.4s ease',
                 }}
             >
                 {slide.badgeText && (
-                    <div className="hero-badge">{slide.badgeText}</div>
+                    <div className="hero-badge"
+                        dangerouslySetInnerHTML={{ __html: slide.badgeText }} />
                 )}
 
                 <h1 className="hero-title" style={{ color: textColor }}>
@@ -148,7 +143,8 @@ export default function HeroCarousel({ vehicleCount = 0, initialSlides = [] }) {
                 </h1>
 
                 {slide.subheading && (
-                    <p className="hero-subtitle" style={{ color: textColor }}>{slide.subheading}</p>
+                    <p className="hero-subtitle" style={{ color: textColor }}
+                        dangerouslySetInnerHTML={{ __html: slide.subheading }} />
                 )}
 
                 {(slide.features || []).length > 0 && (
@@ -156,7 +152,10 @@ export default function HeroCarousel({ vehicleCount = 0, initialSlides = [] }) {
                         {slide.features.map((f, i) => (
                             <div key={i} className="hero-feature" style={{ color: textColor }}>
                                 <div className="hero-feature-icon">{f.icon}</div>
-                                <span>{f.text}</span>
+                                {f.text?.includes('<')
+                                    ? <span dangerouslySetInnerHTML={{ __html: f.text }} />
+                                    : <span>{f.text}</span>
+                                }
                             </div>
                         ))}
                     </div>
@@ -170,7 +169,7 @@ export default function HeroCarousel({ vehicleCount = 0, initialSlides = [] }) {
                 )}
             </div>
 
-            {/* ── Stats card ── */}
+            {/* Stats */}
             <div className="hero-stats" style={{ position: 'relative', zIndex: 2 }}>
                 <div className="hero-stat-card">
                     <div className="hero-stat-number">{vehicleCount.toLocaleString()}+</div>
@@ -178,21 +177,21 @@ export default function HeroCarousel({ vehicleCount = 0, initialSlides = [] }) {
                 </div>
             </div>
 
-            {/* ── Prev / Next ── */}
+            {/* Arrows */}
             {total > 1 && (
                 <>
                     <button onClick={() => { prev(); resetTimer() }} aria-label="Previous"
-                        style={arrowBtn('left')}
+                        style={arrowStyle('left')}
                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.7)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.38)'}>
+                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.4)'}>
                         <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                         </svg>
                     </button>
                     <button onClick={() => { next(); resetTimer() }} aria-label="Next"
-                        style={arrowBtn('right')}
+                        style={arrowStyle('right')}
                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.7)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.38)'}>
+                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.4)'}>
                         <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                         </svg>
@@ -200,7 +199,7 @@ export default function HeroCarousel({ vehicleCount = 0, initialSlides = [] }) {
 
                     {/* Dots */}
                     <div style={{
-                        position: 'absolute', bottom: 16, left: '50%',
+                        position: 'absolute', bottom: 18, left: '50%',
                         transform: 'translateX(-50%)', zIndex: 3,
                         display: 'flex', gap: 8,
                     }}>
@@ -209,25 +208,23 @@ export default function HeroCarousel({ vehicleCount = 0, initialSlides = [] }) {
                                 onClick={() => { goTo(i); resetTimer() }}
                                 style={{
                                     width: i === current ? 24 : 8, height: 8,
-                                    borderRadius: 4, border: 'none', padding: 0,
+                                    borderRadius: 4, border: 'none', padding: 0, cursor: 'pointer',
                                     background: i === current ? '#ef4444' : 'rgba(255,255,255,0.5)',
-                                    cursor: 'pointer', transition: 'all 0.25s',
+                                    transition: 'all 0.25s',
                                 }} />
                         ))}
                     </div>
                 </>
             )}
-
-            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
         </section>
     )
 }
 
-const arrowBtn = (side) => ({
+const arrowStyle = (side) => ({
     position: 'absolute', top: '50%', [side]: 16,
     transform: 'translateY(-50%)', zIndex: 3,
     width: 44, height: 44, borderRadius: '50%',
-    background: 'rgba(0,0,0,0.38)',
+    background: 'rgba(0,0,0,0.4)',
     border: '1px solid rgba(255,255,255,0.2)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     cursor: 'pointer', transition: 'background 0.18s',

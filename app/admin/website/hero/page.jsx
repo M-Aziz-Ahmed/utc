@@ -1,7 +1,150 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Page, PageHeader, Card, Btn, Field, Input, Textarea, Select, Modal, Alert, T } from '@/components/admin/ui'
 import { compressImage } from '@/utils/imageCompress'
+
+// ── Rich text input with inline color picker ──────────────────────────────────
+// Stores HTML (with <span style="color:..."> tags). Shows a mini toolbar on selection.
+const PRESET_COLORS = ['#ffffff', '#ef4444', '#f97316', '#facc15', '#4ade80', '#38bdf8', '#818cf8', '#f472b6', '#000000']
+
+const RichTextInput = ({ value, onChange, placeholder, singleLine = false }) => {
+    const ref = useRef(null)
+    const [toolbar, setToolbar] = useState(null)   // { top, left } or null
+    const [pickerColor, setPickerColor] = useState('#ef4444')
+    const lastHtml = useRef(value || '')
+
+    // Sync external value → DOM (only on first mount or when value changes from outside)
+    useEffect(() => {
+        if (ref.current && ref.current.innerHTML !== (value || '')) {
+            ref.current.innerHTML = value || ''
+            lastHtml.current = value || ''
+        }
+    }, [value])
+
+    const syncValue = () => {
+        const html = ref.current?.innerHTML || ''
+        if (html !== lastHtml.current) {
+            lastHtml.current = html
+            onChange(html)
+        }
+    }
+
+    const handleSelect = () => {
+        const sel = window.getSelection()
+        if (!sel || sel.isCollapsed || !sel.toString().trim()) {
+            setToolbar(null)
+            return
+        }
+        // Position toolbar above the selection
+        const range = sel.getRangeAt(0)
+        const rect = range.getBoundingClientRect()
+        const containerRect = ref.current?.closest('[data-rti-container]')?.getBoundingClientRect() || { top: 0, left: 0 }
+        setToolbar({
+            top: rect.top - containerRect.top - 44,
+            left: Math.max(0, rect.left - containerRect.left),
+        })
+    }
+
+    const applyColor = (color) => {
+        ref.current?.focus()
+        document.execCommand('styleWithCSS', false, true)
+        document.execCommand('foreColor', false, color)
+        syncValue()
+        setToolbar(null)
+    }
+
+    const clearColor = () => {
+        ref.current?.focus()
+        document.execCommand('removeFormat', false, null)
+        syncValue()
+        setToolbar(null)
+    }
+
+    const handleKeyDown = (e) => {
+        if (singleLine && e.key === 'Enter') { e.preventDefault(); return }
+    }
+
+    return (
+        <div data-rti-container style={{ position: 'relative' }}>
+            {/* Mini toolbar */}
+            {toolbar && (
+                <div style={{
+                    position: 'absolute',
+                    top: toolbar.top, left: toolbar.left,
+                    zIndex: 100,
+                    background: '#1e293b', borderRadius: 8,
+                    padding: '6px 8px',
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    flexWrap: 'wrap', maxWidth: 260,
+                }}>
+                    {/* Preset swatches */}
+                    {PRESET_COLORS.map(c => (
+                        <button key={c} onClick={() => applyColor(c)} title={c}
+                            style={{
+                                width: 20, height: 20, borderRadius: '50%',
+                                background: c, border: c === '#ffffff' ? '1px solid #475569' : '1px solid rgba(255,255,255,0.2)',
+                                cursor: 'pointer', flexShrink: 0, padding: 0,
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                            }} />
+                    ))}
+                    {/* Custom color */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 2 }}>
+                        <input type="color" value={pickerColor}
+                            onChange={e => setPickerColor(e.target.value)}
+                            style={{ width: 24, height: 24, padding: 1, borderRadius: 4, border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', background: 'transparent' }} />
+                        <button onClick={() => applyColor(pickerColor)}
+                            style={{ fontSize: 9, fontWeight: 700, color: '#fff', background: '#334155', border: 'none', borderRadius: 4, padding: '3px 6px', cursor: 'pointer' }}>
+                            Apply
+                        </button>
+                    </div>
+                    {/* Clear */}
+                    <button onClick={clearColor} title="Remove colour"
+                        style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', background: 'none', border: '1px solid #475569', borderRadius: 4, padding: '3px 6px', cursor: 'pointer' }}>
+                        Clear
+                    </button>
+                </div>
+            )}
+
+            {/* Editable area */}
+            <div
+                ref={ref}
+                contentEditable
+                suppressContentEditableWarning
+                onInput={syncValue}
+                onBlur={() => { syncValue(); setToolbar(null) }}
+                onMouseUp={handleSelect}
+                onKeyUp={handleSelect}
+                onKeyDown={handleKeyDown}
+                data-placeholder={placeholder}
+                style={{
+                    width: '100%', minHeight: singleLine ? 36 : 36,
+                    padding: '8px 11px',
+                    border: `1px solid ${T.border}`, borderRadius: 8,
+                    fontSize: 13, outline: 'none',
+                    boxSizing: 'border-box', background: '#fff',
+                    color: T.text, fontFamily: 'inherit',
+                    lineHeight: 1.5,
+                    cursor: 'text',
+                    whiteSpace: singleLine ? 'nowrap' : 'normal',
+                    overflow: singleLine ? 'hidden' : 'auto',
+                }}
+                onFocus={e => { e.target.style.borderColor = T.blue; e.target.style.boxShadow = '0 0 0 3px rgba(26,115,232,0.1)' }}
+            />
+            <style>{`
+                [data-rti-container] [contenteditable]:empty:before {
+                    content: attr(data-placeholder);
+                    color: #9aa0a6;
+                    pointer-events: none;
+                }
+                [data-rti-container] [contenteditable]:focus {
+                    border-color: #1a73e8 !important;
+                }
+            `}</style>
+        </div>
+    )
+}
 
 // ── blank slide template ──────────────────────────────────────────────────────
 const BLANK = {
@@ -223,16 +366,24 @@ const SlideEditor = ({ slide, onSave, onClose, saving }) => {
                 </div>
 
                 {/* Badge */}
-                <Field label="Badge Text (small pill above heading)">
-                    <Input value={form.badgeText} onChange={e => set('badgeText', e.target.value)}
-                        placeholder="🇯🇵 Japanese Vehicle Export Specialist" />
+                <Field label="Badge Text (small pill above heading)" hint="Select any text then pick a colour from the toolbar">
+                    <RichTextInput
+                        value={form.badgeText}
+                        onChange={v => set('badgeText', v)}
+                        placeholder="🇯🇵 Japanese Vehicle Export Specialist"
+                        singleLine
+                    />
                 </Field>
 
                 {/* Heading */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <Field label="Main Heading">
-                        <Input value={form.heading} onChange={e => set('heading', e.target.value)}
-                            placeholder="FIND YOUR DREAM CAR" />
+                    <Field label="Main Heading" hint="Select text → colour it">
+                        <RichTextInput
+                            value={form.heading}
+                            onChange={v => set('heading', v)}
+                            placeholder="FIND YOUR DREAM CAR"
+                            singleLine
+                        />
                     </Field>
                     <Field label="Accent Word (highlighted part of heading)">
                         <Input value={form.headingAccent} onChange={e => set('headingAccent', e.target.value)}
@@ -241,9 +392,13 @@ const SlideEditor = ({ slide, onSave, onClose, saving }) => {
                 </div>
 
                 {/* Subheading */}
-                <Field label="Subheading">
-                    <Input value={form.subheading} onChange={e => set('subheading', e.target.value)}
-                        placeholder="DIRECT FROM JAPAN" />
+                <Field label="Subheading" hint="Select text → colour it">
+                    <RichTextInput
+                        value={form.subheading}
+                        onChange={v => set('subheading', v)}
+                        placeholder="DIRECT FROM JAPAN"
+                        singleLine
+                    />
                 </Field>
 
                 {/* CTA */}
@@ -259,14 +414,20 @@ const SlideEditor = ({ slide, onSave, onClose, saving }) => {
                 </div>
 
                 {/* Features */}
-                <Field label="Feature Icons (up to 5)">
+                <Field label="Feature Icons (up to 5)" hint="Select feature text → colour it">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {form.features.map((f, i) => (
                             <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                                 <Input value={f.icon} onChange={e => setFeature(i, 'icon', e.target.value)}
                                     placeholder="🏆" style={{ width: 60, textAlign: 'center', fontSize: 18 }} />
-                                <Input value={f.text} onChange={e => setFeature(i, 'text', e.target.value)}
-                                    placeholder="Feature text" style={{ flex: 1 }} />
+                                <div style={{ flex: 1 }}>
+                                    <RichTextInput
+                                        value={f.text}
+                                        onChange={v => setFeature(i, 'text', v)}
+                                        placeholder="Feature text"
+                                        singleLine
+                                    />
+                                </div>
                                 <button onClick={() => removeFeature(i)}
                                     style={{ ...iconBtn, color: T.red, borderColor: '#fecaca', flexShrink: 0 }}>×</button>
                             </div>
