@@ -681,7 +681,7 @@ const Page = () => {
     const [filters, setFilters] = useState(EMPTY_FILTERS)
     const PAGE_SIZE = 25
 
-    const showChassis = !!user
+    const showChassis = true  // Admin portal — always show chassis number
 
     useEffect(() => {
         const saved = getCookie('vehicles_view')
@@ -705,7 +705,7 @@ const Page = () => {
     }, [])
 
     useEffect(() => {
-        fetch('/api/public/auth/me').then(r => r.json()).then(d => {
+        fetch('/api/public/me').then(r => r.json()).then(d => {
             if (d.user) setUser(d.user)
         }).catch(() => {})
     }, [])
