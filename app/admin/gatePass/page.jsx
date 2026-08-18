@@ -24,19 +24,40 @@ const vehicleSearchText = (v) => [v.manufacturer, v.model, v.exportCountry, v.st
 const vehicleImages = (v) => {
     if (!v) return []
     const paths = []
-    const push = (imgs) => {
-        if (!imgs) return
-        const arr = Array.isArray(imgs) ? imgs : [imgs]
-        for (const it of arr) {
-            if (typeof it === 'string' && it.trim()) paths.push(it)
-            else if (it && typeof it.path === 'string' && it.path.trim()) paths.push(it.path)
+
+    // 1. Prefer mainImageUrl first
+    if (v.mainImageUrl && typeof v.mainImageUrl === 'string' && v.mainImageUrl.trim())
+        paths.push(v.mainImageUrl.trim())
+
+    // 2. Scan every key — collect image objects and URL strings
+    const IMAGE_SKIP = new Set(['_id', '__v', 'createdAt', 'updatedAt', 'createdBy',
+        'allocation', 'allocationStatus', 'rikusoStatus', 'published', 'stockId',
+        'manufacturer', 'model', 'exportCountry', 'physicalIn', 'physicalOut', 'mainImageUrl'])
+
+    for (const [key, val] of Object.entries(v)) {
+        if (IMAGE_SKIP.has(key)) continue
+        if (!val) continue
+
+        const arr = Array.isArray(val) ? val : [val]
+        for (const item of arr) {
+            if (!item) continue
+            // Object with a .path that looks like an image URL
+            if (typeof item === 'object' && typeof item.path === 'string' && item.path.trim()) {
+                const p = item.path.trim()
+                const lp = p.toLowerCase()
+                if (lp.match(/\.(jpg|jpeg|png|webp|gif|avif)/) || lp.includes('cloudinary') || lp.includes('/uploads/'))
+                    paths.push(p)
+            }
+            // Plain URL string
+            if (typeof item === 'string' && item.trim()) {
+                const p = item.trim()
+                const lp = p.toLowerCase()
+                if (lp.match(/\.(jpg|jpeg|png|webp|gif|avif)/) || lp.includes('cloudinary') || lp.includes('/uploads/'))
+                    paths.push(p)
+            }
         }
     }
-    push(v.gatePassImages)
-    push(v['Vehicle Images'])
-    push(v['Thumbnail Image'])
-    push(v.mainImageUrl)
-    push(v.files)
+
     return [...new Set(paths)]
 }
 
