@@ -2,6 +2,8 @@ import Link from 'next/link'
 import SearchPanel from '@/components/public/SearchPanel'
 import VehicleCard from '@/components/public/VehicleCard'
 import HeroCarousel from '@/components/public/HeroCarousel'
+import dbConnect from '@/utils/dbConnection'
+import HeroSlide from '@/models/HeroSlide'
 
 const formatPrice = (price) => {
   if (!price) return 'Price on Request'
@@ -22,11 +24,17 @@ export default async function HomePage() {
   let featuredVehicles = []
   let heroSlides = []
 
+  // Fetch slides directly from DB — avoids relative-URL issues in server components
   try {
-    const [countRes, vehiclesRes, slidesRes] = await Promise.all([
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/public/vehicles/count`, { next: { revalidate: 60 } }),
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/public/vehicles?limit=8`, { next: { revalidate: 60 } }),
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/heroSlides?active=true`, { next: { revalidate: 30 } }),
+    await dbConnect()
+    const rawSlides = await HeroSlide.find({ active: true }).sort({ order: 1, createdAt: 1 }).lean()
+    heroSlides = JSON.parse(JSON.stringify(rawSlides)) // serialize for client props
+  } catch { /* keep empty — carousel will show fallback */ }
+
+  try {
+    const [countRes, vehiclesRes] = await Promise.all([
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/public/vehicles/count`, { next: { revalidate: 60 } }),
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/public/vehicles?limit=8`, { next: { revalidate: 60 } }),
     ])
 
     if (countRes.ok) {
@@ -38,11 +46,6 @@ export default async function HomePage() {
       const vehiclesData = await vehiclesRes.json()
       featuredVehicles = vehiclesData.vehicles || vehiclesData.data || vehiclesData || []
       if (!Array.isArray(featuredVehicles)) featuredVehicles = []
-    }
-
-    if (slidesRes.ok) {
-      const slidesData = await slidesRes.json()
-      heroSlides = Array.isArray(slidesData) ? slidesData : []
     }
   } catch {
     // API may not be available yet

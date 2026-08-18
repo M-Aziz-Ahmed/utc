@@ -27,9 +27,14 @@ export default function HeroCarousel({ vehicleCount = 0, initialSlides = [] }) {
     const [animating, setAnimating] = useState(false)
     const timerRef = useRef(null)
 
-    // Fetch on client if server didn't pre-load
+    // If initialSlides updates after hydration, sync state
     useEffect(() => {
-        if (initialSlides.length) return
+        if (initialSlides.length > 0) setSlides(initialSlides)
+    }, [initialSlides])
+
+    // Fetch on client — initialSlides empty means server DB query failed, try client-side
+    useEffect(() => {
+        if (initialSlides.length > 0) return  // server already loaded slides
         fetch('/api/heroSlides?active=true')
             .then(r => r.ok ? r.json() : [])
             .then(data => {
