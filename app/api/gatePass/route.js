@@ -48,6 +48,7 @@ export const GET = async (req) => {
             .populate('yard', 'name location')
             .populate('consignee', 'name company')
             .sort({ createdAt: -1 });
+        return NextResponse.json(gatePasses, { status: 200 });
     } catch (error) {
         return NextResponse.json({ message: 'Error fetching gate passes' }, { status: 500 });
     }
