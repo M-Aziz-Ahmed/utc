@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { useSyncExternalStore, useEffect, useState } from 'react'
 import { subscribeWishlist, getWishlistSnapshot, toggleWishlist } from '@/components/public/wishlist'
+import { useAuth } from '@/components/public/AuthContext'
 
 export default function VehicleCard({ vehicle }) {
   const wishlist = useSyncExternalStore(subscribeWishlist, getWishlistSnapshot, () => [])
@@ -9,47 +10,22 @@ export default function VehicleCard({ vehicle }) {
   const wishlisted = vehicleId ? wishlist.some(v => (v.vehicleId || v._id) === vehicleId) : false
   const [displayFields, setDisplayFields] = useState([])
   const [priceField, setPriceField] = useState(null)
+  const { loggedIn, loading: authLoading, openAuthModal } = useAuth()
 
   useEffect(() => {
-    // Fetch fields marked for display
     fetch('/api/fields')
       .then(r => r.json())
       .then(fields => {
-        console.log('=== PRICE FIELD DEBUG ===')
-        console.log('All fields:', fields.map(f => ({ id: f._id, label: f.label, displayAsPrice: f.displayAsPrice })))
-        console.log('Vehicle data keys:', Object.keys(vehicle))
-        
-        // Find price field - check field._id, field.label, and sanitized label (dots removed)
         const priceDisplayField = fields.find(f => {
           if (!f.displayAsPrice) return false
           const sanitizedLabel = f.label?.replace(/\./g, '')
-          const hasValue = vehicle[f._id] || vehicle[f.label] || vehicle[sanitizedLabel]
-          console.log(`Checking field "${f.label}" (id: ${f._id}):`, {
-            byId: vehicle[f._id],
-            byLabel: vehicle[f.label],
-            bySanitized: vehicle[sanitizedLabel],
-            hasValue
-          })
-          return hasValue
+          return vehicle[f._id] || vehicle[f.label] || vehicle[sanitizedLabel]
         })
-        
-        console.log('Price field found:', priceDisplayField)
-        if (priceDisplayField) {
-          const sanitizedLabel = priceDisplayField.label?.replace(/\./g, '')
-          const value = vehicle[priceDisplayField._id] || vehicle[priceDisplayField.label] || vehicle[sanitizedLabel]
-          console.log('Price value:', value)
-        }
-        
-        // Find public card fields - check field._id, field.label, and sanitized label
         const publicCardFields = fields.filter(f => {
           if (!f.showOnPublicCard) return false
           const sanitizedLabel = f.label?.replace(/\./g, '')
           return vehicle[f._id] || vehicle[f.label] || vehicle[sanitizedLabel]
         })
-        
-        console.log('Public card fields:', publicCardFields)
-        console.log('=== END DEBUG ===')
-        
         setPriceField(priceDisplayField)
         setDisplayFields(publicCardFields)
       })
@@ -72,9 +48,8 @@ export default function VehicleCard({ vehicle }) {
 
   const detailUrl = `/stock/${vehicleId || vehicle.slug}`
 
-  // Determine which price to display - check _id, label, and sanitized label
-  const displayPrice = priceField 
-    ? (vehicle[priceField._id] || vehicle[priceField.label] || vehicle[priceField.label?.replace(/\./g, '')]) 
+  const displayPrice = priceField
+    ? (vehicle[priceField._id] || vehicle[priceField.label] || vehicle[priceField.label?.replace(/\./g, '')])
     : vehicle.price
 
   const specs = [
@@ -92,6 +67,39 @@ export default function VehicleCard({ vehicle }) {
     const num = parseFloat(value)
     if (!isNaN(num)) return num.toLocaleString()
     return String(value)
+  }
+
+  // ── Price display: locked for guests ──────────────────────────────────────
+  const PriceDisplay = () => {
+    if (authLoading) return <div className="vehicle-card-price" style={{ color: '#ccc' }}>—</div>
+
+    if (loggedIn) {
+      return <div className="vehicle-card-price">{formatPrice(displayPrice)}</div>
+    }
+
+    return (
+      <button
+        onClick={openAuthModal}
+        title="Sign up to see price"
+        style={{
+          display: 'flex', alignItems: 'center', gap: 7,
+          background: 'none', border: '1px dashed #e8450a',
+          borderRadius: 4, padding: '5px 10px', cursor: 'pointer',
+          marginBottom: 8, transition: 'all 0.15s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = '#fff4f1' }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
+      >
+        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="#e8450a" strokeWidth={2.2}>
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M7 11V7a5 5 0 0110 0v4"/>
+        </svg>
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#e8450a', filter: 'blur(4px)', userSelect: 'none', letterSpacing: '0.05em' }}>
+          $XX,XXX
+        </span>
+        <span style={{ fontSize: 10, fontWeight: 600, color: '#e8450a' }}>Sign up to view</span>
+      </button>
+    )
   }
 
   return (
@@ -112,10 +120,7 @@ export default function VehicleCard({ vehicle }) {
         </div>
         <button
           className={`vehicle-card-wishlist ${wishlisted ? 'active' : ''}`}
-          onClick={(e) => {
-            e.preventDefault()
-            toggleWishlist(vehicle)
-          }}
+          onClick={(e) => { e.preventDefault(); toggleWishlist(vehicle) }}
           title="Add to Wishlist"
         >
           {wishlisted ? '\u2665' : '\u2661'}
@@ -126,9 +131,9 @@ export default function VehicleCard({ vehicle }) {
         <Link href={detailUrl}>
           <h3 className="vehicle-card-title">{vehicle.title}</h3>
         </Link>
-        <div className="vehicle-card-price">{formatPrice(displayPrice)}</div>
 
-        {/* Display custom fields marked for public cards */}
+        <PriceDisplay />
+
         {displayFields.length > 0 && (
           <div style={{ marginTop: '8px', marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {displayFields.map(field => {

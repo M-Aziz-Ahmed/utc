@@ -411,7 +411,7 @@ const GatePassPage = () => {
                                 </div>
                                 {existingImgs.length > 0 && (
                                     <a href={existingImgs[0]} target="_blank" rel="noopener noreferrer"
-                                        style={{ width: '120px', height: '88px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e0e0e0', display: 'block', flexShrink: 0 }}>
+                                        style={{ width: '160px', height: '130px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e0e0e0', display: 'block', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.10)' }}>
                                         <img src={existingImgs[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                                     </a>
                                 )}

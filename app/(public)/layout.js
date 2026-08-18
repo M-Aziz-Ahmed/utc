@@ -1,6 +1,8 @@
 import '../public-site.css'
 import PublicHeader from '@/components/public/PublicHeader'
 import PublicFooter from '@/components/public/PublicFooter'
+import { AuthProvider } from '@/components/public/AuthContext'
+import SignupModal from '@/components/public/SignupModal'
 
 export const metadata = {
   title: {
@@ -18,12 +20,15 @@ export const metadata = {
 
 export default function PublicLayout({ children }) {
   return (
-    <div className="public-site">
-      <PublicHeader />
-      <main className="public-main">
-        {children}
-      </main>
-      <PublicFooter />
-    </div>
+    <AuthProvider>
+      <div className="public-site">
+        <PublicHeader />
+        <main className="public-main">
+          {children}
+        </main>
+        <PublicFooter />
+        <SignupModal />
+      </div>
+    </AuthProvider>
   )
 }

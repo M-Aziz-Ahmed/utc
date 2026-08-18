@@ -404,31 +404,14 @@ const VehicleAccountPage = ({ params }) => {
                             ) : null
                         })()}
 
-                        {/* Vehicle details table */}
+                        {/* Vehicle details table — read-only */}
                         <div style={{ flex: 1, overflowY: 'auto' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                 <tbody>
-                                    {detailRows.filter(r => !r.field.label?.toLowerCase().includes('chassis')).map(({ label, value, fieldId, field }) => (
+                                    {detailRows.filter(r => !r.field.label?.toLowerCase().includes('chassis')).map(({ label, value, fieldId }) => (
                                         <tr key={fieldId} style={{ borderBottom: '1px solid #f0f4f8' }}>
                                             <td style={{ padding: '6px 14px', fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap', width: '45%' }}>{label}</td>
-                                            <td style={{ padding: '6px 14px', fontSize: '12px', fontWeight: 700, color: '#0f172a' }}>
-                                                {(field.type === 'dropdown' || field.type === 'select-year' || field.type === 'date' || field.type === 'number' || field.type === 'text') ? (
-                                                    field.type === 'dropdown' ? (
-                                                        <select value={formData[fieldId] ?? ''} onChange={e => setFormData(p => ({ ...p, [fieldId]: e.target.value }))}
-                                                            style={{ border: 'none', background: 'transparent', fontSize: '12px', fontWeight: 700, color: '#0f172a', outline: 'none', cursor: 'pointer', padding: 0, width: '100%' }}>
-                                                            <option value="">—</option>
-                                                            {(field.options || []).map((o, i) => <option key={i} value={o}>{o}</option>)}
-                                                        </select>
-                                                    ) : (
-                                                        <input
-                                                            type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
-                                                            value={formData[fieldId] ?? ''}
-                                                            onChange={e => setFormData(p => ({ ...p, [fieldId]: e.target.value }))}
-                                                            style={{ border: 'none', background: 'transparent', fontSize: '12px', fontWeight: 700, color: '#0f172a', outline: 'none', padding: 0, width: '100%' }}
-                                                        />
-                                                    )
-                                                ) : value}
-                                            </td>
+                                            <td style={{ padding: '6px 14px', fontSize: '12px', fontWeight: 700, color: '#0f172a' }}>{value}</td>
                                         </tr>
                                     ))}
                                 </tbody>
