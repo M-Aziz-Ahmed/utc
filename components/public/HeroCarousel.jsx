@@ -21,12 +21,12 @@ const FALLBACK_SLIDE = {
 }
 
 export default function HeroCarousel({ vehicleCount = 0, initialSlides = [] }) {
-    const [slides, setSlides] = useState([])
+    const [slides, setSlides] = useState([FALLBACK_SLIDE])  // always start dark
     const [current, setCurrent] = useState(0)
     const [fading, setFading] = useState(false)
     const timer = useRef(null)
 
-    // Load slides: server-provided → client fetch → fallback
+    // Load slides: server-provided → client fetch → keep fallback
     useEffect(() => {
         if (initialSlides && initialSlides.length > 0) {
             setSlides(initialSlides)
@@ -35,9 +35,10 @@ export default function HeroCarousel({ vehicleCount = 0, initialSlides = [] }) {
         fetch('/api/heroSlides?active=true')
             .then(r => r.ok ? r.json() : [])
             .then(data => {
-                setSlides(Array.isArray(data) && data.length > 0 ? data : [FALLBACK_SLIDE])
+                if (Array.isArray(data) && data.length > 0) setSlides(data)
+                // else keep FALLBACK_SLIDE already in state
             })
-            .catch(() => setSlides([FALLBACK_SLIDE]))
+            .catch(() => {})
     }, [])  // eslint-disable-line
 
     const total = slides.length
@@ -61,16 +62,15 @@ export default function HeroCarousel({ vehicleCount = 0, initialSlides = [] }) {
         return () => clearInterval(timer.current)
     }, [total, next])
 
-    if (!total) return (
-        <section className="hero-section" style={{ background: 'linear-gradient(135deg,#0f172a 0%,#1e293b 40%,#0f172a 100%)' }} />
-    )
+    if (!total) return null
 
     const slide = slides[current]
     const overlayRgba = `rgba(0,0,0,${((slide.overlay ?? 55) / 100).toFixed(2)})`
     const textColor = slide.textColor || '#ffffff'
-    const sectionBg = slide.backgroundImage
-        ? 'transparent'
-        : 'linear-gradient(135deg,#0f172a 0%,#1e293b 40%,#0f172a 100%)'
+    // Always have a dark fallback background — image layered on top
+    const sectionStyle = {
+        background: 'linear-gradient(135deg,#0f172a 0%,#1e293b 40%,#0f172a 100%)',
+    }
 
     // Build heading: if headingAccent present, wrap it in red span
     const renderHeading = () => {
@@ -96,7 +96,7 @@ export default function HeroCarousel({ vehicleCount = 0, initialSlides = [] }) {
     return (
         <section
             className="hero-section"
-            style={{ background: sectionBg }}
+            style={sectionStyle}
         >
             {/* Background image */}
             {slide.backgroundImage && (
