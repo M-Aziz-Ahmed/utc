@@ -705,6 +705,14 @@ const AllocRow = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, al
                 <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }}>{nameLine || '—'}</div>
                 {vehicle.modelDescription && <div style={{ fontSize: '10px', color: '#94a3b8' }}>{vehicle.modelDescription}</div>}
             </td>
+            {/* Chassis */}
+            <td style={{ padding: '5px 8px', minWidth: '80px' }}>
+                {(() => {
+                    const chField = fields.find(f => f.label?.toLowerCase().includes('chassis'))
+                    const chVal = chField ? (vehicle[chField._id] || vehicle[chField.label]) : null
+                    return chVal ? <span style={{ fontSize: '11px', fontWeight: 700, color: '#0f172a', fontFamily: 'monospace' }}>{String(chVal)}</span> : <span style={{ fontSize: '10px', color: '#cbd5e1' }}>—</span>
+                })()}
+            </td>
             {/* Dynamic field values */}
             {/* Show admin editable fields if any, otherwise show regular card fields */}
             {adminFields.length > 0 ? (
@@ -847,6 +855,7 @@ const RikusoManagementPage = () => {
 
     // shared filters
     const [filters, setFilters] = useState(EMPTY_FILTERS)
+    const [allocFilter, setAllocFilter] = useState('all') // 'all' | 'allocated' | 'unallocated'
 
     useEffect(() => {
         Promise.all([
@@ -950,9 +959,27 @@ const RikusoManagementPage = () => {
 
     const filtered = applyVehicleFilters(vehicles, fields, search, filters)
 
+    // Apply allocation status filter
+    const allocFiltered = allocFilter === 'all' ? filtered
+        : allocFilter === 'allocated' ? filtered.filter(v => v.allocation)
+        : filtered.filter(v => !v.allocation)
+
     const exportCountries = [...new Set(vehicles.map(v => v.exportCountry).filter(Boolean))].sort((a, b) => a.localeCompare(b))
 
     const controlProps = { rikusoCompanies, consignees, allocations, onAllocChange: handleAllocChange, onRikusoChange: handleRikusoChange, onPresold: handlePresold, onRemovePresold: handleRemovePresold, onExportSelect: (v, mode) => { setExportVehicle(v); setExportMode(mode || (v.allocation || '').toLowerCase()) } }
+
+    // Helper to find chassis number from dynamic fields
+    const chassisOf = (v) => {
+        if (!v) return ''
+        const staticKeys = ['chassisNumber', 'Chassis No.', 'Chassis No', 'Chassis Number', 'VIN', 'Chassis', 'chassis']
+        for (const k of staticKeys) { const val = v[k]; if (val && String(val).trim()) return String(val).trim() }
+        for (const [k, val] of Object.entries(v)) {
+            if (!val || typeof val === 'object') continue
+            const lk = k.toLowerCase().replace(/[\s._-]/g, '')
+            if ((lk.includes('chassis') || lk === 'vin') && String(val).trim()) return String(val).trim()
+        }
+        return ''
+    }
 
     return (
         <div style={{ padding: '16px', minHeight: '100vh', background: '#f6f8fc' }}>
@@ -963,6 +990,18 @@ const RikusoManagementPage = () => {
                     <p style={{ fontSize: '12px', color: '#5f6368', marginTop: '2px' }}>Manage allocations, presold labels and Rikuso assignments</p>
                 </div>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {/* Allocation filter tabs */}
+                    <div style={{ display: 'flex', gap: '2px', padding: '2px', background: '#f1f3f4', borderRadius: '8px' }}>
+                        {[{ key: 'all', label: 'All Vehicles' }, { key: 'allocated', label: 'Allocated' }, { key: 'unallocated', label: 'Unallocated' }].map(t => (
+                            <button key={t.key} onClick={() => setAllocFilter(t.key)}
+                                style={{ padding: '5px 12px', borderRadius: '6px', border: 'none', fontSize: '11px', fontWeight: allocFilter === t.key ? 700 : 500, cursor: 'pointer', transition: 'all 0.15s',
+                                    background: allocFilter === t.key ? '#fff' : 'transparent',
+                                    color: allocFilter === t.key ? '#1a73e8' : '#5f6368',
+                                    boxShadow: allocFilter === t.key ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>
+                                {t.label}
+                            </button>
+                        ))}
+                    </div>
                     {/* view toggle */}
                     <div style={{ display: 'flex', gap: '2px', padding: '2px', background: '#f1f3f4', borderRadius: '8px' }}>
                         {[['grid', 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z'],
@@ -998,13 +1037,13 @@ const RikusoManagementPage = () => {
                 <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '80px' }}>
                     <div style={{ width: '32px', height: '32px', border: '3px solid #e8f0fe', borderTopColor: '#1a73e8', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
                 </div>
-            ) : filtered.length === 0 ? (
+            ) : allocFiltered.length === 0 ? (
                 <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e0e0e0', padding: '48px', textAlign: 'center' }}>
-                    <p style={{ fontSize: '13px', color: '#9aa0a6', margin: 0 }}>{search ? 'No vehicles match your search' : 'No vehicles yet'}</p>
+                    <p style={{ fontSize: '13px', color: '#9aa0a6', margin: 0 }}>{search ? 'No vehicles match your search' : allocFilter === 'allocated' ? 'No allocated vehicles' : allocFilter === 'unallocated' ? 'No unallocated vehicles' : 'No vehicles yet'}</p>
                 </div>
             ) : viewMode === 'grid' ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '12px' }}>
-                    {filtered.map(v => <AllocCard key={v._id} vehicle={v} fields={fields} taxes={taxes} {...controlProps} />)}
+                    {allocFiltered.map(v => <AllocCard key={v._id} vehicle={v} fields={fields} taxes={taxes} {...controlProps} />)}
                 </div>
             ) : (
                 <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
@@ -1014,6 +1053,7 @@ const RikusoManagementPage = () => {
                                 <th style={{ padding: '7px 8px', width: '48px' }}></th>
                                 <th style={{ padding: '7px 8px', textAlign: 'left', fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Group / Venue</th>
                                 <th style={{ padding: '7px 8px', textAlign: 'left', fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Vehicle</th>
+                                <th style={{ padding: '7px 8px', textAlign: 'left', fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Chassis</th>
                                 {fields.filter(f => f.showOnCard !== false && f.belongsto === 'add-vehicles').sort((a,b)=>(a.order??0)-(b.order??0)).slice(0,5).map(f => (
                                     <th key={f._id} style={{ padding: '7px 8px', textAlign: 'left', fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{f.label}</th>
                                 ))}
@@ -1027,11 +1067,70 @@ const RikusoManagementPage = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {filtered.map(v => <AllocRow key={v._id} vehicle={v} fields={fields} taxes={taxes} {...controlProps} />)}
+                            {allocFiltered.map(v => <AllocRow key={v._id} vehicle={v} fields={fields} taxes={taxes} {...controlProps} />)}
                         </tbody>
                     </table>
                 </div>
             )}
+
+            {/* ── Company-wise Report ── */}
+            {allocFiltered.length > 0 && (() => {
+                const priceFields = fields.filter(f => f.belongsto === 'add-vehicles' && (f.type === 'number' || f.type === 'tax' || f.type === 'formula' || f.type === 'sum') && /(price|fob|total|cost)/i.test(f.label || ''))
+                const groups = {}
+                allocFiltered.forEach(v => {
+                    const name = v.rikusoCompanyName || 'Unassigned'
+                    if (!groups[name]) groups[name] = { vehicles: [], total: 0, priceBreakdown: {} }
+                    groups[name].vehicles.push(v)
+                    priceFields.forEach(pf => {
+                        const val = Number(String(v[pf._id] || v[pf.label] || 0).replace(/[^0-9.\-]/g, '')) || 0
+                        groups[name].total += val
+                        groups[name].priceBreakdown[pf.label] = (groups[name].priceBreakdown[pf.label] || 0) + val
+                    })
+                })
+                const sorted = Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]))
+                return (
+                    <div style={{ marginTop: '16px', background: '#fff', borderRadius: '10px', border: '1px solid #e8eaed', overflow: 'hidden' }}>
+                        <div style={{ padding: '10px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <svg style={{ width: '14px', height: '14px', color: '#64748b' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                            <span style={{ fontSize: '12px', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Company-wise Summary</span>
+                            <span style={{ fontSize: '10px', color: '#94a3b8', marginLeft: '4px' }}>({sorted.length} compan{sorted.length !== 1 ? 'ies' : 'y'})</span>
+                        </div>
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '2px solid #e2e8f0', background: '#f8fafc' }}>
+                                        <th style={{ padding: '8px 14px', textAlign: 'left', fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Company</th>
+                                        <th style={{ padding: '8px 14px', textAlign: 'center', fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Vehicles</th>
+                                        {priceFields.map(pf => (
+                                            <th key={pf._id} style={{ padding: '8px 14px', textAlign: 'right', fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{pf.label}</th>
+                                        ))}
+                                        <th style={{ padding: '8px 14px', textAlign: 'right', fontSize: '10px', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {sorted.map(([name, data]) => (
+                                        <tr key={name} style={{ borderBottom: '1px solid #f0f4f8' }}>
+                                            <td style={{ padding: '8px 14px', fontSize: '12px', fontWeight: 700, color: name === 'Unassigned' ? '#94a3b8' : '#0f172a' }}>
+                                                {name === 'Unassigned' ? <em>Unassigned</em> : name}
+                                            </td>
+                                            <td style={{ padding: '8px 14px', textAlign: 'center' }}>
+                                                <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '10px', background: '#e8f0fe', color: '#1a73e8', fontSize: '11px', fontWeight: 700 }}>{data.vehicles.length}</span>
+                                            </td>
+                                            {priceFields.map(pf => {
+                                                const val = data.priceBreakdown[pf.label] || 0
+                                                return <td key={pf._id} style={{ padding: '8px 14px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#334155', fontVariantNumeric: 'tabular-nums' }}>{val > 0 ? val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}</td>
+                                            })}
+                                            <td style={{ padding: '8px 14px', textAlign: 'right', fontSize: '13px', fontWeight: 800, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
+                                                {data.total > 0 ? data.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )
+            })()}
 
             {/* Presold Modal */}
             {showPresoldModal && selectedVehicle && (

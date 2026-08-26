@@ -1101,43 +1101,6 @@ const AddVehiclePage = () => {
                                     </div>
                                 )}
 
-                                {/* ── Accounts section ── */}
-                                <div style={{ borderTop: '2px solid #e8f0fe', paddingTop: '20px', marginTop: '4px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                                        <div>
-                                            <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#202124', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '6px', background: '#e8f0fe' }}>
-                                                    <svg style={{ width: '13px', height: '13px', color: '#1a73e8' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                                </span>
-                                                Account Details
-                                            </h3>
-                                            <p style={{ fontSize: '12px', color: '#9aa0a6', margin: '3px 0 0' }}>Financial and accounting fields for this vehicle</p>
-                                        </div>
-                                        <button type="button" onClick={() => setShowAddAccountField(true)}
-                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600, color: '#1a73e8', border: '1px solid #d2e3fc', borderRadius: '20px', padding: '5px 12px', background: '#f0f4ff', cursor: 'pointer' }}>
-                                            <svg style={{ width: '11px', height: '11px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                                            Add Field
-                                        </button>
-                                    </div>
-                                    {accountFields.length === 0 ? (
-                                        <div style={{ textAlign: 'center', padding: '32px 16px', background: '#f8f9fa', borderRadius: '10px', border: '2px dashed #e0e0e0' }}>
-                                            <p style={{ fontSize: '13px', color: '#9aa0a6', margin: '0 0 8px' }}>No account fields yet</p>
-                                            <button type="button" onClick={() => setShowAddAccountField(true)} style={{ fontSize: '12px', color: '#1a73e8', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>+ Add your first account field</button>
-                                        </div>
-                                    ) : (
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '14px' }}>
-                                            {accountFields.filter(f => f.type !== 'file' && f.type !== 'image').map(field => (
-                                                <div key={field._id} style={field.type === 'boolean' ? { gridColumn: 'span 2' } : {}}>
-                                                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>
-                                                        {field.label}{field.isRequired && <span style={{ color: '#c5221f', marginLeft: '2px' }}>*</span>}
-                                                    </label>
-                                                    {renderAccountInput(field)}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
                                 <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '16px', borderTop: '1px solid #f1f3f4', marginTop: '20px' }}>
                                     <button type="submit" disabled={submitting}
                                         style={{ padding: '10px 28px', fontSize: '14px', fontWeight: 600, color: '#fff', background: submitting ? '#9aa0a6' : '#1a73e8', border: 'none', borderRadius: '24px', cursor: submitting ? 'not-allowed' : 'pointer', boxShadow: submitting ? 'none' : '0 2px 8px rgba(26,115,232,0.3)', transition: 'all 0.15s' }}>

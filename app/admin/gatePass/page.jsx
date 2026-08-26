@@ -92,6 +92,60 @@ const vehicleImages = (v) => {
     return [...new Set(paths)]
 }
 
+const printTrackingSticker = async (gatePass, vehicle) => {
+    const ch = chassisOf(vehicle)
+    const name = vehicleLabel(vehicle)
+    const yard = gatePass.yard?.name || '—'
+    const date = gatePass.date ? new Date(gatePass.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
+    const gpNum = gatePass.gatePassNumber || '—'
+
+    // Fetch QR code
+    let qrDataUrl = ''
+    try {
+        const res = await fetch(`/api/qr/${vehicle._id}`)
+        const data = await res.json()
+        qrDataUrl = data.qr || ''
+    } catch {}
+
+    const html = `<!DOCTYPE html><html><head><style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        @page { size: 100mm 70mm; margin: 0; }
+        body { font-family: Arial, Helvetica, sans-serif; width: 100mm; height: 70mm; display: flex; flex-direction: column; padding: 5mm; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 3mm; margin-bottom: 3mm; }
+        .gp-num { font-size: 18px; font-weight: 900; color: #000; }
+        .type { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; background: #059669; color: #fff; }
+        .body { display: flex; flex: 1; gap: 4mm; }
+        .info { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 2mm; }
+        .row { display: flex; gap: 2mm; }
+        .label { font-size: 8px; font-weight: 700; color: #666; text-transform: uppercase; min-width: 22mm; }
+        .val { font-size: 11px; font-weight: 700; color: #000; }
+        .val.big { font-size: 13px; }
+        .qr { display: flex; align-items: center; justify-content: center; width: 28mm; height: 28mm; flex-shrink: 0; }
+        .qr img { width: 100%; height: 100%; }
+        .footer { font-size: 7px; color: #999; text-align: center; border-top: 1px solid #ccc; padding-top: 2mm; margin-top: auto; }
+    </style></head><body>
+        <div class="header">
+            <span class="gp-num">${gpNum}</span>
+            <span class="type">TRACKING STICKER</span>
+        </div>
+        <div class="body">
+            <div class="info">
+                <div class="row"><span class="label">Vehicle</span><span class="val big">${name}</span></div>
+                ${ch ? `<div class="row"><span class="label">Chassis</span><span class="val">${ch}</span></div>` : ''}
+                <div class="row"><span class="label">Yard</span><span class="val">${yard}</span></div>
+                <div class="row"><span class="label">Date</span><span class="val">${date}</span></div>
+            </div>
+            ${qrDataUrl ? `<div class="qr"><img src="${qrDataUrl}" /></div>` : ''}
+        </div>
+        <div class="footer">UTC Vehicle Management · Generated ${new Date().toLocaleString()}</div>
+    </body></html>`
+
+    const w = window.open('', '_blank', 'width=400,height=280')
+    w.document.write(html)
+    w.document.close()
+    w.onload = () => { w.print() }
+}
+
 const GatePassPage = () => {
     const [gatePasses, setGatePasses] = useState([])
     const [vehicles, setVehicles] = useState([])
@@ -369,10 +423,16 @@ const GatePassPage = () => {
                                                         }} />
                                                 </label>
                                                 {g.type === 'IGP' && (
-                                                    <a href="/admin/gatePass/review" title="Open photo review portal"
-                                                        style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 7px', fontSize: '10px', fontWeight: 600, background: '#f0fdf4', color: '#059669', border: 'none', borderRadius: '6px', cursor: 'pointer', textDecoration: 'none', flexShrink: 0 }}>
-                                                        Review
-                                                    </a>
+                                                    <>
+                                                        <button type="button" title="Print tracking sticker" onClick={() => printTrackingSticker(g, g.vehicle)}
+                                                            style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 7px', fontSize: '10px', fontWeight: 600, background: '#fef3c7', color: '#92400e', border: 'none', borderRadius: '6px', cursor: 'pointer', flexShrink: 0 }}>
+                                                            Print
+                                                        </button>
+                                                        <a href="/admin/gatePass/review" title="Open photo review portal"
+                                                            style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 7px', fontSize: '10px', fontWeight: 600, background: '#f0fdf4', color: '#059669', border: 'none', borderRadius: '6px', cursor: 'pointer', textDecoration: 'none', flexShrink: 0 }}>
+                                                            Review
+                                                        </a>
+                                                    </>
                                                 )}
                                             </div>
                                         </td>

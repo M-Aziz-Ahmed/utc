@@ -20,6 +20,23 @@ export const PATCH = async (req, { params }) => {
         await dbConnect();
         const { id } = await params;
         const body = await readJson(req);
+
+        // Cast dimension values to numbers if models are being updated
+        if (body.models && Array.isArray(body.models)) {
+            body.models = body.models.map(m => ({
+                ...m,
+                dimensions: m.dimensions ? {
+                    length:      m.dimensions.length !== '' && m.dimensions.length != null ? Number(m.dimensions.length) : undefined,
+                    width:       m.dimensions.width !== '' && m.dimensions.width != null ? Number(m.dimensions.width) : undefined,
+                    height:      m.dimensions.height !== '' && m.dimensions.height != null ? Number(m.dimensions.height) : undefined,
+                    weight:      m.dimensions.weight !== '' && m.dimensions.weight != null ? Number(m.dimensions.weight) : undefined,
+                    unit_size:   m.dimensions.unit_size || 'cm',
+                    unit_weight: m.dimensions.unit_weight || 'kg',
+                } : {},
+                defaults: m.defaults || {},
+            }))
+        }
+
         const updated = await Manufacturer.findByIdAndUpdate(id, { $set: body }, { new: true });
         if (!updated) return NextResponse.json({ message: 'Not found' }, { status: 404 });
         return NextResponse.json(updated, { status: 200 });

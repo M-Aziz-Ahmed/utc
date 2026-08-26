@@ -33,8 +33,8 @@ const getAllImages = (vehicle) => {
 }
 
 // ── Shared field input ────────────────────────────────────────────────────────
-const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleData, accountFields, vehicleFields, allFields, vehicle }) => {
-    const base = { width: '100%', padding: '8px 11px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: '#fff' }
+const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleData, accountFields, vehicleFields, allFields, vehicle, disabled }) => {
+    const base = { width: '100%', padding: '8px 11px', border: disabled ? '1px solid #e5e7eb' : '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: disabled ? '#f9fafb' : '#fff', color: disabled ? '#9ca3af' : undefined, cursor: disabled ? 'not-allowed' : undefined }
     const focus = e => { e.target.style.borderColor = '#1a73e8'; e.target.style.boxShadow = '0 0 0 3px rgba(26,115,232,0.1)' }
     const blur  = e => { e.target.style.borderColor = '#e0e0e0'; e.target.style.boxShadow = 'none' }
 
@@ -221,7 +221,7 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
             </div>
         )
     }
-    return <input type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'} value={value ?? ''} onChange={e => onChange(e.target.value)} required={field.isRequired} placeholder={`Enter ${field.label.toLowerCase()}`} style={base} onFocus={focus} onBlur={blur} />
+    return <input type={field.type === 'number' ? 'text' : field.type === 'date' ? 'date' : 'text'} value={field.type === 'number' ? (value !== undefined && value !== null && value !== '' ? Number(String(value).replace(/[^0-9.\-]/g, '')).toLocaleString('en-US') : '') : (value ?? '')} onChange={e => { if (field.type === 'number') { const raw = e.target.value.replace(/[^0-9.\-]/g, ''); onChange(raw) } else { onChange(e.target.value) } }} required={field.isRequired} disabled={disabled} placeholder={disabled ? 'Locked' : `Enter ${field.label.toLowerCase()}`} style={base} onFocus={!disabled ? focus : undefined} onBlur={!disabled ? blur : undefined} readOnly={disabled} />
 }
 
 const VehicleAccountPage = ({ params }) => {
@@ -266,6 +266,24 @@ const VehicleAccountPage = ({ params }) => {
         }).catch(console.error).finally(() => setLoading(false))
     }, [id])
 
+    // Fields to disable when allocation is khitai
+    const KAITAI_DISABLED_LABELS = ['utc commission', 'maintenance expense', 'kensa', 'inspection', 'shipment freight', 'loading', 'vanning', 'conversion rate', 'vehicle duty', 'vehicle custom', 'costing price', 'final price']
+    const isKhitai = vehicle?.allocation === 'khitai'
+    const isFieldDisabled = (field) => {
+        if (!isKhitai) return false
+        const label = (field.label || '').toLowerCase().trim()
+        return KAITAI_DISABLED_LABELS.some(dl => label.includes(dl))
+    }
+
+    // Thousand separator formatter for number inputs
+    const formatWithCommas = (value) => {
+        if (value === null || value === undefined || value === '') return ''
+        const num = parseFloat(String(value).replace(/[^0-9.\-]/g, ''))
+        if (isNaN(num)) return String(value)
+        const parts = num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).split('.')
+        return parts[0] + (parts[1] ? '.' + parts[1] : '')
+    }
+
     const toggleDeleteImage = (fieldId, idx) => {
         setDeletedImages(prev => { const s = new Set(prev[fieldId] || []); s.has(idx) ? s.delete(idx) : s.add(idx); return { ...prev, [fieldId]: s } })
     }
@@ -289,7 +307,22 @@ const VehicleAccountPage = ({ params }) => {
                 const existing = getExistingImagesForField(vehicle, field)
                 if (existing.length > 0) {
                     const deleted = deletedImages[field._id] || new Set()
-                    payload[field.label.replace(/\./g, '')] = existing.filter((_, i) => !deleted.has(i))
+                    const kept = existing.filter((_, i) => !deleted.has(i))
+                    // Save under all possible keys to ensure old entries are overwritten
+                    const labelNoDot = field.label.replace(/\./g, '')
+                    const labelNoSpace = field.label.replace(/\s+/g, '_')
+                    payload[field._id] = kept
+                    payload[field.label] = kept
+                    if (labelNoDot !== field.label) payload[labelNoDot] = kept
+                    if (labelNoSpace !== field.label && labelNoSpace !== labelNoDot) payload[labelNoSpace] = kept
+                } else {
+                    // No images found via helper — force-clear all possible keys
+                    const labelNoDot = field.label?.replace(/\./g, '') || ''
+                    const labelNoSpace = field.label?.replace(/\s+/g, '_') || ''
+                    if (field._id) payload[field._id] = []
+                    if (field.label) payload[field.label] = []
+                    if (labelNoDot && labelNoDot !== field.label) payload[labelNoDot] = []
+                    if (labelNoSpace && labelNoSpace !== field.label && labelNoSpace !== labelNoDot) payload[labelNoSpace] = []
                 }
             })
             payload.mainImageUrl = mainImageUrl || ''
@@ -332,6 +365,8 @@ const VehicleAccountPage = ({ params }) => {
     const nameLine     = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ').toUpperCase()
     const subtitle     = vehicle.modelDescription || vehicle.variant || ''
     const crumbs       = [vehicle.auctionGroup, vehicle.auctionVenue, vehicle.manufacturer, vehicle.model].filter(Boolean)
+    // Add export country and rikuso company to breadcrumbs
+    if (vehicle.exportCountry) crumbs.push(vehicle.exportCountry)
     const textFields   = vehicleFields.filter(f => f.type !== 'file' && f.type !== 'image' && f.label?.toLowerCase().trim() !== 'description')
     const imageFields  = vehicleFields.filter(f => f.type === 'file' || f.type === 'image')
     const allFields    = [...vehicleFields, ...accountFields]
@@ -393,15 +428,23 @@ const VehicleAccountPage = ({ params }) => {
                             )}
                         </div>
 
-                        {/* Chassis number highlight */}
+                        {/* Chassis number highlight + allocation badge */}
                         {(() => {
                             const chField = vehicleFields.find(f => f.label?.toLowerCase().includes('chassis'))
                             const chVal = chField ? (formData[chField._id] || vehicle[chField._id] || vehicle[chField.label]) : null
-                            return chVal ? (
-                                <div style={{ padding: '8px 14px', background: '#1e293b', borderBottom: '1px solid #0f172a' }}>
-                                    <p style={{ margin: 0, fontSize: '11px', fontWeight: 700, color: '#38bdf8', letterSpacing: '0.06em', fontFamily: 'monospace' }}>CHASSIS NO. {chVal}</p>
+                            const allocLabel = vehicle.allocation === 'export' ? 'EXPORT' : vehicle.allocation === 'khitai' ? 'KAITAI' : vehicle.allocation === 'resale-to-auction' ? 'RESALE' : ''
+                            return (
+                                <div style={{ padding: '10px 14px', background: '#1e293b', borderBottom: '1px solid #0f172a', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <p style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#38bdf8', letterSpacing: '0.04em', fontFamily: 'monospace' }}>
+                                        {chVal ? `CHASSIS NO. ${chVal}` : 'CHASSIS NO. —'}
+                                    </p>
+                                    {allocLabel && (
+                                        <span style={{ fontSize: '10px', fontWeight: 700, color: vehicle.allocation === 'export' ? '#22c55e' : vehicle.allocation === 'khitai' ? '#f59e0b' : '#a78bfa', background: vehicle.allocation === 'export' ? 'rgba(34,197,94,0.15)' : vehicle.allocation === 'khitai' ? 'rgba(245,158,11,0.15)' : 'rgba(167,139,250,0.15)', padding: '3px 10px', borderRadius: '12px', letterSpacing: '0.06em' }}>
+                                            {allocLabel}
+                                        </span>
+                                    )}
                                 </div>
-                            ) : null
+                            )
                         })()}
 
                         {/* Vehicle details table — read-only */}
@@ -414,6 +457,23 @@ const VehicleAccountPage = ({ params }) => {
                                             <td style={{ padding: '6px 14px', fontSize: '12px', fontWeight: 700, color: '#0f172a' }}>{value}</td>
                                         </tr>
                                     ))}
+                                    {/* Allocation + Rikuso */}
+                                    {vehicle.allocation && (
+                                        <tr style={{ borderBottom: '1px solid #f0f4f8' }}>
+                                            <td style={{ padding: '6px 14px', fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Allocation</td>
+                                            <td style={{ padding: '6px 14px', fontSize: '12px', fontWeight: 700, color: vehicle.allocation === 'export' ? '#16a34a' : vehicle.allocation === 'khitai' ? '#d97706' : '#7c3aed' }}>
+                                                {vehicle.allocation === 'export' ? 'EXPORT' : vehicle.allocation === 'khitai' ? 'KAITAI' : 'RESALE'}
+                                                {vehicle.exportCountry && <span style={{ color: '#64748b', fontWeight: 500, marginLeft: '6px' }}>/ {vehicle.exportCountry}</span>}
+                                            </td>
+                                        </tr>
+                                    )}
+                                    {/* Rikuso company name */}
+                                    {vehicle.rikusoCompanyName && (
+                                        <tr style={{ borderBottom: '1px solid #f0f4f8' }}>
+                                            <td style={{ padding: '6px 14px', fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Rikuso</td>
+                                            <td style={{ padding: '6px 14px', fontSize: '12px', fontWeight: 700, color: '#0f172a' }}>{vehicle.rikusoCompanyName}</td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
@@ -478,6 +538,29 @@ const VehicleAccountPage = ({ params }) => {
                             </div>
                         </div>
 
+                        {/* Status progress bar */}
+                        {accountFields.length > 0 && (() => {
+                            const nonImageFields = accountFields.filter(f => f.type !== 'file' && f.type !== 'image')
+                            const filled = nonImageFields.filter(f => {
+                                const val = accountData[f._id]
+                                return val !== undefined && val !== null && val !== ''
+                            }).length
+                            const total = nonImageFields.length
+                            const pct = total > 0 ? Math.round((filled / total) * 100) : 0
+                            const barColor = pct >= 100 ? '#16a34a' : pct >= 50 ? '#d97706' : '#1a73e8'
+                            return (
+                                <div style={{ marginBottom: '20px', padding: '12px 14px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                        <span style={{ fontSize: '11px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Completion</span>
+                                        <span style={{ fontSize: '12px', fontWeight: 800, color: barColor }}>{filled}/{total} · {pct}%</span>
+                                    </div>
+                                    <div style={{ width: '100%', height: '6px', borderRadius: '10px', background: '#e2e8f0', overflow: 'hidden' }}>
+                                        <div style={{ width: `${pct}%`, height: '100%', borderRadius: '10px', background: barColor, transition: 'width 0.3s ease' }} />
+                                    </div>
+                                </div>
+                            )
+                        })()}
+
                         {/* Account fields — 4-column grid */}
                         {accountFields.length === 0 ? (
                             <div style={{ textAlign: 'center', padding: '40px 16px', background: '#f8f9fa', borderRadius: '10px', border: '2px dashed #e0e0e0' }}>
@@ -486,15 +569,18 @@ const VehicleAccountPage = ({ params }) => {
                             </div>
                         ) : (
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px 16px' }}>
-                                {accountFields.filter(f => f.type !== 'file' && f.type !== 'image').map(field => (
-                                    <div key={field._id} style={field.type === 'boolean' ? { gridColumn: 'span 2' } : {}}>
-                                        <label style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>
+                                {accountFields.filter(f => f.type !== 'file' && f.type !== 'image').map(field => {
+                                    const disabled = isFieldDisabled(field)
+                                    return (
+                                    <div key={field._id} style={field.type === 'boolean' ? { gridColumn: 'span 2', opacity: disabled ? 0.5 : 1 } : { opacity: disabled ? 0.5 : 1 }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '9px', fontWeight: 700, color: disabled ? '#d1d5db' : '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>
                                             {field.label}{field.isRequired && <span style={{ color: '#c5221f', marginLeft: '2px' }}>*</span>}
+                                            {disabled && <span style={{ fontSize: '8px', color: '#f59e0b', background: '#fef3c7', padding: '1px 4px', borderRadius: '4px', fontWeight: 700 }}>KAITAI LOCKED</span>}
                                         </label>
                                         <FieldInput
                                             field={field}
                                             value={accountData[field._id]}
-                                            onChange={v => setAccountData(p => ({ ...p, [field._id]: v }))}
+                                            onChange={v => !disabled && setAccountData(p => ({ ...p, [field._id]: v }))}
                                             taxes={taxes}
                                             vehicleData={formData}
                                             accountData={accountData}
@@ -502,9 +588,11 @@ const VehicleAccountPage = ({ params }) => {
                                             accountFields={accountFields}
                                             allFields={allFields}
                                             vehicle={vehicle}
+                                            disabled={disabled}
                                         />
                                     </div>
-                                ))}
+                                    )
+                                })}
                             </div>
                         )}
 
