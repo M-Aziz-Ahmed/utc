@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import BgEditorModal from '@/components/BgEditorModal'
+import CountrySelect from '@/components/CountrySelect'
 import { compressImage } from '@/utils/imageCompress'
 
 const LETTERS = ['All', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')]
@@ -276,8 +277,6 @@ const AddVehiclePage = () => {
     const [modelSearch, setModelSearch] = useState('')
     const [modelLetter, setModelLetter] = useState('All')
 
-    const [selectedVariant, setSelectedVariant] = useState('')
-
     const [formData, setFormData] = useState({})
     const [fields, setFields] = useState([])
     const [accountFields, setAccountFields] = useState([])
@@ -290,7 +289,6 @@ const AddVehiclePage = () => {
 
     const [showAddManufacturer, setShowAddManufacturer] = useState(false)
     const [showAddModel, setShowAddModel] = useState(false)
-    const [showAddVariant, setShowAddVariant] = useState(false)
     const [showAddField, setShowAddField] = useState(false)
     const [showAddGroup, setShowAddGroup] = useState(false)
     const [showAddVenue, setShowAddVenue] = useState(false)
@@ -461,9 +459,10 @@ const AddVehiclePage = () => {
             auctionVenue: selectedVenue?.name,
             manufacturer: selectedManufacturer?.name, manufacturerId: selectedManufacturer?._id,
             model: selectedModel?.name,
+            variant: formData['__variant'] || '',
             modelDescription: (() => {
                 const descField = fields.find(f => f.label?.toLowerCase().trim() === 'description')
-                return (descField && formData[descField._id]) || selectedModel?.description || ''
+                return (descField && formData[descField._id]) || selectedModel?.description || formData['__variant'] || ''
             })(),
             mainImageIndex: addMainImageUrl || '',
         }))
@@ -989,7 +988,7 @@ const AddVehiclePage = () => {
                                         if (m.defaults && Object.keys(m.defaults).length > 0) setFormData(prev => ({ ...m.defaults, ...prev }))
                                         setCurrentStep(5)
                                     }}
-                                    getLabel={m => m.name} getSub={m => `${m.variants?.length || 0} variant${m.variants?.length !== 1 ? 's' : ''}`}
+                                    getLabel={m => m.name} getSub={m => m.description || ''}
                                     countLabel="models"
                                     emptyMsg="No models yet"
                                     onEdit={(m) => { const idx = selectedManufacturer.models.findIndex(mo => mo.name === m.name); setEditingModel({ manufacturerId: selectedManufacturer._id, modelIndex: idx, name: m.name, description: m.description || '' }) }}
@@ -1052,6 +1051,17 @@ const AddVehiclePage = () => {
                                 </div>
                             </div>
                             <form onSubmit={handleSubmit}>
+                                {/* Subtitle / Variant */}
+                                <div style={{ marginBottom: '16px' }}>
+                                    <label style={{ display: 'flex', alignItems: 'baseline', gap: '6px', fontSize: '11px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>
+                                        Subtitle / Variant
+                                        <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 'normal', fontSize: '10px', color: '#9aa0a6' }}>shown below title on card</span>
+                                    </label>
+                                    <input type="text" value={formData['__variant'] || ''} onChange={e => setFormData(p => ({ ...p, '__variant': e.target.value }))}
+                                        placeholder="e.g. Hybrid, 4WD 2.0, Gli"
+                                        style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+                                </div>
+
                                 {/* Dynamic fields grid */}
                                 {fields.filter(f => f.type !== 'file' && f.type !== 'image' && f.label?.toLowerCase().trim() !== 'description').length > 0 && (
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '14px', marginBottom: '20px' }}>
@@ -1127,10 +1137,7 @@ const AddVehiclePage = () => {
                         <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Name *</label>
                             <input type="text" value={newManufacturer.name} onChange={e => setNewManufacturer({ ...newManufacturer, name: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} placeholder="e.g., Toyota" /></div>
                         <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Country</label>
-                            <select value={newManufacturer.country || ''} onChange={e => setNewManufacturer({ ...newManufacturer, country: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fff', boxSizing: 'border-box' }}>
-                                <option value="">Select country...</option>
-                                {COUNTRIES.sort((a, b) => a.localeCompare(b)).map(c => <option key={c} value={c}>{c}</option>)}
-                            </select></div>
+                            <CountrySelect value={newManufacturer.country || ''} onChange={c => setNewManufacturer({ ...newManufacturer, country: c })} placeholder="Select country..." /></div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                             <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Company Name</label>
                                 <input type="text" value={newManufacturer.companyName || ''} onChange={e => setNewManufacturer({ ...newManufacturer, companyName: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} /></div>
@@ -1255,7 +1262,7 @@ const AddVehiclePage = () => {
                         <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Name *</label>
                             <input autoFocus type="text" value={editingMaker.name} onChange={e => setEditingMaker(p => ({ ...p, name: e.target.value }))} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} /></div>
                         <div><label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Country</label>
-                            <input type="text" value={editingMaker.country} onChange={e => setEditingMaker(p => ({ ...p, country: e.target.value }))} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} /></div>
+                            <CountrySelect value={editingMaker.country || ''} onChange={c => setEditingMaker(p => ({ ...p, country: c }))} placeholder="Select country..." /></div>
                         <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
                             <button onClick={() => setEditingMaker(null)} style={{ flex: 1, padding: '9px', border: '1px solid #e0e0e0', borderRadius: '24px', fontSize: '13px', cursor: 'pointer', background: '#fff', color: '#5f6368' }}>Cancel</button>
                             <button onClick={handleSaveMakerEdit} disabled={!editingMaker.name.trim() || saving} style={{ flex: 1, padding: '9px', background: '#1a73e8', color: '#fff', border: 'none', borderRadius: '24px', fontSize: '13px', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Saving...' : 'Save'}</button>
