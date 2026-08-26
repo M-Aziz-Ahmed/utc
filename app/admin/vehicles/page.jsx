@@ -30,7 +30,7 @@ const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day:'2-digi
 
 const getSpecs = (vehicle, fields) => {
     const cardFields = fields
-        .filter(f => f.showOnCard !== false && f.type !== 'file' && f.type !== 'image')
+        .filter(f => f.showOnCard !== false && f.type !== 'file' && f.type !== 'image' && !f.label?.toLowerCase().includes('chassis'))
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 
     if (cardFields.length > 0) {
