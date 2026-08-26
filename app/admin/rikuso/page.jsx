@@ -298,7 +298,7 @@ const AllocCard = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, a
 
     // build specs entries from dynamic fields (same logic as VehicleCard)
     const cardFields = fields
-        .filter(f => f.showOnCard !== false && f.belongsto === 'add-vehicles' && !f.label?.toLowerCase().includes('chassis'))
+        .filter(f => f.showOnCard !== false && f.belongsto === 'add-vehicles')
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     const entries = cardFields.map(f => {
         let val = vehicle[f._id]
@@ -479,19 +479,6 @@ const AllocCard = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, a
                     </div>
                 </div>
             )}
-
-            {/* chassis number */}
-            {(() => {
-                const chField = fields.find(f => f.label?.toLowerCase().includes('chassis'))
-                const chVal = chField ? (vehicle[chField._id] || vehicle[chField.label]) : null
-                if (!chVal) return null
-                return (
-                    <div style={{ padding: '5px 10px', background: '#1e293b', borderBottom: '1px solid #0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '8px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Chassis</span>
-                        <span style={{ fontSize: '10px', fontWeight: 800, color: '#38bdf8', fontFamily: 'monospace', letterSpacing: '0.03em' }}>{String(chVal)}</span>
-                    </div>
-                )
-            })()}
 
             {/* price summary */}
             {(() => {
@@ -680,7 +667,7 @@ const AllocRow = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, al
         return String(v)
     }
     const cardFields = fields
-        .filter(f => f.showOnCard !== false && f.belongsto === 'add-vehicles' && !f.label?.toLowerCase().includes('chassis'))
+        .filter(f => f.showOnCard !== false && f.belongsto === 'add-vehicles')
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     const entries = cardFields.map(f => {
         let val = vehicle[f._id]
