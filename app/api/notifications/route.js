@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import connectDB from '@/lib/db'
+import dbConnect from '@/utils/dbConnection'
 import Notification from '@/models/Notification'
 import jwt from 'jsonwebtoken'
 
@@ -18,7 +18,7 @@ export async function GET(req) {
     const user = getUser(req)
     if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
 
-    await connectDB()
+    await dbConnect()
     const { searchParams } = new URL(req.url)
     const unreadOnly = searchParams.get('unread') === 'true'
 
@@ -39,7 +39,7 @@ export async function POST(req) {
     const user = getUser(req)
     if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
 
-    await connectDB()
+    await dbConnect()
     const body = await req.json()
 
     const notification = await Notification.create({
@@ -57,7 +57,7 @@ export async function PATCH(req) {
     const user = getUser(req)
     if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
 
-    await connectDB()
+    await dbConnect()
     const body = await req.json()
 
     if (body.markAllRead) {
