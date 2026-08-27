@@ -38,6 +38,18 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
     const focus = e => { e.target.style.borderColor = '#1a73e8'; e.target.style.boxShadow = '0 0 0 3px rgba(26,115,232,0.1)' }
     const blur  = e => { e.target.style.borderColor = '#e0e0e0'; e.target.style.boxShadow = 'none' }
 
+    // Format a number for display with thousands separators while preserving
+    // an in-progress decimal point (e.g. "130.") so decimals can be typed.
+    const formatNumInput = (v) => {
+        if (v === '' || v === null || v === undefined) return ''
+        const s = String(v).replace(/[^0-9.\-]/g, '')
+        if (s === '' || s === '-' || s.endsWith('.') || /^-?\d*\.$/.test(s)) return s
+        const parts = s.split('.')
+        if (parts.length > 2) return s
+        const intFmt = Number(parts[0]).toLocaleString('en-US')
+        return parts.length === 1 ? intFmt : `${intFmt}.${parts[1]}`
+    }
+
     const toNum = (v) => {
         if (v === null || v === undefined || v === '') return 0
         const n = parseFloat(String(v).replace(/[^0-9.\-]/g, ''))
@@ -221,7 +233,7 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
             </div>
         )
     }
-    return <input type={field.type === 'number' ? 'text' : field.type === 'date' ? 'date' : 'text'} value={field.type === 'number' ? (value !== undefined && value !== null && value !== '' ? Number(String(value).replace(/[^0-9.\-]/g, '')).toLocaleString('en-US') : '') : (value ?? '')} onChange={e => { if (field.type === 'number') { const raw = e.target.value.replace(/[^0-9.\-]/g, ''); onChange(raw) } else { onChange(e.target.value) } }} required={field.isRequired} disabled={disabled} placeholder={disabled ? 'Locked' : `Enter ${field.label.toLowerCase()}`} style={base} onFocus={!disabled ? focus : undefined} onBlur={!disabled ? blur : undefined} readOnly={disabled} />
+    return <input type={field.type === 'number' ? 'text' : field.type === 'date' ? 'date' : 'text'} value={field.type === 'number' ? (value !== undefined && value !== null && value !== '' ? formatNumInput(value) : '') : (value ?? '')} onChange={e => { if (field.type === 'number') { const raw = e.target.value.replace(/[^0-9.\-]/g, ''); onChange(raw) } else { onChange(e.target.value) } }} required={field.isRequired} disabled={disabled} placeholder={disabled ? 'Locked' : `Enter ${field.label.toLowerCase()}`} style={base} onFocus={!disabled ? focus : undefined} onBlur={!disabled ? blur : undefined} readOnly={disabled} />
 }
 
 const VehicleAccountPage = ({ params }) => {

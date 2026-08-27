@@ -264,6 +264,51 @@ const AccountsPage = () => {
                 </div>
             </div>
 
+            {/* Category summary: done / pending by allocation type */}
+            {(() => {
+                const aTotal = accountFields.length
+                const isDone = (v) => {
+                    const filled = accountFields.filter(f => {
+                        const val = v[f._id] ?? v[f.label]
+                        return val !== undefined && val !== null && val !== ''
+                    }).length
+                    return aTotal > 0 && filled === aTotal
+                }
+                const cats = [
+                    { key: 'export', label: 'Export', color: '#16a34a', bg: '#ecfdf5', border: '#bbf7d0' },
+                    { key: 'khitai', label: 'Khitai', color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
+                    { key: 'resale-to-auction', label: 'Resale', color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
+                    { key: 'none', label: 'Unallocated', color: '#475569', bg: '#f8fafc', border: '#e2e8f0' },
+                ]
+                const rows = cats.map(c => {
+                    const vs = c.key === 'none' ? filtered.filter(v => !v.allocation) : filtered.filter(v => (v.allocation || '') === c.key)
+                    const done = vs.filter(isDone).length
+                    return { ...c, total: vs.length, done, pending: vs.length - done }
+                })
+                return (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '16px' }}>
+                        {rows.map(r => (
+                            <div key={r.key} style={{ background: '#fff', borderRadius: '10px', border: `1px solid ${r.border}`, padding: '12px 14px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span style={{ fontSize: '12px', fontWeight: 700, color: r.color, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{r.label}</span>
+                                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8' }}>{r.total}</span>
+                                </div>
+                                <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <span style={{ fontSize: '18px', fontWeight: 800, color: '#16a34a', lineHeight: 1 }}>{r.done}</span>
+                                        <span style={{ fontSize: '9px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '2px' }}>Done</span>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <span style={{ fontSize: '18px', fontWeight: 800, color: '#d97706', lineHeight: 1 }}>{r.pending}</span>
+                                        <span style={{ fontSize: '9px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '2px' }}>Pending</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )
+            })()}
+
             {/* Search + Filters */}
             <VehicleFilterBar
                 vehicles={vehicles}

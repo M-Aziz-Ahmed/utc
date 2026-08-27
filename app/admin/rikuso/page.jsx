@@ -44,6 +44,18 @@ const quickEditFields = (fields) => adminCardFields(fields).filter(f => {
     return label.includes('final price') || label.includes('cost')
 })
 
+// Format a number with thousands separators (e.g. 123456 -> "123,456"),
+// preserving an in-progress decimal point so decimals can be typed.
+const fmtNumInput = (v) => {
+    if (v === '' || v === null || v === undefined) return ''
+    const s = String(v).replace(/[^0-9.\-]/g, '')
+    if (s === '' || s === '-' || s.endsWith('.') || /^-?\d*\.$/.test(s)) return s
+    const parts = s.split('.')
+    if (parts.length > 2) return s
+    const intFmt = Number(parts[0]).toLocaleString('en-US')
+    return parts.length === 1 ? intFmt : `${intFmt}.${parts[1]}`
+}
+
 // ── Export / Khitai details modal ──────────────────────────────────────────────
 const ExportModal = ({ vehicle, mode, countries, onSave, onClose }) => {
     const [country, setCountry] = useState(vehicle.exportCountry || '')
@@ -295,6 +307,8 @@ const AllocCard = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, a
     const nameLine   = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ').toUpperCase()
     const descLine   = vehicle.modelDescription || vehicle.variant || ''
     const isPresold  = vehicle.allocationStatus || false
+    const chField    = fields.find(f => f.label?.toLowerCase().includes('chassis'))
+    const chassisVal = chField ? (vehicle[chField._id] || vehicle[chField.label]) : null
 
     // build specs entries from dynamic fields (same logic as VehicleCard)
     const cardFields = fields
@@ -363,6 +377,15 @@ const AllocCard = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, a
                 <p style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: '#0f172a', lineHeight: 1.25 }}>{nameLine || '—'}</p>
                 {descLine && <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#64748b' }}>{descLine}</p>}
             </div>
+
+            {/* chassis number */}
+            {chassisVal && (
+                <div style={{ padding: '0 10px 5px' }}>
+                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#2563eb', fontFamily: 'monospace', letterSpacing: '0.02em' }}>
+                        Chassis: {String(chassisVal)}
+                    </span>
+                </div>
+            )}
 
             {/* Editable Admin Fields + Presold Info */}
             {(adminFields.length > 0 || isPresold) && (
@@ -440,14 +463,15 @@ const AllocCard = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, a
                                     // Show editable input
                                     <input
                                         autoFocus={isEditing}
-                                        type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
-                                        value={currentVal}
-                                        onChange={e => setEditableValues(p => ({ ...p, [field._id]: e.target.value }))}
+                                        type={field.type === 'date' ? 'date' : 'text'}
+                                        value={currentVal !== '' && currentVal !== null ? fmtNumInput(currentVal) : ''}
+                                        onChange={e => setEditableValues(p => ({ ...p, [field._id]: e.target.value.replace(/[^0-9.\-]/g, '') }))}
                                         onBlur={e => {
                                             setEditingField(null)
-                                            const original = vehicle[field._id] ?? vehicle[field.label] ?? ''
-                                            if (String(e.target.value) !== String(original)) {
-                                                handleFieldSave(field._id, e.target.value)
+                                            const raw = String(e.target.value).replace(/[^0-9.\-]/g, '')
+                                            const original = (vehicle[field._id] ?? vehicle[field.label] ?? '').toString()
+                                            if (raw !== original) {
+                                                handleFieldSave(field._id, raw)
                                             }
                                         }}
                                         onKeyDown={e => {
@@ -730,12 +754,14 @@ const AllocRow = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, al
                                 </div>
                             ) : (
                                 <input
-                                    type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
-                                    value={currentVal}
-                                    onChange={e => setEditableValues(p => ({ ...p, [field._id]: e.target.value }))}
+                                    type={field.type === 'date' ? 'date' : 'text'}
+                                    value={currentVal !== '' && currentVal !== null ? fmtNumInput(currentVal) : ''}
+                                    onChange={e => setEditableValues(p => ({ ...p, [field._id]: e.target.value.replace(/[^0-9.\-]/g, '') }))}
                                     onBlur={e => {
-                                        if (e.target.value !== (vehicle[field._id] ?? vehicle[field.label] ?? '')) {
-                                            handleFieldSave(field._id, e.target.value)
+                                        const raw = String(e.target.value).replace(/[^0-9.\-]/g, '')
+                                        const original = (vehicle[field._id] ?? vehicle[field.label] ?? '').toString()
+                                        if (raw !== original) {
+                                            handleFieldSave(field._id, raw)
                                         }
                                     }}
                                     onKeyDown={e => {
