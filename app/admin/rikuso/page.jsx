@@ -378,15 +378,6 @@ const AllocCard = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, a
                 {descLine && <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#64748b' }}>{descLine}</p>}
             </div>
 
-            {/* chassis number */}
-            {chassisVal && (
-                <div style={{ padding: '0 10px 5px' }}>
-                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#2563eb', fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-                        Chassis: {String(chassisVal)}
-                    </span>
-                </div>
-            )}
-
             {/* Editable Admin Fields + Presold Info */}
             {(adminFields.length > 0 || isPresold) && (
                 <div style={{ padding: '8px 10px', borderBottom: '1px solid #f0f4f8', background: '#fffbf0' }}>
@@ -490,16 +481,38 @@ const AllocCard = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, a
                 </div>
             )}
 
-            {/* specs grid — same as VehicleCard */}
-            {entries.length > 0 && (
+            {/* specs grid */}
+            {(entries.length > 0 || chassisVal) && (
                 <div style={{ padding: '8px 10px', borderBottom: '1px solid #f0f4f8' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
-                        {entries.slice(0, 10).map((e, i) => (
-                            <div key={i} style={{ padding: '4px 0', borderBottom: '1px solid #f4f4f4' }}>
-                                <div style={{ fontSize: '9px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', lineHeight: 1.2 }}>{e.label}</div>
-                                <div style={{ fontSize: '11px', fontWeight: 600, color: '#1e293b', marginTop: '1px', lineHeight: 1.3 }}>{e.value}</div>
-                            </div>
-                        ))}
+                        {(() => {
+                            // Insert chassis after the mileage field (or at end if not found)
+                            const rows = [...entries.slice(0, 12)]
+                            if (chassisVal) {
+                                const millageIdx = rows.findIndex(e =>
+                                    e.label?.toLowerCase().includes('millage') ||
+                                    e.label?.toLowerCase().includes('mileage') ||
+                                    e.label?.toLowerCase().includes('odometer')
+                                )
+                                const insertAt = millageIdx >= 0 ? millageIdx + 1 : rows.length
+                                // Don't add if chassis is already present as a dynamic field
+                                const alreadyHas = rows.some(e => e.label?.toLowerCase().includes('chassis'))
+                                if (!alreadyHas) {
+                                    rows.splice(insertAt, 0, { label: 'Chassis No.', value: String(chassisVal), isChassis: true })
+                                }
+                            }
+                            return rows.map((e, i) => (
+                                <div key={i} style={{ padding: '4px 0', borderBottom: '1px solid #f4f4f4' }}>
+                                    <div style={{ fontSize: '9px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', lineHeight: 1.2 }}>{e.label}</div>
+                                    <div style={{
+                                        fontSize: '11px', fontWeight: 600,
+                                        color: e.isChassis ? '#2563eb' : '#1e293b',
+                                        fontFamily: e.isChassis ? 'monospace' : 'inherit',
+                                        marginTop: '1px', lineHeight: 1.3,
+                                    }}>{e.value}</div>
+                                </div>
+                            ))
+                        })()}
                     </div>
                 </div>
             )}
