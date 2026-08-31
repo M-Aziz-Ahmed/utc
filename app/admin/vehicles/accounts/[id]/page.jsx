@@ -251,6 +251,13 @@ const VehicleAccountPage = ({ params }) => {
     const [saving, setSaving]               = useState(false)
     const [saveMsg, setSaveMsg]             = useState(null)
     const [taxes, setTaxes]                 = useState([])
+    const [viewer, setViewer]               = useState({ role: '', permissions: [], viewOnly: false })
+
+    useEffect(() => {
+        fetch('/api/public/me').then(r => r.json()).then(d => {
+            if (d.user) setViewer(d.user)
+        }).catch(() => {})
+    }, [])
 
     useEffect(() => {
         Promise.all([
@@ -286,6 +293,17 @@ const VehicleAccountPage = ({ params }) => {
         const label = (field.label || '').toLowerCase().trim()
         return KAITAI_DISABLED_LABELS.some(dl => label.includes(dl))
     }
+
+    // #36 — view-only users and non-admins: hide internal cost / purchase fields
+    // and lock all editing so the page is effectively read-only.
+    const isAdmin = String(viewer.role || '').toLowerCase() === 'admin'
+    const viewOnly = !!viewer.viewOnly
+    const HIDDEN_COST_LABELS = ['pp', 'push price', 'auction fee', 'recycle', 'zekin', 'rikuso expense', 'rikuso tax', 'utc commiss', 'fob price', 'total price', 'total amount', 'conversion rate', 'vehicle duty', 'custom clearance', 'costing', 'price in million', 'final price']
+    const isHiddenCostField = (field) => {
+        const label = (field.label || '').toLowerCase().trim()
+        return HIDDEN_COST_LABELS.some(h => label.includes(h))
+    }
+    const isEditableField = (field) => !viewOnly && (isAdmin || !isHiddenCostField(field)) && !isFieldDisabled(field)
 
     // Thousand separator formatter for number inputs
     const formatWithCommas = (value) => {
@@ -376,9 +394,16 @@ const VehicleAccountPage = ({ params }) => {
     const imgs         = getAllImages(vehicle)
     const nameLine     = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ').toUpperCase()
     const subtitle     = vehicle.modelDescription || vehicle.variant || ''
-    const crumbs       = [vehicle.auctionGroup, vehicle.auctionVenue, vehicle.manufacturer, vehicle.model].filter(Boolean)
+    // Breadcrumb: include stock/auction number, group, venue, maker, model as shown in allocation form
+    const lotField = vehicleFields.find(f => f.label?.toLowerCase().includes('lot'))
+    const lotVal = lotField ? (formData[lotField._id] ?? vehicle[lotField._id] ?? vehicle[lotField.label]) : null
+    const crumbs = []
+    if (vehicle.stockId) crumbs.push(`#${vehicle.stockId}`)
+    if (lotVal) crumbs.push(String(lotVal))
+    crumbs.push(...[vehicle.auctionGroup, vehicle.auctionVenue, vehicle.manufacturer, vehicle.model].filter(Boolean))
     // Add export country and rikuso company to breadcrumbs
     if (vehicle.exportCountry) crumbs.push(vehicle.exportCountry)
+    if (vehicle.rikusoCompanyName) crumbs.push(`Rikuso: ${vehicle.rikusoCompanyName}`)
     const textFields   = vehicleFields.filter(f => f.type !== 'file' && f.type !== 'image' && f.label?.toLowerCase().trim() !== 'description')
     const imageFields  = vehicleFields.filter(f => f.type === 'file' || f.type === 'image')
     const allFields    = [...vehicleFields, ...accountFields]
@@ -511,18 +536,18 @@ const VehicleAccountPage = ({ params }) => {
                                                                 return (
                                                                     <div key={idx} style={{ position: 'relative', width: '52px', height: '40px', borderRadius: '6px', overflow: 'hidden', border: `2px solid ${isMain ? '#f59e0b' : deleted ? '#ef4444' : '#e5e7eb'}`, opacity: deleted ? 0.35 : 1, flexShrink: 0 }}>
                                                                         <img src={f.path} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                                                                        {!deleted && <button type="button" onClick={() => setMainImageUrl(isMain ? '' : f.path)} style={{ position: 'absolute', top: '1px', left: '1px', width: '14px', height: '14px', borderRadius: '50%', background: isMain ? '#f59e0b' : 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', fontSize: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>★</button>}
-                                                                        <button type="button" onClick={() => toggleDeleteImage(field._id, idx)} style={{ position: 'absolute', top: '1px', right: '1px', width: '14px', height: '14px', borderRadius: '50%', background: deleted ? '#16a34a' : '#ef4444', border: 'none', color: '#fff', fontSize: '9px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>{deleted ? '↺' : '×'}</button>
+                                                                        {!deleted && <button type="button" disabled={viewOnly} onClick={() => setMainImageUrl(isMain ? '' : f.path)} style={{ position: 'absolute', top: '1px', left: '1px', width: '14px', height: '14px', borderRadius: '50%', background: isMain ? '#f59e0b' : 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', fontSize: '8px', cursor: viewOnly ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: viewOnly ? 0.5 : 1 }}>★</button>}
+                                                                        <button type="button" disabled={viewOnly} onClick={() => toggleDeleteImage(field._id, idx)} style={{ position: 'absolute', top: '1px', right: '1px', width: '14px', height: '14px', borderRadius: '50%', background: deleted ? '#16a34a' : '#ef4444', border: 'none', color: '#fff', fontSize: '9px', cursor: viewOnly ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, opacity: viewOnly ? 0.5 : 1 }}>{deleted ? '↺' : '×'}</button>
                                                                     </div>
                                                                 )
                                                             })}
                                                         </div>
                                                     </div>
                                                 )}
-                                                <input type="file" multiple accept={field.type === 'image' ? 'image/*' : '*'} onChange={async e => {
+                                                <input type="file" multiple accept={field.type === 'image' ? 'image/*' : '*'} disabled={viewOnly} onChange={async e => {
                                                     const compressed = await Promise.all(Array.from(e.target.files).map(f => compressImage(f)))
                                                     setNewImages(prev => ({ ...prev, [field._id]: compressed }))
-                                                }} style={{ width: '100%', padding: '5px 8px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '11px', boxSizing: 'border-box' }} />
+                                                }} style={{ width: '100%', padding: '5px 8px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '11px', boxSizing: 'border-box', cursor: viewOnly ? 'not-allowed' : 'pointer' }} />
                                                 {newImages[field._id]?.length > 0 && <p style={{ fontSize: '10px', color: '#1a73e8', marginTop: '3px', fontWeight: 600 }}>{newImages[field._id].length} new file{newImages[field._id].length > 1 ? 's' : ''} selected</p>}
                                             </div>
                                         )
@@ -560,10 +585,14 @@ const VehicleAccountPage = ({ params }) => {
                             const total = nonImageFields.length
                             const pct = total > 0 ? Math.round((filled / total) * 100) : 0
                             const barColor = pct >= 100 ? '#16a34a' : pct >= 50 ? '#d97706' : '#1a73e8'
+                            const statusLabel = total === 0 ? 'No fields' : pct >= 100 ? 'UPDATED' : 'PENDING'
                             return (
                                 <div style={{ marginBottom: '20px', padding: '12px 14px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                                        <span style={{ fontSize: '11px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Completion</span>
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                            Account Status
+                                            <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 9px', borderRadius: '12px', background: pct >= 100 ? '#ecfdf5' : '#fef3c7', color: pct >= 100 ? '#16a34a' : '#d97706', border: `1px solid ${pct >= 100 ? '#bbf7d0' : '#fde68a'}` }}>{statusLabel}</span>
+                                        </span>
                                         <span style={{ fontSize: '12px', fontWeight: 800, color: barColor }}>{filled}/{total} · {pct}%</span>
                                     </div>
                                     <div style={{ width: '100%', height: '6px', borderRadius: '10px', background: '#e2e8f0', overflow: 'hidden' }}>
@@ -581,13 +610,18 @@ const VehicleAccountPage = ({ params }) => {
                             </div>
                         ) : (
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px 16px' }}>
-                                {accountFields.filter(f => f.type !== 'file' && f.type !== 'image').map(field => {
-                                    const disabled = isFieldDisabled(field)
+                                {accountFields
+                                    .filter(f => f.type !== 'file' && f.type !== 'image')
+                                    .filter(f => isAdmin || !isHiddenCostField(f))
+                                    .map(field => {
+                                    const khitaiLocked = isFieldDisabled(field)
+                                    const disabled = !isEditableField(field)
                                     return (
                                     <div key={field._id} style={field.type === 'boolean' ? { gridColumn: 'span 2', opacity: disabled ? 0.5 : 1 } : { opacity: disabled ? 0.5 : 1 }}>
                                         <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '9px', fontWeight: 700, color: disabled ? '#d1d5db' : '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>
                                             {field.label}{field.isRequired && <span style={{ color: '#c5221f', marginLeft: '2px' }}>*</span>}
-                                            {disabled && <span style={{ fontSize: '8px', color: '#f59e0b', background: '#fef3c7', padding: '1px 4px', borderRadius: '4px', fontWeight: 700 }}>KAITAI LOCKED</span>}
+                                            {khitaiLocked && <span style={{ fontSize: '8px', color: '#f59e0b', background: '#fef3c7', padding: '1px 4px', borderRadius: '4px', fontWeight: 700 }}>KAITAI LOCKED</span>}
+                                            {viewOnly && <span style={{ fontSize: '8px', color: '#6b7280', background: '#f3f4f6', padding: '1px 4px', borderRadius: '4px', fontWeight: 700 }}>READ ONLY</span>}
                                         </label>
                                         <FieldInput
                                             field={field}
@@ -625,10 +659,10 @@ const VehicleAccountPage = ({ params }) => {
                                 onMouseEnter={e => e.currentTarget.style.background='#f1f3f4'} onMouseLeave={e => e.currentTarget.style.background='#fff'}>
                                 Cancel
                             </Link>
-                            <button type="submit" disabled={saving}
-                                style={{ padding: '10px 28px', fontSize: '14px', fontWeight: 600, color: '#fff', background: saving ? '#9aa0a6' : '#1a73e8', border: 'none', borderRadius: '24px', cursor: saving ? 'not-allowed' : 'pointer', boxShadow: saving ? 'none' : '0 2px 8px rgba(26,115,232,0.3)', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <button type="submit" disabled={saving || viewOnly}
+                                style={{ padding: '10px 28px', fontSize: '14px', fontWeight: 600, color: '#fff', background: (saving || viewOnly) ? '#9aa0a6' : '#1a73e8', border: 'none', borderRadius: '24px', cursor: (saving || viewOnly) ? 'not-allowed' : 'pointer', boxShadow: (saving || viewOnly) ? 'none' : '0 2px 8px rgba(26,115,232,0.3)', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 {saving && <svg style={{ width: '14px', height: '14px', animation: 'spin 0.8s linear infinite' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 12a8 8 0 018-8v8H4z" /></svg>}
-                                {saving ? 'Saving...' : 'Save Account Details →'}
+                                {saving ? 'Saving...' : viewOnly ? 'Read Only' : 'Save Account Details →'}
                             </button>
                         </div>
                     </div>

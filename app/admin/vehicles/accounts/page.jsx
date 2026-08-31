@@ -194,6 +194,7 @@ const AccountsPage = () => {
     const [search, setSearch] = useState('')
     const [filters, setFilters] = useState(EMPTY_FILTERS)
     const [viewMode, setViewMode] = useState('grid')
+    const [statusFilter, setStatusFilter] = useState('all') // 'all' | 'updated' | 'pending'
     const [page, setPage] = useState(1)
     const PAGE_SIZE = 25
 
@@ -220,9 +221,22 @@ const AccountsPage = () => {
         .finally(() => setLoading(false))
     }, [])
 
-    const filtered = applyVehicleFilters(vehicles, fields, search, filters)
+    const filteredAll = applyVehicleFilters(vehicles, fields, search, filters)
 
-    React.useEffect(() => { setPage(1) }, [search, filters, viewMode])
+    // Updated = all account fields filled; Pending = some/most account fields still empty
+    const isUpdated = (v) => {
+        const filled = accountFields.filter(f => {
+            const val = v[f._id] ?? v[f.label]
+            return val !== undefined && val !== null && val !== ''
+        }).length
+        return accountFields.length > 0 && filled === accountFields.length
+    }
+
+    const filtered = statusFilter === 'upd' ? filteredAll.filter(isUpdated)
+        : statusFilter === 'pend' ? filteredAll.filter(v => !isUpdated(v))
+        : filteredAll
+
+    React.useEffect(() => { setPage(1) }, [search, filters, viewMode, statusFilter])
 
     const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
     const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
@@ -309,6 +323,27 @@ const AccountsPage = () => {
                 )
             })()}
 
+            {/* Status filter: ALL / UPDATED / PENDING */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                {[
+                    { key: 'all', label: 'ALL' },
+                    { key: 'upd', label: 'UPDATED' },
+                    { key: 'pend', label: 'PENDING' },
+                ].map(tab => {
+                    const count = tab.key === 'all' ? filteredAll.length
+                        : tab.key === 'upd' ? filteredAll.filter(isUpdated).length
+                        : filteredAll.filter(v => !isUpdated(v)).length
+                    const active = statusFilter === tab.key
+                    return (
+                        <button key={tab.key} onClick={() => setStatusFilter(tab.key)}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 16px', borderRadius: '20px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', border: active ? '1.5px solid #1a73e8' : '1px solid #e2e8f0', background: active ? '#e8f0fe' : '#fff', color: active ? '#1a73e8' : '#5f6368', transition: 'all 0.15s' }}>
+                            {tab.label}
+                            <span style={{ fontSize: '10px', fontWeight: 700, background: active ? '#1a73e8' : '#e8eaed', color: active ? '#fff' : '#64748b', borderRadius: '99px', padding: '1px 7px' }}>{count}</span>
+                        </button>
+                    )
+                })}
+            </div>
+
             {/* Search + Filters */}
             <VehicleFilterBar
                 vehicles={vehicles}
@@ -328,7 +363,7 @@ const AccountsPage = () => {
             ) : filtered.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '64px 16px', background: '#fff', borderRadius: '12px', border: '1px solid #e8eaed' }}>
                     <p style={{ fontSize: '15px', fontWeight: 600, color: '#5f6368', margin: '0 0 8px' }}>
-                        {search ? 'No vehicles match your search' : 'No vehicles yet'}
+                        {statusFilter !== 'all' ? `No ${statusFilter === 'upd' ? 'updated' : 'pending'} vehicles` : search ? 'No vehicles match your search' : 'No vehicles yet'}
                     </p>
                 </div>
             ) : viewMode === 'grid' ? (

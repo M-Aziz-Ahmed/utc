@@ -117,6 +117,9 @@ export default function VehicleDetailContent({ vehicle }) {
     { label: 'Grade', value: vehicle.grade || 'N/A' },
     { label: 'Condition', value: vehicle.condition || 'N/A' },
     { label: 'Location', value: vehicle.location || 'N/A' },
+    ...(vehicle.rikusoCompanyName || vehicle.rikusoCompany
+      ? [{ label: 'Rikuso Company', value: vehicle.rikusoCompanyName || vehicle.rikusoCompany }]
+      : []),
   ]
 
   return (

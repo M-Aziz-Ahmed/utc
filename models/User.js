@@ -20,6 +20,7 @@ const userSchema  = new mongoose.Schema({
     role:{ type: String},
     verified:{ type: String},
     files: [imageFileSchema],
-    permissions: { type: [String], default: [] }
+    permissions: { type: [String], default: [] },
+    viewOnly: { type: Boolean, default: false }
 }, { strict: false })
 export default mongoose.models.User || mongoose.model('User', userSchema)

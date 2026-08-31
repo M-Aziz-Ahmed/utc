@@ -135,7 +135,10 @@ const UsersPage = () => {
                                         </div>
                                     </Td>
                                     <Td>
-                                        <Badge label={user.role || 'User'} variant="approved" />
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <Badge label={user.role || 'User'} variant="approved" />
+                                            {user.viewOnly && <Badge label="View Only" variant="inactive" />}
+                                        </div>
                                     </Td>
                                     <Td>
                                         {String(user.role || '').toLowerCase() === 'admin' ? (

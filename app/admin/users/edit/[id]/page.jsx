@@ -30,7 +30,8 @@ const EditUserPage = () => {
         role: '',
         verified: false,
         pass: '',
-        permissions: []
+        permissions: [],
+        viewOnly: false
     })
 
     useEffect(() => {
@@ -60,7 +61,8 @@ const EditUserPage = () => {
                     role: data.role || '',
                     verified: data.verified || false,
                     pass: '',
-                    permissions: data.permissions || []
+                    permissions: data.permissions || [],
+                    viewOnly: !!data.viewOnly
                 })
             } else {
                 setError('Failed to fetch user')
@@ -438,6 +440,22 @@ const EditUserPage = () => {
                                     <span className="text-sm font-semibold text-gray-700">{portal.label}</span>
                                 </label>
                             ))}
+                        </div>
+
+                        {/* View Only mode */}
+                        <div className="mt-4">
+                            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border transition bg-amber-50 border-amber-200">
+                                <input
+                                    type="checkbox"
+                                    checked={!!formData.viewOnly}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, viewOnly: e.target.checked }))}
+                                    className="w-5 h-5 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
+                                />
+                                <span className="text-sm font-semibold text-gray-700">View Only (no editing)</span>
+                            </label>
+                            <p className="text-xs text-gray-500 mt-2">
+                                View-only users can open their assigned portals but cannot edit data, and internal cost/purchase fields (PP, push price, costing, etc.) are hidden from them.
+                            </p>
                         </div>
                     </div>
 

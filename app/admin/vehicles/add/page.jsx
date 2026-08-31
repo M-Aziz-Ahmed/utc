@@ -304,7 +304,6 @@ const AddVehiclePage = () => {
     const FIELD_TYPES = ['text', 'number', 'boolean', 'email', 'date', 'file', 'image', 'dropdown', 'select-year', 'select-country', 'tax', 'sum']
     const [newManufacturer, setNewManufacturer] = useState({ name: '', country: '' })
     const [newModel, setNewModel] = useState({ name: '', description: '', defaults: {} })
-    const [newVariant, setNewVariant] = useState('')
     const [saving, setSaving] = useState(false)
     const [taxes, setTaxes] = useState([])
 
@@ -384,16 +383,6 @@ const AddVehiclePage = () => {
             const updated = { ...selectedManufacturer, models: [...(selectedManufacturer.models || []), modelData] }
             const res = await fetch(`/api/manufacturer/${selectedManufacturer._id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updated) })
             if (res.ok) { const u = await res.json(); setManufacturers(prev => prev.map(m => m._id === u._id ? u : m)); setSelectedManufacturer(u); setSelectedModel(u.models[u.models.length - 1]); setShowAddModel(false); setNewModel({ name: '', description: '', defaults: {} }) }
-        } finally { setSaving(false) }
-    }
-
-    const handleAddVariant = async () => {
-        if (!newVariant.trim() || !selectedModel || !selectedManufacturer) return
-        setSaving(true)
-        try {
-            const updatedModels = selectedManufacturer.models.map(m => m.name === selectedModel.name ? { ...m, variants: [...(m.variants || []), newVariant.trim()] } : m)
-            const res = await fetch(`/api/manufacturer/${selectedManufacturer._id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...selectedManufacturer, models: updatedModels }) })
-            if (res.ok) { const u = await res.json(); setManufacturers(prev => prev.map(m => m._id === u._id ? u : m)); setSelectedManufacturer(u); setSelectedModel(u.models.find(m => m.name === selectedModel.name)); setSelectedVariant(newVariant.trim()); setShowAddVariant(false); setNewVariant('') }
         } finally { setSaving(false) }
     }
 
@@ -984,7 +973,6 @@ const AddVehiclePage = () => {
                                     letter={modelLetter} onLetter={setModelLetter} available={filteredModels.available}
                                     items={filteredModels.list} selected={selectedModel}
                                     onSelect={(m) => {
-                                        setSelectedModel(m); setSelectedVariant('')
                                         if (m.defaults && Object.keys(m.defaults).length > 0) setFormData(prev => ({ ...m.defaults, ...prev }))
                                         setCurrentStep(5)
                                     }}

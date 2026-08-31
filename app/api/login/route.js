@@ -54,6 +54,7 @@ export const POST = async (req) => {
             name: user.name,
             role: user.role || 'User',
             permissions: user.permissions || [],
+            viewOnly: !!user.viewOnly,
         })
 
         const sessionUser = {
@@ -62,6 +63,7 @@ export const POST = async (req) => {
             name: user.name,
             role: user.role || 'User',
             permissions: [...(user.permissions || [])],
+            viewOnly: !!user.viewOnly,
         }
 
         return NextResponse.json({

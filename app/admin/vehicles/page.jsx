@@ -220,10 +220,22 @@ const VehicleCard = ({ vehicle, fields, onView, onDelete, showChassis }) => {
                         ))}
                     </div>
                     <div style={{display:'flex', flexDirection:'column', gap:'3px'}}>
-                        {['Docs','EC','TBS','BL'].map(l => (
-                            <div key={l} style={{display:'flex',alignItems:'center',gap:'6px'}}>
-                                <span style={{width:'8px',height:'8px',borderRadius:'50%',flexShrink:0,background:'#e2e8f0'}}/>
-                                <span style={{fontSize:'11px',color:'#cbd5e1'}}>{l}</span>
+                        {[
+                            {l:'Docs', active: false},
+                            {l:'EC', active: !!vehicle.exportCertNumber},
+                            {l:'TBS', active: false},
+                            {l:'BL', active: !!vehicle.blNumber},
+                        ].map(s => (
+                            <div key={s.l} title={s.l === 'EC' && s.active ? 'Export Certificate added' : undefined}
+                                style={{display:'flex',alignItems:'center',gap:'6px'}}>
+                                <span style={{width: s.l === 'EC' ? '16px' : '8px', height: s.l === 'EC' ? '16px' : '8px', borderRadius:'50%',flexShrink:0,
+                                    background: s.active ? '#1a73e8' : '#e2e8f0',
+                                    display:'flex',alignItems:'center',justifyContent:'center',
+                                    color:'#fff', fontSize:'7px', fontWeight:800,
+                                    boxShadow: s.active ? '0 0 5px rgba(26,115,232,0.5)' : 'none'}}>
+                                    {s.active && s.l === 'EC' ? '✓' : ''}
+                                </span>
+                                <span style={{fontSize:'11px',color: s.active ? '#1a73e8' : '#cbd5e1', fontWeight: s.active?700:400}}>{s.l}</span>
                             </div>
                         ))}
                     </div>

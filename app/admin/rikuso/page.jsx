@@ -181,7 +181,7 @@ const AllocControls = ({ vehicle, rikusoCompanies, consignees, allocations,
 
 // ── Grid card (same thumbnail/header as vehicles page) ─────────────────────────
 const AllocCard = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, allocations,
-    onAllocChange, onRikusoChange, onPresold, onRemovePresold, onExportSelect }) => {
+    onAllocChange, onRikusoChange, onPresold, onRemovePresold, onExportSelect, onZoom }) => {
     const [imgIdx, setImgIdx] = useState(0)
     const [hov, setHov]       = useState(false)
     const [editableValues, setEditableValues] = useState({})
@@ -345,7 +345,10 @@ const AllocCard = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, a
             <div style={{ position: 'relative', height: '155px', background: '#f1f5f9', flexShrink: 0 }}>
                 {imgs.length > 0 ? (
                     <>
-                        <img src={imgs[imgIdx]} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#f1f5f9', display: 'block' }} />
+                        <img src={imgs[imgIdx]} alt="" onClick={e => { e.stopPropagation(); if (onZoom) onZoom(imgs, imgIdx) }} style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#f1f5f9', display: 'block', cursor: onZoom ? 'zoom-in' : 'default' }} />
+                        {onZoom && imgs.length > 0 && (
+                            <div style={{ position: 'absolute', bottom: '6px', left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: '9px', fontWeight: 600, padding: '2px 8px', borderRadius: '20px', pointerEvents: 'none' }}>Click to zoom</div>
+                        )}
                         {imgs.length > 1 && (
                             <>
                                 <button onClick={e => { e.stopPropagation(); setImgIdx((imgIdx - 1 + imgs.length) % imgs.length) }}
@@ -559,12 +562,14 @@ const AllocCard = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, a
                         {[
                             { label: 'IGP', active: !!vehicle.physicalIn, title: 'Inward Gate Pass' },
                             { label: 'OGP', active: !!vehicle.physicalOut, title: 'Outward Gate Pass' },
-                            { label: 'EC', active: !!vehicle.exportCertNumber, title: 'Export Certificate' },
+                            { label: 'EC', active: !!vehicle.exportCertNumber, title: vehicle.exportCertNumber ? 'Export Certificate added' : 'Export Certificate', ec: true },
                             { label: 'BL', active: !!vehicle.blNumber, title: 'Bill of Lading' },
                         ].map(s => (
                             <div key={s.label} title={s.title} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                <span style={{ width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0, background: s.active ? '#22c55e' : '#e2e8f0' }} />
-                                <span style={{ fontSize: '10px', fontWeight: s.active ? 700 : 400, color: s.active ? '#16a34a' : '#cbd5e1' }}>{s.label}</span>
+                                <span style={{ width: s.ec ? '15px' : '7px', height: s.ec ? '15px' : '7px', borderRadius: '50%', flexShrink: 0, background: s.ec ? (s.active ? '#1a73e8' : '#e2e8f0') : (s.active ? '#22c55e' : '#e2e8f0'), color: '#fff', fontSize: '7px', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: s.ec && s.active ? '0 0 5px rgba(26,115,232,0.5)' : 'none' }}>
+                                    {s.ec && s.active ? '✓' : ''}
+                                </span>
+                                <span style={{ fontSize: '10px', fontWeight: s.active ? 700 : 400, color: s.ec ? (s.active ? '#1a73e8' : '#cbd5e1') : (s.active ? '#16a34a' : '#cbd5e1') }}>{s.label}</span>
                             </div>
                         ))}
                     </div>
@@ -583,7 +588,7 @@ const AllocCard = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, a
 
 // ── List row ──────────────────────────────────────────────────────────────────
 const AllocRow = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, allocations,
-    onAllocChange, onRikusoChange, onPresold, onRemovePresold, onExportSelect }) => {
+    onAllocChange, onRikusoChange, onPresold, onRemovePresold, onExportSelect, onZoom }) => {
     const [editableValues, setEditableValues] = useState({})
     const [saving, setSaving] = useState(false)
     const imgs      = getVehicleImages(vehicle)
@@ -725,7 +730,7 @@ const AllocRow = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, al
             <td style={{ padding: '5px 8px', width: '48px' }}>
                 <div style={{ width: '42px', height: '32px', borderRadius: '4px', overflow: 'hidden', background: '#f1f5f9', flexShrink: 0, position: 'relative' }}>
                     {imgs.length > 0
-                        ? <img src={imgs[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#f1f5f9' }} />
+                        ? <img src={imgs[0]} alt="" title="Click to zoom" onClick={e => { e.stopPropagation(); if (onZoom) onZoom(imgs, 0) }} style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#f1f5f9', cursor: onZoom ? 'zoom-in' : 'default' }} />
                         : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1', fontSize: '9px' }}>—</div>
                     }
                     {isPresold && (
@@ -814,8 +819,9 @@ const AllocRow = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, al
                         { label: 'P', active: isPresold, title: 'Presold' },
                         { label: 'I', active: !!vehicle.physicalIn, title: 'IGP' },
                         { label: 'O', active: !!vehicle.physicalOut, title: 'OGP' },
+                        { label: 'EC', active: !!vehicle.exportCertNumber, title: vehicle.exportCertNumber ? 'Export Certificate added' : 'Export Certificate', ec: true },
                     ].map((s, idx) => (
-                        <span key={idx} title={s.title} onClick={s.onClick} style={{ width: s.label.includes('/') ? 'auto' : '14px', minWidth: '14px', height: '14px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '3px', fontSize: '8px', fontWeight: 700, background: s.active ? '#dc2626' : '#e2e8f0', color: s.active ? '#fff' : '#94a3b8', padding: s.label.includes('/') ? '0 3px' : '0', cursor: s.onClick ? 'pointer' : 'default', whiteSpace: 'nowrap' }}>
+                        <span key={idx} title={s.title} onClick={s.onClick} style={{ width: s.label.includes('/') ? 'auto' : '14px', minWidth: '14px', height: '14px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: s.ec ? '50%' : '3px', fontSize: '8px', fontWeight: 700, background: s.ec ? (s.active ? '#1a73e8' : '#e2e8f0') : (s.active ? '#dc2626' : '#e2e8f0'), color: s.active ? '#fff' : '#94a3b8', padding: s.label.includes('/') ? '0 3px' : '0', cursor: s.onClick ? 'pointer' : 'default', whiteSpace: 'nowrap', boxShadow: s.ec && s.active ? '0 0 5px rgba(26,115,232,0.5)' : 'none' }}>
                             {s.label}
                         </span>
                     ))}
@@ -896,6 +902,11 @@ const RikusoManagementPage = () => {
     const [filters, setFilters] = useState(EMPTY_FILTERS)
     const [allocFilter, setAllocFilter] = useState('all') // 'all' | 'allocated' | 'unallocated'
 
+    // image zoom
+    const [zoomImage, setZoomImage] = useState(null)
+    const [zoomIndex, setZoomIndex] = useState(0)
+    const [zoomList, setZoomList] = useState([])
+
     useEffect(() => {
         Promise.all([
             fetch('/api/vehicles').then(r => r.ok ? r.json() : []),
@@ -928,8 +939,10 @@ const RikusoManagementPage = () => {
 
     const handleRikusoChange = async (vehicleId, rikusoCompanyId) => {
         try {
-            const res = await fetch('/api/vehicles', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vehicleId, rikusoCompany: rikusoCompanyId || null, rikusoStatus: rikusoCompanyId !== '' }) })
-            if (res.ok) setVehicles(p => p.map(v => v._id === vehicleId ? { ...v, rikusoCompany: rikusoCompanyId || null, rikusoStatus: rikusoCompanyId !== '' } : v))
+            const company = rikusoCompanies.find(c => c._id === rikusoCompanyId)
+            const companyName = rikusoCompanyId ? (company?.companyName || company?.name || '') : ''
+            const res = await fetch('/api/vehicles', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vehicleId, rikusoCompany: rikusoCompanyId || null, rikusoCompanyName: companyName, rikusoStatus: rikusoCompanyId !== '' }) })
+            if (res.ok) setVehicles(p => p.map(v => v._id === vehicleId ? { ...v, rikusoCompany: rikusoCompanyId || null, rikusoCompanyName: companyName, rikusoStatus: rikusoCompanyId !== '' } : v))
         } catch (e) { alert('Failed to update rikuso') }
     }
 
@@ -1005,7 +1018,7 @@ const RikusoManagementPage = () => {
 
     const exportCountries = [...new Set(vehicles.map(v => v.exportCountry).filter(Boolean))].sort((a, b) => a.localeCompare(b))
 
-    const controlProps = { rikusoCompanies, consignees, allocations, onAllocChange: handleAllocChange, onRikusoChange: handleRikusoChange, onPresold: handlePresold, onRemovePresold: handleRemovePresold, onExportSelect: (v, mode) => { setExportVehicle(v); setExportMode(mode || (v.allocation || '').toLowerCase()) } }
+    const controlProps = { onZoom: (imgs, idx) => { setZoomList(imgs); setZoomIndex(idx || 0); setZoomImage(imgs[idx || 0] || null) }, rikusoCompanies, consignees, allocations, onAllocChange: handleAllocChange, onRikusoChange: handleRikusoChange, onPresold: handlePresold, onRemovePresold: handleRemovePresold, onExportSelect: (v, mode) => { setExportVehicle(v); setExportMode(mode || (v.allocation || '').toLowerCase()) } }
 
     // Helper to find chassis number from dynamic fields
     const chassisOf = (v) => {
@@ -1117,7 +1130,8 @@ const RikusoManagementPage = () => {
                 const priceFields = fields.filter(f => f.belongsto === 'add-vehicles' && (f.type === 'number' || f.type === 'tax' || f.type === 'formula' || f.type === 'sum') && /(price|fob|total|cost)/i.test(f.label || ''))
                 const groups = {}
                 allocFiltered.forEach(v => {
-                    const name = v.rikusoCompanyName || 'Unassigned'
+                    const linked = rikusoCompanies.find(c => c._id === (v.rikusoCompany || v.rikusoCompanyName))
+                    const name = v.rikusoCompanyName || linked?.companyName || linked?.name || 'Unassigned'
                     if (!groups[name]) groups[name] = { vehicles: [], total: 0, priceBreakdown: {} }
                     groups[name].vehicles.push(v)
                     priceFields.forEach(pf => {
@@ -1236,6 +1250,23 @@ const RikusoManagementPage = () => {
                     onSave={handleExportSave}
                     onClose={() => setExportVehicle(null)}
                 />
+            )}
+
+            {/* Image Zoom Modal */}
+            {zoomImage && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '16px' }} onClick={() => setZoomImage(null)}>
+                    <button onClick={() => setZoomImage(null)} style={{ position: 'absolute', top: '12px', right: '16px', background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', borderRadius: '50%', width: '36px', height: '36px', fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                    <div onClick={e => e.stopPropagation()} style={{ maxWidth: '92vw', maxHeight: '88vh', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                        <img src={zoomImage} alt="" style={{ maxWidth: '92vw', maxHeight: '80vh', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 8px 40px rgba(0,0,0,0.5)' }} />
+                        {zoomList.length > 1 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <button onClick={e => { e.stopPropagation(); const ni = (zoomIndex - 1 + zoomList.length) % zoomList.length; setZoomIndex(ni); setZoomImage(zoomList[ni]) }} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', borderRadius: '50%', width: '34px', height: '34px', fontSize: '16px', cursor: 'pointer' }}>‹</button>
+                                <span style={{ color: '#fff', fontSize: '12px', fontWeight: 600 }}>{zoomIndex + 1} / {zoomList.length}</span>
+                                <button onClick={e => { e.stopPropagation(); const ni = (zoomIndex + 1) % zoomList.length; setZoomIndex(ni); setZoomImage(zoomList[ni]) }} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', borderRadius: '50%', width: '34px', height: '34px', fontSize: '16px', cursor: 'pointer' }}>›</button>
+                            </div>
+                        )}
+                    </div>
+                </div>
             )}
 
             <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>

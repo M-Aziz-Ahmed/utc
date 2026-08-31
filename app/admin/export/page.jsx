@@ -191,7 +191,10 @@ const ExportCarsPage = () => {
                                             </div>
                                         </td>
                                         <td style={{ padding: '8px 10px' }}>
-                                            <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a' }}>{[v.manufacturer, v.model].filter(Boolean).join(' ') || '—'}</div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a' }}>{[v.manufacturer, v.model].filter(Boolean).join(' ') || '—'}</div>
+                                                <span style={{ fontSize: '8px', fontWeight: 700, color: '#fff', background: '#16a34a', padding: '2px 6px', borderRadius: '8px', letterSpacing: '0.05em', flexShrink: 0 }}>EXPORT</span>
+                                            </div>
                                             {v.modelDescription && <div style={{ fontSize: '10px', color: '#94a3b8' }}>{v.modelDescription}</div>}
                                         </td>
                                         <td style={{ padding: '8px 10px' }}>

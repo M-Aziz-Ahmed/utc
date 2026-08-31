@@ -13,6 +13,8 @@ export const GET = async () => {
             name: session.name,
             email: session.email,
             role: session.role,
+            permissions: session.permissions || [],
+            viewOnly: !!session.viewOnly,
         },
     }, { status: 200 })
 }

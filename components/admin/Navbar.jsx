@@ -95,16 +95,16 @@ const Navbar = ({ user }) => {
                         <div className="relative" ref={notifRef}>
                             <button
                                 onClick={() => { setNotifOpen(!notifOpen); if (!notifOpen) fetchNotifications() }}
-                                className="p-2 rounded-lg relative transition-colors"
+                                className="p-1.5 rounded-lg relative transition-colors"
                                 style={{color:'#6B7280'}}
                                 onMouseEnter={e => e.currentTarget.style.background='#F3F4F6'}
                                 onMouseLeave={e => e.currentTarget.style.background='transparent'}
                             >
-                                <svg style={{width:'22px',height:'22px'}} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                <svg style={{width:'28px',height:'28px'}} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                                 </svg>
                                 {unreadCount > 0 && (
-                                    <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-white text-[10px] font-bold" style={{background:'#DC2626', lineHeight:1}}>
+                                    <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full text-white text-[11px] font-bold" style={{background:'#DC2626', lineHeight:1, border:'2px solid #fff', boxShadow:'0 1px 4px rgba(220,38,38,0.5)'}}>
                                         {unreadCount > 99 ? '99+' : unreadCount}
                                     </span>
                                 )}

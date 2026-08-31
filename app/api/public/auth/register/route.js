@@ -2,6 +2,7 @@ import { readJson } from '@/utils/readJson'
 import { NextResponse } from 'next/server'
 import dbConnect from '@/utils/dbConnection'
 import User from '@/models/User'
+import Consignee from '@/models/Consignee'
 import bcrypt from 'bcryptjs'
 import { SignJWT } from 'jose'
 
@@ -36,6 +37,20 @@ export async function POST(req) {
       role: 'user',
       verified: false,
     })
+
+    // Also create a Consignee record so website registrations appear in the
+    // ERP Client / Consignee form.
+    try {
+      await Consignee.create({
+        name,
+        email: email.toLowerCase(),
+        phone: phone || '',
+        country: country || '',
+        notes: 'Registered via website',
+      })
+    } catch (consigneeError) {
+      console.error('Consignee create error:', consigneeError)
+    }
 
     const token = await new SignJWT({
       id: user._id.toString(),
