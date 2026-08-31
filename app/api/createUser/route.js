@@ -1,6 +1,7 @@
 import User from '@/models/User'
 import dbConnect from '@/utils/dbConnection'
 import { uploadToCloudinary } from '@/utils/cloudinary'
+import { getSession } from '@/utils/auth'
 import { setSessionCookie } from '@/utils/auth'
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
@@ -20,6 +21,19 @@ export const POST = async (req) => {
         const existingUser = await User.findOne({ email })
         if (existingUser) {
             return NextResponse.json({ message: 'User already exists' }, { status: 400 })
+        }
+
+        // Only an authenticated admin may create a privileged (non-'User') account.
+        // Public registration must never be able to self-assign admin/permissions.
+        const session = await getSession()
+        let creatorIsAdmin = false
+        if (session?.id) {
+            const creator = await User.findById(session.id).select('role').lean()
+            creatorIsAdmin = creator && String(creator.role || '').toLowerCase() === 'admin'
+        }
+        if (!creatorIsAdmin) {
+            body.role = 'User'
+            body.permissions = []
         }
 
         // Hash password before storing
@@ -67,6 +81,8 @@ export const POST = async (req) => {
 
         const newUser = await User.create(body)
 
+        // Auto-login the newly created user so public registration immediately
+        // grants access (SignupModal calls refreshAuth() after this resolves).
         await setSessionCookie({
             id: newUser._id.toString(),
             email: newUser.email,

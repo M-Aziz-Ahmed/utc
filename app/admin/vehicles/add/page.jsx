@@ -441,8 +441,15 @@ const AddVehiclePage = () => {
     const handleSubmit = async (e) => {
         e.preventDefault(); setSubmitting(true); setError(null)
         const fd = new FormData()
+        // Build a clean payload: file/image arrays (arrays of { file }) are sent
+        // as separate multipart uploads and must NOT be embedded in vehicleData JSON.
+        const cleanForm = {}
+        for (const [k, v] of Object.entries(formData || {})) {
+            const isFileArray = Array.isArray(v) && v.some(o => o && o.file instanceof File)
+            if (!isFileArray) cleanForm[k] = v
+        }
         fd.append('vehicleData', JSON.stringify({
-            ...formData,
+            ...cleanForm,
             ...accountData,
             auctionGroup: selectedGroup?.name, auctionGroupId: selectedGroup?._id,
             auctionVenue: selectedVenue?.name,

@@ -2,8 +2,8 @@ import { readJson } from '@/utils/readJson'
 import Vehicle from "@/models/Vehicle"
 import dbConnect from "@/utils/dbConnection"
 import { uploadToCloudinary } from "@/utils/cloudinary"
+import { getSession } from '@/utils/auth'
 import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
 
 export const POST = async (req) => {
     try {
@@ -13,18 +13,9 @@ export const POST = async (req) => {
 
         await dbConnect();
 
-        // Get user from cookie if available
-        const cookieStore = await cookies();
-        const userCookie = cookieStore.get('user');
-        let userId = null;
-        if (userCookie) {
-            try {
-                const userData = JSON.parse(decodeURIComponent(userCookie.value));
-                userId = userData.id;
-            } catch (e) {
-                // Cookie parsing failed, continue without user
-            }
-        }
+        // Capture which admin created the vehicle (audit trail).
+        const session = await getSession();
+        const userId = session?.id || null;
 
         // Handle file uploads to Cloudinary
         const uploadedFiles = [];

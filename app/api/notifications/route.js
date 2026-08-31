@@ -1,21 +1,17 @@
 import { NextResponse } from 'next/server'
 import dbConnect from '@/utils/dbConnection'
 import Notification from '@/models/Notification'
-import jwt from 'jsonwebtoken'
+import { getSession } from '@/utils/auth'
 
-const SECRET = process.env.JWT_SECRET || 'utc-secret-key'
-
-const getUser = (req) => {
+const getUser = async () => {
     try {
-        const token = req.cookies.get('user')?.value
-        if (!token) return null
-        const decoded = jwt.verify(token, SECRET)
-        return decoded
+        const session = await getSession()
+        return session || null
     } catch { return null }
 }
 
 export async function GET(req) {
-    const user = getUser(req)
+    const user = await getUser()
     if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
 
     await dbConnect()
@@ -36,14 +32,14 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
-    const user = getUser(req)
+    const user = await getUser()
     if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
 
     await dbConnect()
     const body = await req.json()
 
     const notification = await Notification.create({
-        userId: body.userId || user.id || user._id,
+        userId: user.id || user._id,
         type: body.type || 'general',
         message: body.message,
         vehicleId: body.vehicleId || undefined,
@@ -54,7 +50,7 @@ export async function POST(req) {
 }
 
 export async function PATCH(req) {
-    const user = getUser(req)
+    const user = await getUser()
     if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
 
     await dbConnect()

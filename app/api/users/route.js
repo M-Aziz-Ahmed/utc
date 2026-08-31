@@ -13,7 +13,7 @@ export const GET = async () => {
         // Fetch all users, sorted by creation date (newest first)
         // Exclude password field for security
         const users = await User.find({})
-            .select('-pass')
+            .select('-pass -password')
             .sort({ createdAt: -1 });
         
         return NextResponse.json(users, { status: 200 });

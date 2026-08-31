@@ -10,7 +10,7 @@ export const getAuthUser = async () => {
     if (!session?.id) return null
     try {
         await dbConnect()
-        return await User.findById(session.id).select('email name role permissions').lean()
+        return await User.findById(session.id).select('email name role permissions viewOnly').lean()
     } catch (err) {
         console.error('getAuthUser error:', err)
         return null

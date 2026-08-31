@@ -367,7 +367,14 @@ export default function EditVehiclePage({ params }) {
                 if (val !== undefined && val !== '') { payload[f._id] = val; payload[f.label] = val }
             })
             const variantVal = formData['__variant']
-            if (variantVal !== undefined) { payload.variant = variantVal; payload.modelDescription = variantVal }
+            if (variantVal !== undefined) {
+                payload.variant = variantVal
+                // Don't stomp a distinct vehicle description with the subtitle.
+                // The subtitle field doubles as modelDescription only when the
+                // vehicle doesn't already carry its own description text.
+                const hadDistinctDesc = !!(vehicle?.modelDescription && vehicle?.variant && vehicle.modelDescription !== vehicle.variant)
+                if (!hadDistinctDesc) payload.modelDescription = variantVal
+            }
             accountFields.forEach(f => {
                 const val = accountData[f._id]
                 if (val !== undefined) { payload[f._id] = val; payload[f.label] = val }

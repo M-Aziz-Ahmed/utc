@@ -21,7 +21,13 @@ export async function POST(req) {
       return NextResponse.json({ message: 'Invalid credentials' }, { status: 401 })
     }
 
-    const isMatch = await bcrypt.compare(password, user.password)
+    // Password may be stored in either `password` (public registration) or
+    // `pass` (admin-created users). Support both so every user can log in.
+    const storedHash = user.password || user.pass
+    if (!storedHash) {
+      return NextResponse.json({ message: 'Invalid credentials' }, { status: 401 })
+    }
+    const isMatch = await bcrypt.compare(password, storedHash)
     if (!isMatch) {
       return NextResponse.json({ message: 'Invalid credentials' }, { status: 401 })
     }

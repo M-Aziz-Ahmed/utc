@@ -14,7 +14,7 @@ const Me = async () => {
 
     try {
         await dbConnect()
-        const dbUser = await User.findById(session.id).select('email name role permissions').lean()
+        const dbUser = await User.findById(session.id).select('email name role permissions viewOnly').lean()
         if (!dbUser) return { user: null }
 
         return {
@@ -24,6 +24,7 @@ const Me = async () => {
                 name: dbUser.name,
                 role: dbUser.role,
                 permissions: dbUser.permissions || [],
+                viewOnly: !!dbUser.viewOnly,
             },
         }
     } catch (err) {

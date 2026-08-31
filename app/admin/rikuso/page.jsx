@@ -1204,7 +1204,7 @@ const RikusoManagementPage = () => {
                                 <select value={presoldData.consigneeId} onChange={e => setPresoldData(p => ({ ...p, consigneeId: e.target.value }))} required
                                     style={{ width: '100%', padding: '7px 10px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', background: '#fff', color: presoldData.consigneeId ? '#202124' : '#9aa0a6' }}>
                                     <option value="">Select client / consignee...</option>
-                                    {consignees.sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(c => <option key={c._id} value={c._id}>{c.name}{c.company ? ` (${c.company})` : ''}</option>)}
+                                    {[...consignees].sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(c => <option key={c._id} value={c._id}>{c.name}{c.company ? ` (${c.company})` : ''}</option>)}
                                 </select>
                             </div>
                             {showNewConsignee && (

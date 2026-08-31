@@ -43,7 +43,7 @@ export const GET = async (req, { params }) => {
         
         const { id } = await params;
         
-        const user = await User.findById(id).select('-pass');
+        const user = await User.findById(id).select('-pass -password');
         
         if (!user) {
             return NextResponse.json({ 
@@ -84,7 +84,7 @@ export const PUT = async (req, { params }) => {
             id,
             body,
             { new: true, runValidators: true }
-        ).select('-pass');
+        ).select('-pass -password');
         
         if (!updatedUser) {
             return NextResponse.json({ 
