@@ -419,7 +419,7 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                                                 {editDraft.type!=='file'&&editDraft.type!=='image' && (
                                                     <div className="col-span-2 border-2 border-green-200 rounded-lg p-3 bg-green-50">
                                                         <label className="text-xs font-semibold text-green-700 uppercase tracking-wide block mb-2">Link to Vehicle DB Field</label>
-                                                        <p className="text-xs text-green-600 mb-2">Auto-fill from the vehicle's database value. Field will be read-only.</p>
+                                                        <p className="text-xs text-green-600 mb-2">Auto-fill from the vehicle&apos;s database value. Field will be read-only.</p>
                                                         <select value={editDraft.vehicleField||''} onChange={e=>setEditDraft({...editDraft,vehicleField:e.target.value})}
                                                             className="w-full border border-green-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-green-400 bg-white">
                                                             <option value="">None (manual entry)</option>
@@ -442,7 +442,7 @@ const GetAllFields = ({ refreshKey, onDelete, forms }) => {
                                                                 onChange={e=>setEditDraft({...editDraft,displayAsPrice:e.target.checked})}/>
                                                             <div>
                                                                 <div className="text-xs font-semibold text-gray-800">Display as Price</div>
-                                                                <div className="text-xs text-gray-500 mt-0.5">Use this field as the vehicle price on the main screen instead of "Price on Request"</div>
+                                                                <div className="text-xs text-gray-500 mt-0.5">Use this field as the vehicle price on the main screen instead of &quot;Price on Request&quot;</div>
                                                             </div>
                                                         </label>
                                                         <label className="flex items-start gap-2 cursor-pointer p-2 rounded bg-white border border-blue-200 hover:border-blue-300 transition">

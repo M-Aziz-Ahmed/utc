@@ -26,7 +26,7 @@ export default function VehicleRow({ vehicle }) {
 
   const detailUrl = `/stock/${vehicle.vehicleId || vehicle.slug}`
 
-  const PriceDisplay = () => {
+  const renderPrice = () => {
     if (authLoading) return <div className="vehicle-row-price" style={{ color: '#ccc' }}>—</div>
     if (loggedIn) return <div className="vehicle-row-price">{formatPrice(vehicle.price)}</div>
     return (
@@ -70,7 +70,7 @@ export default function VehicleRow({ vehicle }) {
         <Link href={detailUrl}>
           <h3 className="vehicle-row-title">{vehicle.title}</h3>
         </Link>
-        <PriceDisplay />
+        {renderPrice()}
       </div>
 
       <div className="vehicle-row-specs">

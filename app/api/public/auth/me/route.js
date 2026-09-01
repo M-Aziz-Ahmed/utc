@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
-
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'utc-secret-key-change-in-production')
+import dbConnect from '@/utils/dbConnection'
+import User from '@/models/User'
+import { JWT_SECRET } from '@/utils/secret'
 
 export async function GET() {
   try {
@@ -15,12 +16,18 @@ export async function GET() {
 
     const { payload } = await jwtVerify(token.value, JWT_SECRET)
 
+    await dbConnect()
+    const user = await User.findById(payload.id).select('email name role').lean()
+    if (!user) {
+      return NextResponse.json({ user: null }, { status: 401 })
+    }
+
     return NextResponse.json({
       user: {
-        id: payload.id,
-        email: payload.email,
-        name: payload.name,
-        role: payload.role,
+        id: user._id.toString(),
+        email: user.email,
+        name: user.name,
+        role: user.role || 'user',
       },
     }, { status: 200 })
   } catch {

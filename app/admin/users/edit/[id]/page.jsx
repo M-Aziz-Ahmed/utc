@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { PORTALS } from '@/utils/permissions'
@@ -34,11 +34,7 @@ const EditUserPage = () => {
         viewOnly: false
     })
 
-    useEffect(() => {
-        fetchUser()
-    }, [userId])
-
-    const fetchUser = async () => {
+    const fetchUser = useCallback(async () => {
         try {
             const res = await fetch(`/api/users/${userId}`)
             if (res.ok) {
@@ -73,7 +69,12 @@ const EditUserPage = () => {
         } finally {
             setLoading(false)
         }
-    }
+    }, [userId])
+
+    useEffect(() => {
+        const run = async () => { await fetchUser() }
+        run()
+    }, [userId, fetchUser])
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target

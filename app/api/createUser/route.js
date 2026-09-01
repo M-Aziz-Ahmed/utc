@@ -17,6 +17,14 @@ export const POST = async (req) => {
             return NextResponse.json({ message: 'Email and password are required' }, { status: 400 })
         }
 
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(email)) {
+            return NextResponse.json({ message: 'A valid email address is required' }, { status: 400 })
+        }
+        if (typeof pass !== 'string' || pass.length < 6) {
+            return NextResponse.json({ message: 'Password must be at least 6 characters' }, { status: 400 })
+        }
+
         await dbConnect()
         const existingUser = await User.findOne({ email })
         if (existingUser) {

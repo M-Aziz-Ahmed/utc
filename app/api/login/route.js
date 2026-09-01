@@ -16,7 +16,7 @@ export const POST = async (req) => {
     try {
         await dbConnect()
 
-        const user = await User.findOne({ email })
+        const user = await User.findOne({ email: String(email).toLowerCase().trim() })
 
         if (!user) {
             return NextResponse.json({ message: 'Invalid email or password' }, { status: 401 })
@@ -24,25 +24,14 @@ export const POST = async (req) => {
 
         // Some accounts store the hash in `password` (public register) instead of `pass` (admin create).
         const storedHash = user.pass || user.password
-        if (!storedHash) {
-            return NextResponse.json({ message: 'Invalid email or password' }, { status: 401 })
+        if (!storedHash || !storedHash.startsWith('$2')) {
+            return NextResponse.json(
+                { message: 'This account needs a password reset. Contact an administrator.' },
+                { status: 403 }
+            )
         }
 
-        // Support both hashed passwords and legacy plaintext (for migration)
-        let passwordValid = false
-        if (storedHash.startsWith('$2')) {
-            // bcrypt hash
-            passwordValid = await bcrypt.compare(password, storedHash)
-        } else {
-            // Legacy plaintext — compare then upgrade to hash
-            passwordValid = storedHash === password
-            if (passwordValid) {
-                const hashed = await bcrypt.hash(password, 12)
-                const update = { pass: hashed }
-                if (user.password) update.password = hashed
-                await User.findByIdAndUpdate(user._id, update)
-            }
-        }
+        const passwordValid = await bcrypt.compare(password, storedHash)
 
         if (!passwordValid) {
             return NextResponse.json({ message: 'Invalid email or password' }, { status: 401 })

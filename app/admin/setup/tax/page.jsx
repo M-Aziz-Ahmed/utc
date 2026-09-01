@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 
 const Btn = ({ children, onClick, variant = 'ghost', disabled, type = 'button' }) => {
@@ -64,17 +64,19 @@ export default function TaxSetupPage() {
     const [saving, setSaving] = useState(false)
     const [search, setSearch] = useState('')
 
-    useEffect(() => { load() }, [])
-
-    const load = async () => {
+    const load = useCallback(async () => {
         setLoading(true)
         try {
             const res = await fetch('/api/tax')
             if (res.ok) setTaxes(await res.json())
         } catch (e) { console.error(e) }
         setLoading(false)
-    }
+    }, [])
 
+    useEffect(() => {
+        const run = async () => { await load() }
+        run()
+    }, [load])
     const saveTax = async (data) => {
         setSaving(true)
         try {

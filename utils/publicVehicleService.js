@@ -114,9 +114,6 @@ function mapVehicleToPublic(vehicle) {
     grade: get('grade'),
     images: allImages,
     mainImage,
-    allocation: get('allocation'),
-    allocationStatus: vehicle.allocationStatus,
-    exportStatus: vehicle.exportStatus,
     title: `${year} ${make} ${model}`.trim() || 'Vehicle',
     slug: `${year}-${make}-${model}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
     createdAt: vehicle.createdAt,
@@ -129,14 +126,24 @@ function mapVehicleToPublic(vehicle) {
     })(),
   }
 
-  // Include ALL dynamic fields from the vehicle object to support custom fields
-  // This ensures fields like "Final Price" or any other dynamic field are available
-  const knownKeys = new Set(Object.values(FIELD_MAPPING))
+  // Include dynamic/custom fields from the vehicle object so the public site can
+  // render admin-defined fields (e.g. "Final Price"). Internal/sensitive fields
+  // are explicitly excluded so they are never exposed to the public API.
+  const INTERNAL_KEYS = new Set([
+    '_id', '__v', 'createdBy', 'files', 'published',
+    'consignee', 'rikusoCompany', 'rikusoStatus',
+    'exportStatus', 'allocationStatus', 'gatePassImages', 'kirikoNo',
+    'igp', 'ogp', 'yard', 'yardLocation', 'physicalIn', 'physicalOut',
+    'physicalInDate', 'physicalOutDate', 'passengers', 'createdAt', 'updatedAt',
+  ])
   Object.keys(vehicle).forEach(key => {
-    // Skip internal MongoDB fields and already-mapped fields
-    if (key !== '_id' && key !== '__v' && !mapped[key] && !key.startsWith('_')) {
-      mapped[key] = vehicle[key]
+    // Skip internal MongoDB fields, sensitive operational fields, and already-mapped fields
+    if (INTERNAL_KEYS.has(key) || key.startsWith('_') || mapped[key]) {
+      return
     }
+    const value = vehicle[key]
+    if (value === undefined) return
+    mapped[key] = value
   })
 
   return mapped

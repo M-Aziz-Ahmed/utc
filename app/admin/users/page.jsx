@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { portalLabel } from '@/utils/permissions'
 import {
@@ -11,7 +11,6 @@ const fmtDate = d => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit
 
 const UsersPage = () => {
     const [users, setUsers] = useState([])
-    const [filteredUsers, setFilteredUsers] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [searchTerm, setSearchTerm] = useState('')
@@ -19,9 +18,22 @@ const UsersPage = () => {
     const [statusFilter, setStatusFilter] = useState('all')
     const [deleteConfirm, setDeleteConfirm] = useState(null)
 
-    useEffect(() => { fetchUsers() }, [])
+    const fetchUsers = useCallback(async () => {
+        try {
+            const res = await fetch('/api/users')
+            if (res.ok) setUsers(await res.json())
+            else setError('Failed to fetch users')
+        } catch { setError('Error loading users') }
+
+        setLoading(false)
+    }, [])
 
     useEffect(() => {
+        const run = async () => { await fetchUsers() }
+        run()
+    }, [fetchUsers])
+
+    const filteredUsers = useMemo(() => {
         let filtered = [...users]
         if (searchTerm) {
             const s = searchTerm.toLowerCase()
@@ -34,17 +46,8 @@ const UsersPage = () => {
         }
         if (roleFilter !== 'all') filtered = filtered.filter(u => u.role === roleFilter)
         if (statusFilter !== 'all') filtered = filtered.filter(u => u.verified === (statusFilter === 'active'))
-        setFilteredUsers(filtered)
+        return filtered
     }, [users, searchTerm, roleFilter, statusFilter])
-
-    const fetchUsers = async () => {
-        try {
-            const res = await fetch('/api/users')
-            if (res.ok) setUsers(await res.json())
-            else setError('Failed to fetch users')
-        } catch { setError('Error loading users') }
-        finally { setLoading(false) }
-    }
 
     const handleDelete = async (userId) => {
         try {

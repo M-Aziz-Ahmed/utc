@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function AccountDashboard() {
   return (
     <div>
@@ -35,8 +37,8 @@ export default function AccountDashboard() {
         <div style={{ background: 'white', borderRadius: 12, padding: 24, border: '1px solid #e5e7eb' }}>
           <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Quick Actions</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <a href="/stock" className="btn-primary" style={{ textAlign: 'center', fontSize: 13, padding: '10px 16px' }}>Browse Stock</a>
-            <a href="/contact" className="btn-outline" style={{ textAlign: 'center', fontSize: 13, padding: '10px 16px' }}>Contact Us</a>
+            <Link href="/stock" className="btn-primary" style={{ textAlign: 'center', fontSize: 13, padding: '10px 16px' }}>Browse Stock</Link>
+            <Link href="/contact" className="btn-outline" style={{ textAlign: 'center', fontSize: 13, padding: '10px 16px' }}>Contact Us</Link>
           </div>
         </div>
       </div>

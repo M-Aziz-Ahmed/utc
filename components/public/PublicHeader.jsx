@@ -26,7 +26,8 @@ export default function PublicHeader() {
   }, [])
 
   useEffect(() => {
-    setMobileOpen(false)
+    const run = async () => { setMobileOpen(false) }
+    run()
   }, [pathname])
 
   return (

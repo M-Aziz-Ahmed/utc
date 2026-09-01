@@ -1,9 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
-
-const SECRET = new TextEncoder().encode(
-    process.env.JWT_SECRET || 'utc-fallback-secret-change-in-production'
-)
+import { JWT_SECRET } from '@/utils/secret'
 
 /**
  * Sign a JWT and set it as an httpOnly cookie.
@@ -18,7 +15,7 @@ export async function setSessionCookie(payload) {
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('7d')
-        .sign(SECRET)
+        .sign(JWT_SECRET)
 
     const cookieStore = await cookies()
     cookieStore.set('session', token, {
@@ -40,7 +37,7 @@ export async function getSession() {
     if (!token) return null
 
     try {
-        const { payload } = await jwtVerify(token, SECRET)
+        const { payload } = await jwtVerify(token, JWT_SECRET)
         return payload
     } catch {
         return null

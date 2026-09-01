@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { compressImage } from '@/utils/imageCompress'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -238,6 +239,18 @@ const FieldInput = ({ field, value, onChange, taxes = [], accountData, vehicleDa
 
 const VehicleAccountPage = ({ params }) => {
     const { id } = use(params)
+    const searchParams = useSearchParams()
+    const router = useRouter()
+
+    // Prev / next navigation from list query param
+    const listParam = searchParams.get('list')
+    const listIds = listParam ? decodeURIComponent(listParam).split(',').filter(Boolean) : []
+    const currentIdx = listIds.indexOf(id)
+    const prevId = currentIdx > 0 ? listIds[currentIdx - 1] : null
+    const nextId = currentIdx >= 0 && currentIdx < listIds.length - 1 ? listIds[currentIdx + 1] : null
+    const navTo = (targetId) => {
+        router.push(`/admin/vehicles/accounts/${targetId}?list=${encodeURIComponent(listIds.join(','))}`)
+    }
     const [vehicle, setVehicle]             = useState(null)
     const [vehicleFields, setVehicleFields] = useState([])
     const [accountFields, setAccountFields] = useState([])
@@ -374,8 +387,7 @@ const VehicleAccountPage = ({ params }) => {
             }
             setSaveMsg({ type: 'success', text: 'Saved successfully.' })
             setTimeout(() => setSaveMsg(null), 3000)
-        } catch (err) { setSaveMsg({ type: 'error', text: err.message }) }
-        finally { setSaving(false) }
+        } catch (err) { setSaveMsg({ type: 'error', text: err.message }) }        finally { setSaving(false) }
     }
 
     if (loading) return (
@@ -422,19 +434,60 @@ const VehicleAccountPage = ({ params }) => {
 
             {/* Page header: breadcrumbs + title */}
             <div style={{ marginBottom: '16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', flexWrap: 'wrap' }}>
-                    <Link href="/admin/vehicles/accounts" style={{ fontSize: '12px', color: '#9aa0a6', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
-                        onMouseEnter={e => e.currentTarget.style.color='#1a73e8'} onMouseLeave={e => e.currentTarget.style.color='#9aa0a6'}>
-                        <svg style={{ width: '12px', height: '12px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                        Vehicle Accounts
-                    </Link>
-                    {crumbs.map((c, i) => (
-                        <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
-                            <span style={{ color: '#dadce0' }}>›</span>
-                            <span style={{ background: '#e8f0fe', color: '#1a73e8', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>{c}</span>
-                        </span>
-                    ))}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '6px' }}>
+                    {/* Breadcrumbs */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <Link href="/admin/vehicles/accounts" style={{ fontSize: '12px', color: '#9aa0a6', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+                            onMouseEnter={e => e.currentTarget.style.color='#1a73e8'} onMouseLeave={e => e.currentTarget.style.color='#9aa0a6'}>
+                            <svg style={{ width: '12px', height: '12px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                            Vehicle Accounts
+                        </Link>
+                        {crumbs.map((c, i) => (
+                            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
+                                <span style={{ color: '#dadce0' }}>›</span>
+                                <span style={{ background: '#e8f0fe', color: '#1a73e8', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>{c}</span>
+                            </span>
+                        ))}
+                    </div>
+
+                    {/* Prev / Next navigation */}
+                    {listIds.length > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500 }}>
+                                {currentIdx + 1} / {listIds.length}
+                            </span>
+                            <button
+                                onClick={() => prevId && navTo(prevId)}
+                                disabled={!prevId}
+                                title="Previous record"
+                                style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: '5px',
+                                    padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
+                                    border: '1px solid #e2e8f0', background: prevId ? '#fff' : '#f8fafc',
+                                    color: prevId ? '#1a73e8' : '#cbd5e1', cursor: prevId ? 'pointer' : 'not-allowed',
+                                    transition: 'all 0.14s',
+                                }}>
+                                <svg style={{ width: 13, height: 13 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                                Prev
+                            </button>
+                            <button
+                                onClick={() => nextId && navTo(nextId)}
+                                disabled={!nextId}
+                                title="Next record"
+                                style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: '5px',
+                                    padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
+                                    border: '1px solid #e2e8f0', background: nextId ? '#fff' : '#f8fafc',
+                                    color: nextId ? '#1a73e8' : '#cbd5e1', cursor: nextId ? 'pointer' : 'not-allowed',
+                                    transition: 'all 0.14s',
+                                }}>
+                                Next
+                                <svg style={{ width: 13, height: 13 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                            </button>
+                        </div>
+                    )}
                 </div>
+
                 <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#202124', margin: 0 }}>{nameLine || 'Vehicle Account'}</h1>
                 {subtitle && <p style={{ fontSize: '13px', color: '#9aa0a6', margin: '3px 0 0' }}>{subtitle}</p>}
             </div>
@@ -659,11 +712,29 @@ const VehicleAccountPage = ({ params }) => {
                                 onMouseEnter={e => e.currentTarget.style.background='#f1f3f4'} onMouseLeave={e => e.currentTarget.style.background='#fff'}>
                                 Cancel
                             </Link>
-                            <button type="submit" disabled={saving || viewOnly}
-                                style={{ padding: '10px 28px', fontSize: '14px', fontWeight: 600, color: '#fff', background: (saving || viewOnly) ? '#9aa0a6' : '#1a73e8', border: 'none', borderRadius: '24px', cursor: (saving || viewOnly) ? 'not-allowed' : 'pointer', boxShadow: (saving || viewOnly) ? 'none' : '0 2px 8px rgba(26,115,232,0.3)', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                {saving && <svg style={{ width: '14px', height: '14px', animation: 'spin 0.8s linear infinite' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 12a8 8 0 018-8v8H4z" /></svg>}
-                                {saving ? 'Saving...' : viewOnly ? 'Read Only' : 'Save Account Details →'}
-                            </button>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                {nextId && (
+                                    <button type="button" disabled={saving || viewOnly}
+                                        onClick={async (e) => {
+                                            // Submit the form first, then navigate to next
+                                            const form = e.currentTarget.closest('form')
+                                            if (form) {
+                                                const fakeEvent = { preventDefault: () => {} }
+                                                await handleSave(fakeEvent)
+                                            }
+                                            navTo(nextId)
+                                        }}
+                                        style={{ padding: '10px 20px', fontSize: '13px', fontWeight: 600, color: '#1a73e8', background: '#e8f0fe', border: '1px solid #d2e3fc', borderRadius: '24px', cursor: (saving || viewOnly) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px', opacity: (saving || viewOnly) ? 0.5 : 1 }}>
+                                        Save &amp; Next
+                                        <svg style={{ width: 13, height: 13 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                                    </button>
+                                )}
+                                <button type="submit" disabled={saving || viewOnly}
+                                    style={{ padding: '10px 28px', fontSize: '14px', fontWeight: 600, color: '#fff', background: (saving || viewOnly) ? '#9aa0a6' : '#1a73e8', border: 'none', borderRadius: '24px', cursor: (saving || viewOnly) ? 'not-allowed' : 'pointer', boxShadow: (saving || viewOnly) ? 'none' : '0 2px 8px rgba(26,115,232,0.3)', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    {saving && <svg style={{ width: '14px', height: '14px', animation: 'spin 0.8s linear infinite' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 12a8 8 0 018-8v8H4z" /></svg>}
+                                    {saving ? 'Saving...' : viewOnly ? 'Read Only' : 'Save Account Details →'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

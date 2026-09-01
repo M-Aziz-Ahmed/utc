@@ -1,12 +1,16 @@
 import { readJson } from '@/utils/readJson'
 import DynamicFeilds from "@/models/DynamicFeilds";
 import dbConnect from "@/utils/dbConnection";
+import { requirePortal } from '@/utils/apiAuth'
 import { NextResponse } from "next/server";
 
 // PATCH /api/fields/reorder
 // Body: { updates: [{ id, order, showOnCard? }] }
 export const PATCH = async (req) => {
     try {
+        const { error } = await requirePortal('fields')
+        if (error) return error
+
         await dbConnect();
         const { updates } = await readJson(req);
         if (!Array.isArray(updates)) {

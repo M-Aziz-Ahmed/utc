@@ -22,8 +22,11 @@ const Sidebar = ({ user }) => {
 
     useEffect(() => {
         const saved = getCookie('sidebar_open')
-        if (saved !== null) setToggle(saved === 'true')
-        setMounted(true)
+        const run = async () => {
+            if (saved !== null) setToggle(saved === 'true')
+            setMounted(true)
+        }
+        run()
     }, [])
 
     useEffect(() => {
@@ -33,7 +36,8 @@ const Sidebar = ({ user }) => {
     }, [])
 
     useEffect(() => {
-        setMobileOpen(false)
+        const run = async () => { setMobileOpen(false) }
+        run()
     }, [])
 
     const handleToggle = () => {

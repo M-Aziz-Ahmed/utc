@@ -21,7 +21,7 @@ const Msg = ({ text, ok }) => !text ? null : (
 const ConfirmDelete = ({ name, onConfirm, onCancel }) => (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
         <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4">
-            <h3 className="text-base font-bold text-gray-900 mb-1">Delete "{name}"?</h3>
+            <h3 className="text-base font-bold text-gray-900 mb-1">Delete &quot;{name}&quot;?</h3>
             <p className="text-sm text-gray-500 mb-5">This action cannot be undone.</p>
             <div className="flex gap-3 justify-end">
                 <button onClick={onCancel} className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition">Cancel</button>
@@ -144,7 +144,10 @@ const ManufacturerPanel = () => {
         setLoading(false);
     }, []);
 
-    useEffect(() => { load(); }, [load]);
+    useEffect(() => {
+        const run = async () => { await load() }
+        run()
+    }, [load]);
 
     const startEdit = (item) => {
         setEditing(item._id);
@@ -293,7 +296,10 @@ const RikusoPanel = () => {
         setLoading(false);
     }, []);
 
-    useEffect(() => { load(); }, [load]);
+    useEffect(() => {
+        const run = async () => { await load() }
+        run()
+    }, [load]);
 
     const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
 
@@ -453,7 +459,10 @@ const ConsigneePanel = () => {
         setLoading(false);
     }, []);
 
-    useEffect(() => { load(); }, [load]);
+    useEffect(() => {
+        const run = async () => { await load() }
+        run()
+    }, [load]);
 
     const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
 

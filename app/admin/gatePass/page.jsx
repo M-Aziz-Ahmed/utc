@@ -172,7 +172,10 @@ const GatePassPage = () => {
         }).finally(() => setLoading(false))
     }
 
-    useEffect(() => { loadData() }, [])
+    useEffect(() => {
+        const run = async () => { await loadData() }
+        run()
+    }, [])
 
     const openIGPForm = () => {
         setForm({ vehicle: '', yard: '', containerNumber: '', blNumber: '', remarks: '', date: new Date().toISOString().split('T')[0] })

@@ -1,9 +1,13 @@
 import { readJson } from '@/utils/readJson'
 import Tax from "@/models/Tax";
 import dbConnect from "@/utils/dbConnection";
+import { requirePortal } from '@/utils/apiAuth'
 import { NextResponse } from "next/server";
 
 export const GET = async () => {
+    const { error } = await requirePortal('setup')
+    if (error) return error
+
     try {
         await dbConnect();
         const taxes = await Tax.find({}).sort({ name: 1 });
@@ -15,6 +19,9 @@ export const GET = async () => {
 };
 
 export const POST = async (req) => {
+    const { error } = await requirePortal('setup')
+    if (error) return error
+
     const body = await readJson(req);
     const { name, rate, type, code, description, active } = body;
 

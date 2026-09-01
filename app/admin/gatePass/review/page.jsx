@@ -62,7 +62,10 @@ const PhotoReviewPage = () => {
         setLoading(false)
     }
 
-    useEffect(() => { loadData() }, [])
+    useEffect(() => {
+        const run = async () => { await loadData() }
+        run()
+    }, [])
 
     const reviewImage = async (gpId, path, approve) => {
         setBusy(path)

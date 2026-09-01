@@ -16,12 +16,19 @@ export default function VoiceSearchButton({ onResult, disabled = false, size = 3
     const recognitionRef = useRef(null)
     const onResultRef = useRef(onResult)
     const finalDoneRef = useRef(false)
-    onResultRef.current = onResult
 
     useEffect(() => {
-        const SR = window.SpeechRecognition || window.webkitSpeechRecognition
-        if (!SR) setSupported(false)
+        onResultRef.current = onResult
+    }, [onResult])
+
+    useEffect(() => {
         ensurePulseKeyframes()
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+        if (!SR) {
+            const t = setTimeout(() => setSupported(false), 0)
+            return () => clearTimeout(t)
+        }
+        return undefined
     }, [])
 
     const stop = useCallback(() => {

@@ -28,17 +28,16 @@ export default function HeroCarousel({ vehicleCount = 0, initialSlides = [] }) {
 
     // Load slides: server-provided → client fetch → keep fallback
     useEffect(() => {
-        if (initialSlides && initialSlides.length > 0) {
-            setSlides(initialSlides)
-            return
+        const load = async () => {
+            if (initialSlides && initialSlides.length > 0) {
+                setSlides(initialSlides)
+                return
+            }
+            const res = await fetch('/api/heroSlides?active=true')
+            const data = res.ok ? await res.json() : []
+            if (Array.isArray(data) && data.length > 0) setSlides(data)
         }
-        fetch('/api/heroSlides?active=true')
-            .then(r => r.ok ? r.json() : [])
-            .then(data => {
-                if (Array.isArray(data) && data.length > 0) setSlides(data)
-                // else keep FALLBACK_SLIDE already in state
-            })
-            .catch(() => {})
+        load()
     }, [])  // eslint-disable-line
 
     const total = slides.length

@@ -12,20 +12,24 @@ const AdminDashboard = () => {
     const [filters, setFilters] = useState(EMPTY_FILTERS)
     const [filterAlloc, setFilterAlloc] = useState('all')
 
-    useEffect(() => { fetchDashboardData() }, [])
-
-    const fetchDashboardData = async () => {
-        try {
-            const [vRes, fRes, uRes] = await Promise.all([
-                fetch('/api/vehicles'), fetch('/api/fields'), fetch('/api/users')
-            ])
-            const [v, f, u] = await Promise.all([vRes.json(), fRes.json(), uRes.json()])
-            setVehicles(Array.isArray(v) ? v : [])
-            setFields(Array.isArray(f) ? f : [])
-            setUsers(Array.isArray(u) ? u : [])
-        } catch (e) { console.error(e) }
-        finally { setLoading(false) }
-    }
+    useEffect(() => {
+        let active = true
+        const load = async () => {
+            try {
+                const [vRes, fRes, uRes] = await Promise.all([
+                    fetch('/api/vehicles'), fetch('/api/fields'), fetch('/api/users')
+                ])
+                const [v, f, u] = await Promise.all([vRes.json(), fRes.json(), uRes.json()])
+                if (!active) return
+                setVehicles(Array.isArray(v) ? v : [])
+                setFields(Array.isArray(f) ? f : [])
+                setUsers(Array.isArray(u) ? u : [])
+            } catch (e) { console.error(e) }
+            finally { if (active) setLoading(false) }
+        }
+        load()
+        return () => { active = false }
+    }, [])
 
     const filteredVehicles = useMemo(() => {
         return applyVehicleFilters(vehicles, fields, search, filters).filter(v => {

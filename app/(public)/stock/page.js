@@ -99,7 +99,10 @@ export default function StockPage() {
   }, [])
 
   useEffect(() => {
-    fetchVehicles(filters, sort, page)
+    const run = async () => {
+      await fetchVehicles(filters, sort, page)
+    }
+    run()
     const qs = buildQueryString(filters, sort, page)
     router.replace(`/stock?${qs}`, { scroll: false })
   }, [filters, sort, page, fetchVehicles, router, buildQueryString])

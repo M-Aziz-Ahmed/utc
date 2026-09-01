@@ -81,7 +81,7 @@ export default function BgEditorModal({ src, onConfirm, onClose }) {
         setReady(true)
     }, [src])
 
-    useEffect(() => { loadOriginal() }, [loadOriginal])
+    useEffect(() => { const run = async () => { await loadOriginal() }; run() }, [loadOriginal])
 
     const redraw = useCallback(() => {
         const w = W.current, h = H.current
