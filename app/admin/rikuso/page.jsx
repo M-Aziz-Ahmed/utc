@@ -342,7 +342,7 @@ const AllocCard = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, a
             </div>
 
             {/* image */}
-            <div style={{ position: 'relative', height: '155px', background: '#f1f5f9', flexShrink: 0 }}>
+            <div style={{ position: 'relative', height: '140px', background: '#f1f5f9', flexShrink: 0 }}>
                 {imgs.length > 0 ? (
                     <>
                         <img src={imgs[imgIdx]} alt="" onClick={e => { e.stopPropagation(); if (onZoom) onZoom(imgs, imgIdx) }} style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#f1f5f9', display: 'block', cursor: onZoom ? 'zoom-in' : 'default' }} />
@@ -1034,16 +1034,24 @@ const RikusoManagementPage = () => {
     }
 
     return (
-        <div style={{ padding: '16px', minHeight: '100vh', background: '#f6f8fc' }}>
+        <div style={{ padding: '12px', minHeight: '100vh', background: '#f6f8fc' }}>
+            <style>{`
+                @media (max-width: 640px) {
+                    .alloc-header { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+                    .alloc-controls { flex-wrap: wrap !important; }
+                    .alloc-filter-tabs { width: 100%; justify-content: stretch; }
+                    .alloc-filter-tabs button { flex: 1; text-align: center; }
+                }
+            `}</style>
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <div className="alloc-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
                 <div>
                     <h1 style={{ fontSize: '18px', fontWeight: 500, color: '#202124', margin: 0 }}>Vehicle Allocation</h1>
                     <p style={{ fontSize: '12px', color: '#5f6368', marginTop: '2px' }}>Manage allocations, presold labels and Rikuso assignments</p>
                 </div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <div className="alloc-controls" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                     {/* Allocation filter tabs */}
-                    <div style={{ display: 'flex', gap: '2px', padding: '2px', background: '#f1f3f4', borderRadius: '8px' }}>
+                    <div className="alloc-filter-tabs" style={{ display: 'flex', gap: '2px', padding: '2px', background: '#f1f3f4', borderRadius: '8px' }}>
                         {[{ key: 'all', label: 'All Vehicles' }, { key: 'allocated', label: 'Allocated' }, { key: 'unallocated', label: 'Unallocated' }].map(t => (
                             <button key={t.key} onClick={() => setAllocFilter(t.key)}
                                 style={{ padding: '5px 12px', borderRadius: '6px', border: 'none', fontSize: '11px', fontWeight: allocFilter === t.key ? 700 : 500, cursor: 'pointer', transition: 'all 0.15s',
@@ -1094,12 +1102,13 @@ const RikusoManagementPage = () => {
                     <p style={{ fontSize: '13px', color: '#9aa0a6', margin: 0 }}>{search ? 'No vehicles match your search' : allocFilter === 'allocated' ? 'No allocated vehicles' : allocFilter === 'unallocated' ? 'No unallocated vehicles' : 'No vehicles yet'}</p>
                 </div>
             ) : viewMode === 'grid' ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
                     {allocFiltered.map(v => <AllocCard key={v._id} vehicle={v} fields={fields} taxes={taxes} {...controlProps} />)}
                 </div>
             ) : (
                 <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
                         <thead>
                             <tr style={{ borderBottom: '2px solid #f0f4f8', background: '#f8fafc' }}>
                                 <th style={{ padding: '7px 8px', width: '48px' }}></th>
@@ -1122,6 +1131,7 @@ const RikusoManagementPage = () => {
                             {allocFiltered.map(v => <AllocRow key={v._id} vehicle={v} fields={fields} taxes={taxes} {...controlProps} />)}
                         </tbody>
                     </table>
+                    </div>
                 </div>
             )}
 
