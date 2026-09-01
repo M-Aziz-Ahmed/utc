@@ -70,7 +70,7 @@ export default function VehicleCard({ vehicle }) {
   }
 
   // ── Price display: locked for guests ──────────────────────────────────────
-  const PriceDisplay = () => {
+  const renderPrice = () => {
     if (authLoading) return <div className="vehicle-card-price" style={{ color: '#ccc' }}>—</div>
 
     if (loggedIn) {
@@ -132,7 +132,7 @@ export default function VehicleCard({ vehicle }) {
           <h3 className="vehicle-card-title">{vehicle.title}</h3>
         </Link>
 
-        <PriceDisplay />
+        {renderPrice()}
 
         {displayFields.length > 0 && (
           <div style={{ marginTop: '8px', marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>

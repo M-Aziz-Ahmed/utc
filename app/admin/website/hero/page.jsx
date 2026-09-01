@@ -587,7 +587,7 @@ export default function HeroCarouselPage() {
         setLoading(false)
     }
 
-    useEffect(() => { load() }, [])
+    useEffect(() => { const run = async () => { await load() }; run() }, [])
 
     // ── save (create or update) ──
     const handleSave = async (form, imageFile) => {

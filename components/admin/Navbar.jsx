@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 const Navbar = ({ user }) => {
     const pathname = usePathname()
@@ -16,10 +16,29 @@ const Navbar = ({ user }) => {
     const displayRole = user?.role || 'User'
     const initials = displayName.charAt(0).toUpperCase()
 
+    const fetchNotifications = useCallback(async () => {
+        try {
+            const res = await fetch('/api/notifications')
+            if (res.ok) {
+                const data = await res.json()
+                setNotifications(data.notifications || [])
+                setUnreadCount(data.unreadCount || 0)
+            }
+        } catch {}
+    }, [])
+
     useEffect(() => {
-        fetchNotifications()
-        const interval = setInterval(fetchNotifications, 30000)
-        return () => clearInterval(interval)
+        let active = true
+        const load = async () => {
+            const res = await fetch('/api/notifications')
+            if (!active || !res.ok) return
+            const data = await res.json()
+            setNotifications(data.notifications || [])
+            setUnreadCount(data.unreadCount || 0)
+        }
+        load()
+        const interval = setInterval(load, 30000)
+        return () => { active = false; clearInterval(interval) }
     }, [])
 
     useEffect(() => {
@@ -29,17 +48,6 @@ const Navbar = ({ user }) => {
         document.addEventListener('mousedown', handleClick)
         return () => document.removeEventListener('mousedown', handleClick)
     }, [])
-
-    const fetchNotifications = async () => {
-        try {
-            const res = await fetch('/api/notifications')
-            if (res.ok) {
-                const data = await res.json()
-                setNotifications(data.notifications || [])
-                setUnreadCount(data.unreadCount || 0)
-            }
-        } catch {}
-    }
 
     const markAsRead = async (id) => {
         await fetch('/api/notifications', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notificationId: id }) })

@@ -88,7 +88,10 @@ function Page() {
         }
     };
 
-    useEffect(() => { fetchGroups(); }, []);
+    useEffect(() => {
+        const run = async () => { await fetchGroups() }
+        run()
+    }, []);
 
     // ── Helpers ──────────────────────────────────────────────
     const patchGroup = async (id, updates) => {

@@ -129,7 +129,7 @@ const LoginPage = () => {
 
                 <div className="mt-4 text-center">
                     <Link href="/setupUser" style={{fontSize:'var(--text-xs)', color:'rgba(255,255,255,0.35)'}}>
-                        Don't have an account? Register
+                        Don&apos;t have an account? Register
                     </Link>
                 </div>
 

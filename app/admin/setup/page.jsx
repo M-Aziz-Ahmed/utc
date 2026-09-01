@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { Page, PageHeader, Card, Btn, Field, Input, Select, Modal, T } from '@/components/admin/ui'
 
 
@@ -20,9 +20,7 @@ export default function SetupPage() {
     const [modelModal, setModelModal] = useState(null)  // null | 'add' | { mfgId, modelIndex, ...model }
     const [saving, setSaving]         = useState(false)
 
-    useEffect(() => { load() }, [])
-
-    const load = async () => {
+    const load = useCallback(async () => {
         setLoading(true)
         const [mRes, fRes] = await Promise.all([
             fetch('/api/manufacturer'),
@@ -35,7 +33,16 @@ export default function SetupPage() {
         setFields(fData.filter(f => f.belongsto === 'add-vehicles'))
         if (mfgs.length > 0) setActiveMfg(prev => prev ? mfgs.find(m => m._id === prev._id) || mfgs[0] : mfgs[0])
         setLoading(false)
-    }
+    }, [])
+
+    useEffect(() => {
+        let active = true
+        const run = async () => {
+            await load()
+        }
+        run()
+        return () => { active = false }
+    }, [load])
 
     // ── Manufacturer CRUD ──────────────────────────────────────────────────────
     const saveMfg = async (data) => {
@@ -394,7 +401,7 @@ function ModelModal({ data, fields, saving, onSave, onClose }) {
                     </div>
                     {defaultableFields.length === 0 ? (
                         <p style={{ fontSize: '12px', color: '#9aa0a6', fontStyle: 'italic' }}>
-                            No fields configured for "add-vehicles". <a href="/admin/fields" style={{ color: '#1a73e8' }}>Add fields first.</a>
+                            No fields configured for &quot;add-vehicles&quot;. <a href="/admin/fields" style={{ color: '#1a73e8' }}>Add fields first.</a>
                         </p>
                     ) : (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px', background: '#f8f9fa', padding: '12px', borderRadius: '8px', border: '1px solid #e0e0e0' }}>

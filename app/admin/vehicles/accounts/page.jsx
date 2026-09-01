@@ -200,7 +200,10 @@ const AccountsPage = () => {
 
     useEffect(() => {
         const saved = getCookie('accounts_view')
-        if (saved === 'list' || saved === 'grid') setViewMode(saved)
+        if (saved === 'list' || saved === 'grid') {
+            const run = async () => { setViewMode(saved) }
+            run()
+        }
     }, [])
 
     const switchView = (mode) => {
@@ -236,7 +239,10 @@ const AccountsPage = () => {
         : statusFilter === 'pend' ? filteredAll.filter(v => !isUpdated(v))
         : filteredAll
 
-    React.useEffect(() => { setPage(1) }, [search, filters, viewMode, statusFilter])
+    React.useEffect(() => {
+        const run = async () => { setPage(1) }
+        run()
+    }, [search, filters, viewMode, statusFilter])
 
     const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
     const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)

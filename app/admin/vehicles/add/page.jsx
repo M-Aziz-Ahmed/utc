@@ -318,34 +318,45 @@ const AddVehiclePage = () => {
     const [bgEditorSrc, setBgEditorSrc] = useState(null)
     const [bgEditorMeta, setBgEditorMeta] = useState(null)
 
-    useEffect(() => { fetchAuctionGroups(); fetchManufacturers(); fetchFields(); fetchAccountFields(); fetchTaxes() }, [])
-
-    const fetchAuctionGroups = async () => {
+    const fetchAuctionGroups = useCallback(async () => {
         try { const res = await fetch('/api/auctionGroup'); if (res.ok) setAuctionGroups((await res.json()) || []) } catch (e) { console.error(e) }
-    }
-    const fetchManufacturers = async () => {
+    }, [])
+    const fetchManufacturers = useCallback(async () => {
         try { const res = await fetch('/api/manufacturer'); if (res.ok) setManufacturers((await res.json()).filter(m => !m.isRikusoCompany)) } catch (e) { console.error(e) }
-    }
-    const fetchFields = async () => {
+    }, [])
+    const fetchFields = useCallback(async () => {
         try {
             const res = await fetch('/api/fields', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ belongsto: 'add-vehicles' }) })
             const data = await res.json()
             if (res.ok && Array.isArray(data)) setFields(data)
         } catch (e) { console.error(e) }
-    }
-    const fetchAccountFields = async () => {
+    }, [])
+    const fetchAccountFields = useCallback(async () => {
         try {
             const res = await fetch('/api/fields', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ belongsto: 'accounts' }) })
             const data = await res.json()
             if (res.ok && Array.isArray(data)) setAccountFields(data)
         } catch (e) { console.error(e) }
-    }
-    const fetchTaxes = async () => {
+    }, [])
+    const fetchTaxes = useCallback(async () => {
         try {
             const res = await fetch('/api/tax')
             if (res.ok) setTaxes(await res.json())
         } catch (e) { console.error(e) }
-    }
+    }, [])
+
+    useEffect(() => {
+        const load = async () => {
+            await Promise.all([
+                fetchAuctionGroups(),
+                fetchManufacturers(),
+                fetchFields(),
+                fetchAccountFields(),
+                fetchTaxes(),
+            ])
+        }
+        load()
+    }, [fetchAuctionGroups, fetchManufacturers, fetchFields, fetchAccountFields, fetchTaxes])
 
     const handleAddGroup = async () => {
         if (!newGroup.name.trim()) return
@@ -1186,7 +1197,7 @@ const AddVehiclePage = () => {
                                 <span style={{ marginLeft: '6px', fontSize: '10px', color: '#9aa0a6', fontWeight: 400, textTransform: 'none' }}>— pre-filled when adding a vehicle with this model</span>
                             </div>
                             {fields.filter(f => !['file', 'image', 'boolean'].includes(f.type) && f.belongsto === 'add-vehicles').length === 0 ? (
-                                <p style={{ fontSize: '12px', color: '#9aa0a6', fontStyle: 'italic' }}>No fields configured for "add-vehicles".</p>
+                                <p style={{ fontSize: '12px', color: '#9aa0a6', fontStyle: 'italic' }}>No fields configured for &quot;add-vehicles&quot;.</p>
                             ) : (
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: '10px', background: '#f8f9fa', padding: '12px', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
                                     {fields.filter(f => !['file', 'image', 'boolean'].includes(f.type) && f.belongsto === 'add-vehicles').map(field => (

@@ -271,7 +271,8 @@ const AllocCard = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, a
                 initial[f._id] = vehicle[f._id] ?? vehicle[f.label] ?? vehicle[f.label?.replace(/\./g, '')] ?? ''
             }
         })
-        setEditableValues(initial)
+        const run = async () => { setEditableValues(initial) }
+        run()
     }, [vehicle, fields, taxes])
 
     const handleFieldSave = async (fieldId, value) => {
@@ -668,7 +669,8 @@ const AllocRow = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, al
                 initial[f._id] = vehicle[f._id] ?? vehicle[f.label] ?? ''
             }
         })
-        setEditableValues(initial)
+        const run = async () => { setEditableValues(initial) }
+        run()
     }, [vehicle, fields, taxes])
 
     const handleFieldSave = async (fieldId, value) => {

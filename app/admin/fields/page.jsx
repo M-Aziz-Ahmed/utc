@@ -617,7 +617,7 @@ const FieldsPage = () => {
                                         <span style={{marginLeft:'4px', color:'#9aa0a6', fontWeight:400, textTransform:'none', letterSpacing:'normal'}}>(optional)</span>
                                     </label>
                                     <p style={{fontSize:'var(--text-xs)', color:'#9aa0a6', marginBottom:'8px'}}>
-                                        Auto-fill this field from the vehicle's database value. Field will be read-only.
+                                        Auto-fill this field from the vehicle&apos;s database value. Field will be read-only.
                                     </p>
                                     <select
                                         value={vehicleField}
@@ -656,7 +656,7 @@ const FieldsPage = () => {
                                             Display as Price
                                         </div>
                                         <div style={{fontSize:'11px', color:'#9aa0a6', marginTop:'2px'}}>
-                                            Use this field's value as the vehicle price on the main screen instead of "Price on Request"
+                                            Use this field&apos;s value as the vehicle price on the main screen instead of &quot;Price on Request&quot;
                                         </div>
                                     </div>
                                 </label>

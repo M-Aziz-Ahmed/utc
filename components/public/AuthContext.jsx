@@ -34,7 +34,8 @@ export function AuthProvider({ children }) {
     }, [])
 
     useEffect(() => {
-        refreshAuth()
+        const run = async () => { await refreshAuth() }
+        run()
     }, [refreshAuth])
 
     // On the "/" route: always pop the modal for guests (every visit, no dismissal memory).

@@ -292,7 +292,7 @@ const DetailModal = ({ vehicle, fields, onClose, onDelete }) => {
     }, [onClose, imgs.length, zoomOpen])
 
     // reset zoom when switching images
-    useEffect(() => { setZoom(1) }, [imgIdx])
+    useEffect(() => { const run = async () => { setZoom(1) }; run() }, [imgIdx])
 
     const detailFields = fields
         .filter(f => f.belongsto === 'add-vehicles')
@@ -697,7 +697,10 @@ const Page = () => {
 
     useEffect(() => {
         const saved = getCookie('vehicles_view')
-        if (saved === 'list' || saved === 'grid') setViewMode(saved)
+        const run = async () => {
+            if (saved === 'list' || saved === 'grid') setViewMode(saved)
+        }
+        run()
     }, [])
 
     const switchView = (mode) => {
@@ -744,7 +747,7 @@ const Page = () => {
 
     const filtered = useMemo(() => applyVehicleFilters(vehicles, fields, search, filters), [vehicles, fields, search, filters])
 
-    React.useEffect(() => { setPage(1) }, [search, viewMode, filters])
+    React.useEffect(() => { const run = async () => { setPage(1) }; run() }, [search, viewMode, filters])
 
     const cardFields = useMemo(() => {
         return fields

@@ -13,12 +13,15 @@ export default function VehicleDetailContent({ vehicle }) {
   const [favoriteList, setFavoriteList] = useState([])
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('compareList')
-      if (saved) setCompareList(JSON.parse(saved))
-      const fav = localStorage.getItem('favoriteList')
-      if (fav) setFavoriteList(JSON.parse(fav))
-    } catch {}
+    const load = async () => {
+      try {
+        const saved = localStorage.getItem('compareList')
+        if (saved) setCompareList(JSON.parse(saved))
+        const fav = localStorage.getItem('favoriteList')
+        if (fav) setFavoriteList(JSON.parse(fav))
+      } catch {}
+    }
+    load()
   }, [])
 
   const formatPrice = (price) => {
