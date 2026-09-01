@@ -3,6 +3,7 @@ import Vehicle from "@/models/Vehicle"
 import dbConnect from "@/utils/dbConnection"
 import { uploadToCloudinary } from "@/utils/cloudinary"
 import { getSession } from '@/utils/auth'
+import { notifyAdmins } from '@/utils/notify'
 import { NextResponse } from "next/server"
 
 export const POST = async (req) => {
@@ -124,7 +125,18 @@ export const POST = async (req) => {
         sanitizedData.stockId = (lastStock?.stockId || 0) + 1;
 
         const newVehicle = await Vehicle.create(sanitizedData);
-        
+
+        // ── Notify all admins ──────────────────────────────────────────────────
+        const vName = [sanitizedData.manufacturer, sanitizedData.model].filter(Boolean).join(' ')
+        notifyAdmins({
+            type: 'vehicle_added',
+            message: `New vehicle added: ${vName || 'Unknown'} (Stock #${sanitizedData.stockId})`,
+            vehicleId: String(newVehicle._id),
+            link: `/admin/vehicles`,
+            excludeUserId: userId,
+        })
+        // ──────────────────────────────────────────────────────────────────────
+
         return NextResponse.json(
             { 
                 message: 'Vehicle added successfully',
@@ -157,6 +169,8 @@ export const GET = async () => {
 export const PATCH = async (req) => {
     try {
         await dbConnect();
+        const session = await getSession()
+        const userId = session?.id || null
         const body = await readJson(req);
         const { vehicleId, ...updateData } = body;
 
@@ -164,9 +178,6 @@ export const PATCH = async (req) => {
             return NextResponse.json({ message: 'Vehicle ID is required' }, { status: 400 });
         }
 
-        // MongoDB $set does not allow field names containing dots (e.g. "LOT No." causes
-        // "empty field name" error because Mongo interprets the dot as a path separator).
-        // Strip ALL dots from keys before updating.
         const sanitize = (obj) => {
             const out = {}
             for (const [k, v] of Object.entries(obj)) {
@@ -177,6 +188,9 @@ export const PATCH = async (req) => {
         }
         const safeUpdate = sanitize(updateData)
 
+        // Capture old allocation before update for change detection
+        const oldVehicle = await Vehicle.findById(vehicleId).select('allocation manufacturer model stockId').lean()
+
         const updatedVehicle = await Vehicle.findByIdAndUpdate(
             vehicleId,
             { $set: safeUpdate },
@@ -186,6 +200,23 @@ export const PATCH = async (req) => {
         if (!updatedVehicle) {
             return NextResponse.json({ message: 'Vehicle not found' }, { status: 404 });
         }
+
+        // ── Notify on allocation change ────────────────────────────────────────
+        if ('allocation' in updateData && updateData.allocation !== oldVehicle?.allocation) {
+            const vName = [oldVehicle?.manufacturer, oldVehicle?.model].filter(Boolean).join(' ')
+            const allocLabel = updateData.allocation === 'export' ? 'Export'
+                : updateData.allocation === 'khitai' ? 'Khitai'
+                : updateData.allocation === 'resale-to-auction' ? 'Resale'
+                : 'Unallocated'
+            notifyAdmins({
+                type: 'allocation_changed',
+                message: `Allocation changed: ${vName || 'Vehicle'} → ${allocLabel}`,
+                vehicleId: vehicleId,
+                link: `/admin/rikuso`,
+                excludeUserId: userId,
+            })
+        }
+        // ──────────────────────────────────────────────────────────────────────
 
         return NextResponse.json(updatedVehicle, { status: 200 });
     } catch (error) {
