@@ -4,10 +4,14 @@ import dbConnect from "@/utils/dbConnection"
 import { uploadToCloudinary } from "@/utils/cloudinary"
 import { getSession } from '@/utils/auth'
 import { notifyAdmins } from '@/utils/notify'
+import { requirePortal } from '@/utils/apiAuth'
 import { NextResponse } from "next/server"
 
 export const POST = async (req) => {
     try {
+        const { error } = await requirePortal('vehicles')
+        if (error) return error
+
         const formData = await req.formData();
         const vehicleDataString = formData.get('vehicleData');
         const body = JSON.parse(vehicleDataString);
@@ -156,6 +160,9 @@ export const POST = async (req) => {
 }
 
 export const GET = async () => {
+    const { error } = await requirePortal('vehicles')
+    if (error) return error
+
     try {
         await dbConnect();
         const vehicles = await Vehicle.find({}).sort({ createdAt: -1 });
@@ -168,6 +175,9 @@ export const GET = async () => {
 
 export const PATCH = async (req) => {
     try {
+        const { error } = await requirePortal('vehicles')
+        if (error) return error
+
         await dbConnect();
         const session = await getSession()
         const userId = session?.id || null
@@ -231,6 +241,9 @@ export const PATCH = async (req) => {
 // PUT — update existing vehicle (with optional new file uploads)
 export const PUT = async (req) => {
     try {
+        const { error } = await requirePortal('vehicles')
+        if (error) return error
+
         const formData = await req.formData();
         const vehicleDataString = formData.get('vehicleData');
         const body = JSON.parse(vehicleDataString);
@@ -305,6 +318,9 @@ export const PUT = async (req) => {
 
 export const DELETE = async (req) => {
     try {
+        const { error } = await requirePortal('vehicles')
+        if (error) return error
+
         await dbConnect();
         const { vehicleId } = await readJson(req);
 

@@ -1,12 +1,20 @@
 import { readJson } from '@/utils/readJson'
 import Yard from "@/models/Yard";
 import dbConnect from "@/utils/dbConnection";
+import { requirePortal } from '@/utils/apiAuth'
+import mongoose from 'mongoose'
 import { NextResponse } from "next/server";
 
 export const GET = async (req, { params }) => {
     try {
+        const { error } = await requirePortal('yard')
+        if (error) return error
+
         await dbConnect();
         const { id } = await params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return NextResponse.json({ message: 'Invalid ID' }, { status: 400 })
+        }
         const yard = await Yard.findById(id);
         if (!yard) return NextResponse.json({ message: 'Yard not found' }, { status: 404 });
         return NextResponse.json(yard, { status: 200 });
@@ -17,10 +25,20 @@ export const GET = async (req, { params }) => {
 
 export const PATCH = async (req, { params }) => {
     try {
+        const { error } = await requirePortal('yard')
+        if (error) return error
+
         await dbConnect();
         const { id } = await params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return NextResponse.json({ message: 'Invalid ID' }, { status: 400 })
+        }
         const body = await readJson(req);
-        const yard = await Yard.findByIdAndUpdate(id, body, { new: true });
+        const updates = {}
+        for (const key of ['name', 'location', 'address', 'city', 'country', 'capacity', 'notes']) {
+            if (body[key] !== undefined) updates[key] = body[key]
+        }
+        const yard = await Yard.findByIdAndUpdate(id, updates, { new: true });
         if (!yard) return NextResponse.json({ message: 'Yard not found' }, { status: 404 });
         return NextResponse.json(yard, { status: 200 });
     } catch (error) {
@@ -30,8 +48,14 @@ export const PATCH = async (req, { params }) => {
 
 export const DELETE = async (req, { params }) => {
     try {
+        const { error } = await requirePortal('yard')
+        if (error) return error
+
         await dbConnect();
         const { id } = await params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return NextResponse.json({ message: 'Invalid ID' }, { status: 400 })
+        }
         const yard = await Yard.findByIdAndDelete(id);
         if (!yard) return NextResponse.json({ message: 'Yard not found' }, { status: 404 });
         return NextResponse.json({ message: 'Yard deleted' }, { status: 200 });

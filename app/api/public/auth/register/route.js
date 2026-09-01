@@ -5,8 +5,7 @@ import User from '@/models/User'
 import Consignee from '@/models/Consignee'
 import bcrypt from 'bcryptjs'
 import { SignJWT } from 'jose'
-
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'utc-secret-key-change-in-production')
+import { JWT_SECRET } from '@/utils/secret'
 
 export async function POST(req) {
   try {
@@ -17,8 +16,13 @@ export async function POST(req) {
       return NextResponse.json({ message: 'Name, email, and password are required' }, { status: 400 })
     }
 
-    if (password.length < 6) {
-      return NextResponse.json({ message: 'Password must be at least 6 characters' }, { status: 400 })
+    if (password.length < 8) {
+      return NextResponse.json({ message: 'Password must be at least 8 characters' }, { status: 400 })
+    }
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailPattern.test(email)) {
+      return NextResponse.json({ message: 'Invalid email address' }, { status: 400 })
     }
 
     const existingUser = await User.findOne({ email: email.toLowerCase() })

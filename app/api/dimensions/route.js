@@ -1,9 +1,13 @@
 import { readJson } from '@/utils/readJson'
 import Dimensions from "@/models/Dimensions";
 import dbConnect from "@/utils/dbConnection";
+import { requirePortal } from '@/utils/apiAuth'
 import { NextResponse } from "next/server";
 
 export const GET = async () => {
+    const { error } = await requirePortal('auction')
+    if (error) return error
+
     try {
         await dbConnect();
         const dims = await Dimensions.find({}).sort({ createdAt: -1 });
@@ -15,6 +19,9 @@ export const GET = async () => {
 
 export const POST = async (req) => {
     try {
+        const { error } = await requirePortal('auction')
+        if (error) return error
+
         await dbConnect();
         const body = await readJson(req);
         if (!body.name) return NextResponse.json({ message: 'Preset name is required' }, { status: 400 });

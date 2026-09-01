@@ -4,8 +4,7 @@ import dbConnect from '@/utils/dbConnection'
 import User from '@/models/User'
 import bcrypt from 'bcryptjs'
 import { SignJWT } from 'jose'
-
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'utc-secret-key-change-in-production')
+import { JWT_SECRET } from '@/utils/secret'
 
 export async function POST(req) {
   try {

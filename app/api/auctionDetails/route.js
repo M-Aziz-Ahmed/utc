@@ -1,9 +1,13 @@
 import { readJson } from '@/utils/readJson'
 import AuctionDetails from '@/models/AuctionDetails'
 import dbConnect from '@/utils/dbConnection'
+import { requirePortal } from '@/utils/apiAuth'
 import { NextResponse } from 'next/server'
 
 export const GET = async () => {
+    const { error } = await requirePortal('auction')
+    if (error) return error
+
     try {
         await dbConnect()
         const details = await AuctionDetails.find().sort({ createdAt: -1 })
@@ -16,6 +20,9 @@ export const GET = async () => {
 
 export const POST = async (req) => {
     try {
+        const { error } = await requirePortal('auction')
+        if (error) return error
+
         await dbConnect()
         const body = await readJson(req)
 
@@ -27,6 +34,6 @@ export const POST = async (req) => {
         return NextResponse.json({ message: 'Auction details saved successfully', id: newRecord._id }, { status: 201 })
     } catch (error) {
         console.error('createAuctionDetails error:', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 }

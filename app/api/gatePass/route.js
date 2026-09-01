@@ -10,6 +10,7 @@ import { unlink } from "fs/promises";
 import path from "path";
 import { getSession } from "@/utils/auth";
 import { notifyAdmins } from "@/utils/notify";
+import { requirePortal } from "@/utils/apiAuth";
 import { NextResponse } from "next/server";
 
 async function removeStoredImage(img) {
@@ -38,6 +39,9 @@ async function nextGatePassNumber(type) {
 
 export const GET = async (req) => {
     try {
+        const { error } = await requirePortal('igp')
+        if (error) return error
+
         await dbConnect();
         const { searchParams } = new URL(req.url);
         const type = searchParams.get('type');
@@ -58,6 +62,9 @@ export const GET = async (req) => {
 
 export const POST = async (req) => {
     try {
+        const { error } = await requirePortal('igp')
+        if (error) return error
+
         await dbConnect();
 
         const contentType = req.headers.get('content-type') || '';
@@ -178,6 +185,9 @@ const VALID_STATUS_TRANSITIONS = {
 
 export const PATCH = async (req) => {
     try {
+        const { error } = await requirePortal('igp')
+        if (error) return error
+
         await dbConnect();
 
         const contentType = req.headers.get('content-type') || '';
@@ -293,6 +303,9 @@ export const PATCH = async (req) => {
 
 export const DELETE = async (req) => {
     try {
+        const { error } = await requirePortal('igp')
+        if (error) return error
+
         await dbConnect();
         const { gatePassId } = await readJson(req);
         if (!gatePassId) {

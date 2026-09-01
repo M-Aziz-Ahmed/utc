@@ -4,12 +4,20 @@ import DynamicFields from "@/models/DynamicFeilds"
 import dbConnect from "@/utils/dbConnection"
 import { getSession } from '@/utils/auth'
 import { notifyAdmins } from '@/utils/notify'
+import { requirePortal } from '@/utils/apiAuth'
+import mongoose from 'mongoose'
 import { NextResponse } from "next/server"
 
 export const GET = async (req, { params }) => {
     try {
+        const { error } = await requirePortal('vehicles')
+        if (error) return error
+
         await dbConnect()
         const { id } = await params
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return NextResponse.json({ message: 'Invalid ID' }, { status: 400 })
+        }
         let vehicle
         try {
             vehicle = await Vehicle.findById(id).populate('rikusoCompany').lean()
@@ -25,8 +33,14 @@ export const GET = async (req, { params }) => {
 
 export const PATCH = async (req, { params }) => {
     try {
+        const { error } = await requirePortal('vehicles')
+        if (error) return error
+
         await dbConnect()
         const { id } = await params
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return NextResponse.json({ message: 'Invalid ID' }, { status: 400 })
+        }
         const session = await getSession()
         const userId = session?.id || null
         const body = await readJson(req)

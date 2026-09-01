@@ -2,10 +2,14 @@ import { readJson } from '@/utils/readJson'
 import GatePass from '@/models/GatePass'
 import Vehicle from '@/models/Vehicle'
 import dbConnect from '@/utils/dbConnection'
+import { requirePortal } from '@/utils/apiAuth'
 import { NextResponse } from 'next/server'
 
 export const POST = async (req) => {
     try {
+        const { error } = await requirePortal('yard')
+        if (error) return error
+
         await dbConnect()
         const { vehicleId, yardId } = await readJson(req)
 
