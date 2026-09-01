@@ -8,6 +8,8 @@ import { saveImage } from "@/utils/uploadImage";
 import { deleteFromCloudinary } from "@/utils/cloudinary";
 import { unlink } from "fs/promises";
 import path from "path";
+import { getSession } from "@/utils/auth";
+import { notifyAdmins } from "@/utils/notify";
 import { NextResponse } from "next/server";
 
 async function removeStoredImage(img) {
@@ -134,6 +136,32 @@ export const POST = async (req) => {
             .populate('vehicle')
             .populate('yard', 'name location')
             .populate('consignee', 'name company');
+
+        // ── Notify all admins on IGP/OGP creation ─────────────────────────────
+        try {
+            const session = await getSession()
+            const vName = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ')
+            const yardName = populated?.yard?.name || ''
+            if (body.type === 'IGP') {
+                notifyAdmins({
+                    type: 'gate_pass',
+                    message: `🚘 IGP created: ${vName || 'Vehicle'} — ${gatePass.gatePassNumber}${yardName ? ` @ ${yardName}` : ''}`,
+                    vehicleId: String(body.vehicle),
+                    link: `/admin/gatePass`,
+                    excludeUserId: session?.id,
+                })
+            } else if (body.type === 'OGP') {
+                notifyAdmins({
+                    type: 'gate_pass',
+                    message: `🚢 OGP created: ${vName || 'Vehicle'} — ${gatePass.gatePassNumber}`,
+                    vehicleId: String(body.vehicle),
+                    link: `/admin/gatePass`,
+                    excludeUserId: session?.id,
+                })
+            }
+        } catch { /* non-blocking */ }
+        // ──────────────────────────────────────────────────────────────────────
+
         return NextResponse.json(populated, { status: 201 });
     } catch (error) {
         console.error('Error creating gate pass:', error);
