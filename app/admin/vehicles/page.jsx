@@ -748,7 +748,8 @@ const Page = () => {
 
     const cardFields = useMemo(() => {
         return fields
-            .filter(f => f.showOnCard !== false && f.type !== 'file' && f.type !== 'image')
+            .filter(f => f.showOnCard !== false && f.type !== 'file' && f.type !== 'image'
+                && !f.label?.toLowerCase().includes('chassis'))  // chassis shown separately
             .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     }, [fields])
 
