@@ -251,6 +251,20 @@ const VehicleAccountPage = ({ params }) => {
     const navTo = (targetId) => {
         router.push(`/admin/vehicles/accounts/${targetId}?list=${encodeURIComponent(listIds.join(','))}`)
     }
+
+    // Keyboard navigation (Alt+← / Alt+→) for prev/next records
+    useEffect(() => {
+        const handler = (e) => {
+            if (!e.altKey) return
+            const tag = (e.target.tagName || '').toLowerCase()
+            const isTyping = tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'button'
+            if (isTyping) return
+            if (e.key === 'ArrowLeft' && prevId) { e.preventDefault(); navTo(prevId) }
+            else if (e.key === 'ArrowRight' && nextId) { e.preventDefault(); navTo(nextId) }
+        }
+        window.addEventListener('keydown', handler)
+        return () => window.removeEventListener('keydown', handler)
+    }, [prevId, nextId, listIds])
     const [vehicle, setVehicle]             = useState(null)
     const [vehicleFields, setVehicleFields] = useState([])
     const [accountFields, setAccountFields] = useState([])
@@ -409,8 +423,13 @@ const VehicleAccountPage = ({ params }) => {
     // Breadcrumb: include stock/auction number, group, venue, maker, model as shown in allocation form
     const lotField = vehicleFields.find(f => f.label?.toLowerCase().includes('lot'))
     const lotVal = lotField ? (formData[lotField._id] ?? vehicle[lotField._id] ?? vehicle[lotField.label]) : null
+    // Also look for auction number from all fields
+    const allFields    = [...vehicleFields, ...accountFields]
+    const auctionNoField = allFields.find(f => f.label?.toLowerCase().includes('auction') && f.label?.toLowerCase().includes('no'))
+    const auctionNoVal = auctionNoField ? (vehicle[auctionNoField._id] ?? vehicle[auctionNoField.label] ?? accountData[auctionNoField._id]) : null
     const crumbs = []
     if (vehicle.stockId) crumbs.push(`#${vehicle.stockId}`)
+    if (auctionNoVal) crumbs.push(String(auctionNoVal))
     if (lotVal) crumbs.push(String(lotVal))
     crumbs.push(...[vehicle.auctionGroup, vehicle.auctionVenue, vehicle.manufacturer, vehicle.model].filter(Boolean))
     // Add export country and rikuso company to breadcrumbs
@@ -418,7 +437,6 @@ const VehicleAccountPage = ({ params }) => {
     if (vehicle.rikusoCompanyName) crumbs.push(`Rikuso: ${vehicle.rikusoCompanyName}`)
     const textFields   = vehicleFields.filter(f => f.type !== 'file' && f.type !== 'image' && f.label?.toLowerCase().trim() !== 'description')
     const imageFields  = vehicleFields.filter(f => f.type === 'file' || f.type === 'image')
-    const allFields    = [...vehicleFields, ...accountFields]
 
     // Compact vehicle detail rows for the left panel table
     const detailRows = textFields.map(f => {
@@ -638,13 +656,15 @@ const VehicleAccountPage = ({ params }) => {
                             const total = nonImageFields.length
                             const pct = total > 0 ? Math.round((filled / total) * 100) : 0
                             const barColor = pct >= 100 ? '#16a34a' : pct >= 50 ? '#d97706' : '#1a73e8'
-                            const statusLabel = total === 0 ? 'No fields' : pct >= 100 ? 'UPDATED' : 'PENDING'
+                            // Match list-page semantics: UPDATED = at least one field entered; PENDING = none entered
+                            const statusLabel = total === 0 ? 'No fields' : filled > 0 ? (pct >= 100 ? 'UPDATED · COMPLETE' : 'UPDATED') : 'PENDING'
+                            const statusGreen = filled > 0
                             return (
                                 <div style={{ marginBottom: '20px', padding: '12px 14px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                             Account Status
-                                            <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 9px', borderRadius: '12px', background: pct >= 100 ? '#ecfdf5' : '#fef3c7', color: pct >= 100 ? '#16a34a' : '#d97706', border: `1px solid ${pct >= 100 ? '#bbf7d0' : '#fde68a'}` }}>{statusLabel}</span>
+                                            <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 9px', borderRadius: '12px', background: statusGreen ? '#ecfdf5' : '#fef3c7', color: statusGreen ? (pct >= 100 ? '#137333' : '#16a34a') : '#d97706', border: `1px solid ${statusGreen ? (pct >= 100 ? '#a7e0c0' : '#bbf7d0') : '#fde68a'}` }}>{statusLabel}</span>
                                         </span>
                                         <span style={{ fontSize: '12px', fontWeight: 800, color: barColor }}>{filled}/{total} · {pct}%</span>
                                     </div>

@@ -262,13 +262,24 @@ const AllocCard = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, a
             return toNum(val)
         }
         
+        // Find conversion rate field to check if costing fields should show
+        const convRateField = fields.find(f => (f.label || '').toLowerCase().includes('conversion rate'))
+        const convRateVal = convRateField ? toNum(vehicle[convRateField._id] ?? vehicle[convRateField.label]) : 0
+        const hasConvRate = convRateVal > 0
+        
         const initial = {}
         adminFields.forEach(f => {
             if (f.type === 'sum' || f.type === 'formula' || f.type === 'tax') {
                 const computed = computeFieldValue(f)
                 initial[f._id] = computed > 0 ? computed : ''
             } else {
-                initial[f._id] = vehicle[f._id] ?? vehicle[f.label] ?? vehicle[f.label?.replace(/\./g, '')] ?? ''
+                // For cost-related fields: if conversion rate is not set, show blank
+                const label = (f.label || '').toLowerCase()
+                if (convRateField && (label.includes('cost') || label.includes('final price')) && !hasConvRate) {
+                    initial[f._id] = ''
+                } else {
+                    initial[f._id] = vehicle[f._id] ?? vehicle[f.label] ?? vehicle[f.label?.replace(/\./g, '')] ?? ''
+                }
             }
         })
         const run = async () => { setEditableValues(initial) }
@@ -336,10 +347,19 @@ const AllocCard = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, a
                 transition: 'all 0.15s', display: 'flex', flexDirection: 'column' }}>
 
             {/* header bar */}
-            <div style={{ background: hov ? '#1a73e8' : '#1e293b', padding: '5px 10px', transition: 'background 0.15s' }}>
-                <p style={{ margin: 0, fontSize: '10px', fontWeight: 600, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '0.03em' }}>
+            <div style={{ background: hov ? '#1a73e8' : '#1e293b', padding: '5px 10px', transition: 'background 0.15s', display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'space-between' }}>
+                <p style={{ margin: 0, fontSize: '10px', fontWeight: 600, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '0.03em', flex: 1 }} >
                     {headerLine || 'No Group / Venue'}
                 </p>
+                {alloc && (
+                    <span style={{
+                        fontSize: '8px', fontWeight: 700, padding: '2px 7px', borderRadius: '10px', letterSpacing: '0.06em', flexShrink: 0,
+                        color: alloc === 'export' ? '#22c55e' : alloc === 'khitai' ? '#fbbf24' : '#c4b5fd',
+                        background: alloc === 'export' ? 'rgba(34,197,94,0.18)' : alloc === 'khitai' ? 'rgba(251,191,36,0.18)' : 'rgba(196,181,253,0.18)',
+                    }}>
+                        {alloc === 'export' ? 'EXP' : alloc === 'khitai' ? 'KAI' : alloc === 'resale-to-auction' ? 'RES' : alloc.toUpperCase()}
+                    </span>
+                )}
             </div>
 
             {/* image */}
@@ -660,13 +680,24 @@ const AllocRow = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, al
             const val = vehicle[field._id] ?? vehicle[field.label] ?? vehicle[field.label?.replace(/\./g, '')]
             return toNum(val)
         }
+        
+        // Find conversion rate field to check if costing fields should show
+        const convRateField = fields.find(f => (f.label || '').toLowerCase().includes('conversion rate'))
+        const convRateVal = convRateField ? toNum(vehicle[convRateField._id] ?? vehicle[convRateField.label]) : 0
+        const hasConvRate = convRateVal > 0
+        
         const initial = {}
         adminFields.forEach(f => {
             if (f.type === 'sum' || f.type === 'formula' || f.type === 'tax') {
                 const computed = computeFieldValue(f)
                 initial[f._id] = computed > 0 ? computed : ''
             } else {
-                initial[f._id] = vehicle[f._id] ?? vehicle[f.label] ?? ''
+                const label = (f.label || '').toLowerCase()
+                if (convRateField && (label.includes('cost') || label.includes('final price')) && !hasConvRate) {
+                    initial[f._id] = ''
+                } else {
+                    initial[f._id] = vehicle[f._id] ?? vehicle[f.label] ?? ''
+                }
             }
         })
         const run = async () => { setEditableValues(initial) }

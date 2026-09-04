@@ -21,6 +21,8 @@ export const PORTALS = [
 // Route prefix -> portal key. Longest / most specific entries must come first.
 const RULES = [
     ['/admin/users', 'users'],
+    ['/admin/rikuso/companies', 'manage'],
+    ['/admin/vehicles/accounts', 'accounts'],
     ['/admin/vehicles/accounts', 'accounts'],
     ['/admin/vehicles', 'vehicles'],
     ['/admin/gatePass/review', 'review'],
@@ -55,6 +57,9 @@ export const hasAccess = (user, pathname) => {
     if (!user) return false
     if (isAdmin(user)) return true
     if (!pathname || !pathname.startsWith('/admin')) return true
+    // Personal page every logged-in user may open.
+    const p = normalize(pathname)
+    if (p === '/admin/profile') return true
     const perm = getPermissionForPath(pathname)
     if (!perm || perm === 'dashboard') return false
     return (user.permissions || []).includes(perm)

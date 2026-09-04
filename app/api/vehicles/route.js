@@ -137,7 +137,6 @@ export const POST = async (req) => {
             message: `New vehicle added: ${vName || 'Unknown'} (Stock #${sanitizedData.stockId})`,
             vehicleId: String(newVehicle._id),
             link: `/admin/vehicles`,
-            excludeUserId: userId,
         })
         // ──────────────────────────────────────────────────────────────────────
 
@@ -199,7 +198,7 @@ export const PATCH = async (req) => {
         const safeUpdate = sanitize(updateData)
 
         // Capture old allocation before update for change detection
-        const oldVehicle = await Vehicle.findById(vehicleId).select('allocation manufacturer model stockId').lean()
+        const oldVehicle = await Vehicle.findById(vehicleId).select('allocation manufacturer model stockId rikusoCompanyName rikusoStatus').lean()
 
         const updatedVehicle = await Vehicle.findByIdAndUpdate(
             vehicleId,
@@ -223,7 +222,22 @@ export const PATCH = async (req) => {
                 message: `Allocation changed: ${vName || 'Vehicle'} → ${allocLabel}`,
                 vehicleId: vehicleId,
                 link: `/admin/rikuso`,
-                excludeUserId: userId,
+            })
+        }
+        // ──────────────────────────────────────────────────────────────────────
+
+        // ── Notify on Rikuso company change ────────────────────────────────────
+        const newRikuso = updateData.rikusoCompanyName || updatedVehicle?.rikusoCompanyName
+        const oldRikuso = oldVehicle?.rikusoCompanyName
+        const rikusoChanged = (updateData.rikusoStatus !== undefined || 'rikusoCompany' in updateData || 'rikusoCompanyName' in updateData)
+            && String(newRikuso || '') !== String(oldRikuso || '')
+        if (rikusoChanged) {
+            const vName = [updatedVehicle?.manufacturer, updatedVehicle?.model].filter(Boolean).join(' ')
+            notifyAdmins({
+                type: 'rikuso_assigned',
+                message: `Rikuso assigned: ${vName || 'Vehicle'} → ${newRikuso || 'None'}`,
+                vehicleId: vehicleId,
+                link: `/admin/rikuso`,
             })
         }
         // ──────────────────────────────────────────────────────────────────────

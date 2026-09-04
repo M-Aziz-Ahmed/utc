@@ -61,7 +61,7 @@ const Navbar = ({ user }) => {
 
     const notifTypeIcon = (type) => {
         const icons = {
-            vehicle_added: '🚗', allocation_changed: '📋', gate_pass: '🚧',
+            vehicle_added: '🚗', allocation_changed: '📋', gate_pass: '🚧', rikuso_assigned: '🤝',
             export_cert: '📄', account_updated: '💰', general: '🔔',
         }
         return icons[type] || '🔔'
@@ -85,16 +85,6 @@ const Navbar = ({ user }) => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                             </svg>
                         </button>
-
-                        {/* Breadcrumb-like page indicator */}
-                        <div className="hidden sm:flex items-center gap-2">
-                            <Link href="/admin" className="flex items-center gap-1.5" style={{textDecoration:'none'}}>
-                                <div style={{ width: 28, height: 28, borderRadius: 6, background: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 9, color: '#fff', letterSpacing: 0.5 }}>
-                                    UTC
-                                </div>
-                                <span style={{fontSize:'var(--text-md)', fontWeight:700, color:'#111827'}}>Admin Portal</span>
-                            </Link>
-                        </div>
                     </div>
 
                     {/* Right side */}

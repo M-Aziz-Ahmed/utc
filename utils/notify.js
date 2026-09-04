@@ -16,7 +16,7 @@ import User        from '@/models/User'
 
 /**
  * @param {Object} opts
- * @param {'vehicle_added'|'allocation_changed'|'gate_pass'|'export_cert'|'account_updated'|'general'} opts.type
+ * @param {'vehicle_added'|'allocation_changed'|'gate_pass'|'export_cert'|'rikuso_assigned'|'account_updated'|'general'} opts.type
  * @param {string}  opts.message
  * @param {string}  [opts.vehicleId]   — MongoDB ObjectId string
  * @param {string}  [opts.link]        — admin portal URL to navigate to on click

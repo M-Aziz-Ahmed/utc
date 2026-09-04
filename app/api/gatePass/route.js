@@ -8,7 +8,6 @@ import { saveImage } from "@/utils/uploadImage";
 import { deleteFromCloudinary } from "@/utils/cloudinary";
 import { unlink } from "fs/promises";
 import path from "path";
-import { getSession } from "@/utils/auth";
 import { notifyAdmins } from "@/utils/notify";
 import { requirePortal } from "@/utils/apiAuth";
 import { NextResponse } from "next/server";
@@ -146,7 +145,6 @@ export const POST = async (req) => {
 
         // ── Notify all admins on IGP/OGP creation ─────────────────────────────
         try {
-            const session = await getSession()
             const vName = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ')
             const yardName = populated?.yard?.name || ''
             if (body.type === 'IGP') {
@@ -155,7 +153,6 @@ export const POST = async (req) => {
                     message: `🚘 IGP created: ${vName || 'Vehicle'} — ${gatePass.gatePassNumber}${yardName ? ` @ ${yardName}` : ''}`,
                     vehicleId: String(body.vehicle),
                     link: `/admin/gatePass`,
-                    excludeUserId: session?.id,
                 })
             } else if (body.type === 'OGP') {
                 notifyAdmins({
@@ -163,7 +160,6 @@ export const POST = async (req) => {
                     message: `🚢 OGP created: ${vName || 'Vehicle'} — ${gatePass.gatePassNumber}`,
                     vehicleId: String(body.vehicle),
                     link: `/admin/gatePass`,
-                    excludeUserId: session?.id,
                 })
             }
         } catch { /* non-blocking */ }

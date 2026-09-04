@@ -72,9 +72,20 @@ const AccountVehicleCard = ({ vehicle, fields, accountFields, onClick }) => {
                 }
             </div>
 
-            {/* Title */}
+            {/* Title + Allocation Badge */}
             <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #f0f4f8' }}>
-                <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: '#0f172a', lineHeight: 1.25 }}>{nameLine || '—'}</p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                    <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: '#0f172a', lineHeight: 1.25 }}>{nameLine || '—'}</p>
+                    {vehicle.allocation && (
+                        <span style={{ fontSize: '9px', fontWeight: 700, padding: '2px 7px', borderRadius: '10px', letterSpacing: '0.06em', flexShrink: 0,
+                            color: vehicle.allocation === 'export' ? '#16a34a' : vehicle.allocation === 'khitai' ? '#d97706' : '#7c3aed',
+                            background: vehicle.allocation === 'export' ? '#dcfce7' : vehicle.allocation === 'khitai' ? '#fef3c7' : '#ede9fe',
+                            border: `1px solid ${vehicle.allocation === 'export' ? '#bbf7d0' : vehicle.allocation === 'khitai' ? '#fde68a' : '#c4b5fd'}`,
+                        }}>
+                            {vehicle.allocation === 'export' ? 'EXPORT' : vehicle.allocation === 'khitai' ? 'KAITAI' : 'RESALE'}
+                        </span>
+                    )}
+                </div>
                 {subtitle && <p style={{ margin: '3px 0 0', fontSize: '11px', color: '#64748b' }}>{subtitle}</p>}
                 {chassisVal && (
                     <p style={{ margin: '5px 0 0', fontSize: '10px', color: '#2563eb', fontFamily: 'monospace', fontWeight: 600, letterSpacing: '0.02em' }}>
@@ -146,9 +157,19 @@ const AccountVehicleRow = ({ vehicle, fields, accountFields, onClick }) => {
             <td style={{ padding: '5px 8px', minWidth: '100px', maxWidth: '130px' }}>
                 <div style={{ fontSize: '10px', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{headerLine || '—'}</div>
             </td>
-            {/* Name */}
+            {/* Name + Allocation Badge */}
             <td style={{ padding: '5px 8px', minWidth: '120px' }}>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }} className="uppercase">{nameLine || '—'}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }} className="uppercase">{nameLine || '—'}</div>
+                    {vehicle.allocation && (
+                        <span style={{ fontSize: '8px', fontWeight: 700, padding: '1px 5px', borderRadius: '8px', letterSpacing: '0.04em', flexShrink: 0,
+                            color: vehicle.allocation === 'export' ? '#16a34a' : vehicle.allocation === 'khitai' ? '#d97706' : '#7c3aed',
+                            background: vehicle.allocation === 'export' ? '#dcfce7' : vehicle.allocation === 'khitai' ? '#fef3c7' : '#ede9fe',
+                        }}>
+                            {vehicle.allocation === 'export' ? 'EXP' : vehicle.allocation === 'khitai' ? 'KAI' : 'RES'}
+                        </span>
+                    )}
+                </div>
                 {subtitle && <div style={{ fontSize: '10px', color: '#94a3b8' }}>{subtitle}</div>}
             </td>
             {/* Chassis No */}
@@ -183,6 +204,44 @@ const AccountVehicleRow = ({ vehicle, fields, accountFields, onClick }) => {
         </tr>
     )
 }
+
+// ── Pagination ────────────────────────────────────────────────────────────────
+const Pager = ({ page, totalPages, setPage, count, pageSize }) => (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 4px', marginTop: '8px' }}>
+        <span style={{ fontSize: '12px', color: '#64748b' }}>
+            Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, count)} of {count}
+        </span>
+        <div style={{ display: 'flex', gap: '3px' }}>
+            <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                style={{ padding: '4px 10px', borderRadius: '5px', border: '1px solid #e2e8f0', background: page === 1 ? '#f8fafc' : '#fff', color: page === 1 ? '#cbd5e1' : '#374151', cursor: page === 1 ? 'not-allowed' : 'pointer', fontSize: '12px', fontWeight: 600 }}
+            >‹ Prev</button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+                .reduce((acc, p, i, arr) => {
+                    if (i > 0 && p - arr[i - 1] > 1) acc.push('...')
+                    acc.push(p)
+                    return acc
+                }, [])
+                .map((p, i) => p === '...'
+                    ? <span key={`e${i}`} style={{ padding: '4px 6px', color: '#94a3b8', fontSize: '12px' }}>…</span>
+                    : <button key={p} onClick={() => setPage(p)}
+                        style={{ padding: '4px 9px', borderRadius: '5px', border: '1px solid', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                            borderColor: p === page ? '#1a73e8' : '#e2e8f0',
+                            background: p === page ? '#e8f0fe' : '#fff',
+                            color: p === page ? '#1a73e8' : '#374151' }}
+                      >{p}</button>
+                )
+            }
+            <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                style={{ padding: '4px 10px', borderRadius: '5px', border: '1px solid #e2e8f0', background: page === totalPages ? '#f8fafc' : '#fff', color: page === totalPages ? '#cbd5e1' : '#374151', cursor: page === totalPages ? 'not-allowed' : 'pointer', fontSize: '12px', fontWeight: 600 }}
+            >Next ›</button>
+        </div>
+    </div>
+)
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 const AccountsPage = () => {
@@ -226,8 +285,16 @@ const AccountsPage = () => {
 
     const filteredAll = applyVehicleFilters(vehicles, fields, search, filters)
 
-    // Updated = all account fields filled; Pending = some/most account fields still empty
+    // Updated = at least one account field has been entered; Pending = none entered yet
     const isUpdated = (v) => {
+        const filled = accountFields.filter(f => {
+            const val = v[f._id] ?? v[f.label]
+            return val !== undefined && val !== null && val !== ''
+        }).length
+        return filled > 0
+    }
+    // Fully updated = all account fields filled
+    const isFullyUpdated = (v) => {
         const filled = accountFields.filter(f => {
             const val = v[f._id] ?? v[f.label]
             return val !== undefined && val !== null && val !== ''
@@ -329,8 +396,9 @@ const AccountsPage = () => {
                     </p>
                 </div>
             ) : viewMode === 'grid' ? (
+                <>
                 <div style={{ display: 'grid', gap: '16px', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
-                    {filtered.map(v => (
+                    {paginated.map(v => (
                         <AccountVehicleCard
                             key={v._id}
                             vehicle={v}
@@ -343,6 +411,8 @@ const AccountsPage = () => {
                         />
                     ))}
                 </div>
+                {totalPages > 1 && <Pager page={page} totalPages={totalPages} setPage={setPage} count={filtered.length} pageSize={PAGE_SIZE} />}
+                </>
             ) : (
                 <>
                     <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
@@ -374,42 +444,7 @@ const AccountsPage = () => {
                             </tbody>
                         </table>
                     </div>
-                    {totalPages > 1 && (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 4px', marginTop: '8px' }}>
-                            <span style={{ fontSize: '12px', color: '#64748b' }}>
-                                Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
-                            </span>
-                            <div style={{ display: 'flex', gap: '3px' }}>
-                                <button
-                                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                                    disabled={page === 1}
-                                    style={{ padding: '4px 10px', borderRadius: '5px', border: '1px solid #e2e8f0', background: page === 1 ? '#f8fafc' : '#fff', color: page === 1 ? '#cbd5e1' : '#374151', cursor: page === 1 ? 'not-allowed' : 'pointer', fontSize: '12px', fontWeight: 600 }}
-                                >‹ Prev</button>
-                                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                                    .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
-                                    .reduce((acc, p, i, arr) => {
-                                        if (i > 0 && p - arr[i - 1] > 1) acc.push('...')
-                                        acc.push(p)
-                                        return acc
-                                    }, [])
-                                    .map((p, i) => p === '...'
-                                        ? <span key={`e${i}`} style={{ padding: '4px 6px', color: '#94a3b8', fontSize: '12px' }}>…</span>
-                                        : <button key={p} onClick={() => setPage(p)}
-                                            style={{ padding: '4px 9px', borderRadius: '5px', border: '1px solid', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-                                                borderColor: p === page ? '#1a73e8' : '#e2e8f0',
-                                                background: p === page ? '#e8f0fe' : '#fff',
-                                                color: p === page ? '#1a73e8' : '#374151' }}
-                                          >{p}</button>
-                                    )
-                                }
-                                <button
-                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                                    disabled={page === totalPages}
-                                    style={{ padding: '4px 10px', borderRadius: '5px', border: '1px solid #e2e8f0', background: page === totalPages ? '#f8fafc' : '#fff', color: page === totalPages ? '#cbd5e1' : '#374151', cursor: page === totalPages ? 'not-allowed' : 'pointer', fontSize: '12px', fontWeight: 600 }}
-                                >Next ›</button>
-                            </div>
-                        </div>
-                    )}
+                    {totalPages > 1 && <Pager page={page} totalPages={totalPages} setPage={setPage} count={filtered.length} pageSize={PAGE_SIZE} />}
                 </>
             )}
         </div>

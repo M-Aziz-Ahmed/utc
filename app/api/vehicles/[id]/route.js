@@ -2,7 +2,6 @@ import { readJson } from '@/utils/readJson'
 import Vehicle from "@/models/Vehicle"
 import DynamicFields from "@/models/DynamicFeilds"
 import dbConnect from "@/utils/dbConnection"
-import { getSession } from '@/utils/auth'
 import { notifyAdmins } from '@/utils/notify'
 import { requirePortal } from '@/utils/apiAuth'
 import mongoose from 'mongoose'
@@ -41,8 +40,6 @@ export const PATCH = async (req, { params }) => {
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return NextResponse.json({ message: 'Invalid ID' }, { status: 400 })
         }
-        const session = await getSession()
-        const userId = session?.id || null
         const body = await readJson(req)
 
         // Strip dots from keys — MongoDB rejects field names with dots in $set
@@ -80,7 +77,6 @@ export const PATCH = async (req, { params }) => {
                     message: `Account updated: ${vName || 'Vehicle'} — ${filled}/${total} fields (${pct}%)`,
                     vehicleId: id,
                     link: `/admin/vehicles/accounts/${id}`,
-                    excludeUserId: userId,
                 })
             }
         } catch { /* non-blocking */ }

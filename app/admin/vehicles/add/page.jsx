@@ -991,6 +991,7 @@ const AddVehiclePage = () => {
                                     letter={modelLetter} onLetter={setModelLetter} available={filteredModels.available}
                                     items={filteredModels.list} selected={selectedModel}
                                     onSelect={(m) => {
+                                        setSelectedModel(m)
                                         if (m.defaults && Object.keys(m.defaults).length > 0) setFormData(prev => ({ ...m.defaults, ...prev }))
                                         setCurrentStep(5)
                                     }}
