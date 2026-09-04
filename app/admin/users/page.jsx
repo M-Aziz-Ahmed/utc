@@ -58,6 +58,10 @@ const UsersPage = () => {
     }
 
     const uniqueRoles = [...new Set(users.map(u => u.role).filter(Boolean))]
+
+    // Counts for filter dropdowns
+    const roleCounts = Object.fromEntries(uniqueRoles.map(r => [r, users.filter(u => u.role === r).length]))
+    const statusCounts = { active: users.filter(u => u.verified === true).length, pending: users.filter(u => u.verified === false).length }
     const hasFilters = searchTerm || roleFilter !== 'all' || statusFilter !== 'all'
 
     const addIcon = <svg style={{ width: 12, height: 12 }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
@@ -79,13 +83,13 @@ const UsersPage = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 10, alignItems: 'end' }}>
                     <SearchBar value={searchTerm} onChange={setSearchTerm} placeholder="Search name, email, company…" />
                     <Select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
-                        <option value="all">All Roles</option>
-                        {uniqueRoles.map(r => <option key={r} value={r}>{r}</option>)}
+                        <option value="all">{`All Roles (${users.length})`}</option>
+                        {uniqueRoles.map(r => <option key={r} value={r}>{`${r} (${roleCounts[r]})`}</option>)}
                     </Select>
                     <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-                        <option value="all">All Status</option>
-                        <option value="active">Active</option>
-                        <option value="pending">Pending</option>
+                        <option value="all">{`All Status (${users.length})`}</option>
+                        <option value="active">{`Active (${statusCounts.active})`}</option>
+                        <option value="pending">{`Pending (${statusCounts.pending})`}</option>
                     </Select>
                     {hasFilters && (
                         <Btn variant="ghost" size="sm" onClick={() => { setSearchTerm(''); setRoleFilter('all'); setStatusFilter('all') }}>

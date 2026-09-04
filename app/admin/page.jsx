@@ -165,7 +165,7 @@ const AdminDashboard = () => {
                                 }}
                             >
                                 {tab.label}
-                                <span style={{marginLeft:6, fontSize:10, opacity:0.7}}>
+                                <span style={{marginLeft:6, fontSize:10, fontWeight:600, padding:'1px 5px', borderRadius:999, background:filterAlloc===tab.key?'#FEE2E2':'#F3F4F6', color:filterAlloc===tab.key?'#DC2626':'#6B7280'}}>
                                     {tab.key === 'all' ? allocCounts.all : (allocCounts[tab.key] || 0)}
                                 </span>
                             </button>

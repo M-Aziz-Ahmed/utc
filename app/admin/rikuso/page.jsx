@@ -1049,6 +1049,13 @@ const RikusoManagementPage = () => {
         : allocFilter === 'allocated' ? filtered.filter(v => v.allocation)
         : filtered.filter(v => !v.allocation)
 
+    // Allocation tab counts (based on VehicleFilterBar-filtered set)
+    const allocTabCounts = {
+        all: filtered.length,
+        allocated: filtered.filter(v => v.allocation).length,
+        unallocated: filtered.filter(v => !v.allocation).length,
+    }
+
     const exportCountries = [...new Set(vehicles.map(v => v.exportCountry).filter(Boolean))].sort((a, b) => a.localeCompare(b))
 
     const controlProps = { onZoom: (imgs, idx) => { setZoomList(imgs); setZoomIndex(idx || 0); setZoomImage(imgs[idx || 0] || null) }, rikusoCompanies, consignees, allocations, onAllocChange: handleAllocChange, onRikusoChange: handleRikusoChange, onPresold: handlePresold, onRemovePresold: handleRemovePresold, onExportSelect: (v, mode) => { setExportVehicle(v); setExportMode(mode || (v.allocation || '').toLowerCase()) } }
@@ -1091,7 +1098,7 @@ const RikusoManagementPage = () => {
                                     background: allocFilter === t.key ? '#fff' : 'transparent',
                                     color: allocFilter === t.key ? '#1a73e8' : '#5f6368',
                                     boxShadow: allocFilter === t.key ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>
-                                {t.label}
+                                {t.label}<span style={{ fontSize: 10, fontWeight: 600, marginLeft: 4, padding: '1px 5px', borderRadius: 999, background: allocFilter === t.key ? '#e8f0fe' : '#f1f3f4', color: allocFilter === t.key ? '#1a73e8' : '#5f6368' }}>{allocTabCounts[t.key]}</span>
                             </button>
                         ))}
                     </div>
@@ -1108,7 +1115,7 @@ const RikusoManagementPage = () => {
                             </button>
                         ))}
                     </div>
-                    <Link href="/admin/manage"
+                    <Link href="/admin/rikuso/companies"
                         style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '7px 14px', borderRadius: '20px', background: '#fff', border: '1px solid #e0e0e0', fontSize: '12px', fontWeight: 500, color: '#444746', textDecoration: 'none' }}>
                         ⚙ Rikuso Companies
                     </Link>

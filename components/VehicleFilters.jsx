@@ -88,7 +88,33 @@ export const VehicleFilterBar = ({
         const bodyTypes      = [...new Set(vehicles.map(v => getVVal(v, 'Body Type', fields)).filter(Boolean))].sort()
         const driveTypes     = [...new Set(vehicles.map(v => getVVal(v, 'Drive Type', fields)).filter(Boolean))].sort()
         const countries      = [...new Set(vehicles.map(v => v.exportCountry).filter(Boolean))].sort((a, b) => a.localeCompare(b))
-        return { makes, models, fuelTypes, transmissions, bodyTypes, driveTypes, countries }
+
+        // Count vehicles for each option value (contextual to current filter set)
+        const makeVals = vehicles.map(v => v.manufacturer || v['Make'] || '')
+        const modelVals = vehicles.map(v => v.model || v['Model'] || '')
+        const ftVals = vehicles.map(v => getVVal(v, 'Fuel Type', fields))
+        const trVals = vehicles.map(v => getVVal(v, 'Gear Box Type', fields))
+        const btVals = vehicles.map(v => getVVal(v, 'Body Type', fields))
+        const dtVals = vehicles.map(v => getVVal(v, 'Drive Type', fields))
+        const allocVals = vehicles.map(v => (v.allocation || '').toLowerCase())
+        const countryVals = vehicles.map(v => v.exportCountry || '')
+
+        const vehicleCounts = {
+            make: Object.fromEntries(makes.map(m => [m, makeVals.filter(v => v === m).length])),
+            model: Object.fromEntries(models.map(m => [m, modelVals.filter(v => v === m).length])),
+            fuelType: Object.fromEntries(fuelTypes.map(f => [f, ftVals.filter(v => v === f).length])),
+            transmission: Object.fromEntries(transmissions.map(t => [t, trVals.filter(v => v === t).length])),
+            bodyType: Object.fromEntries(bodyTypes.map(b => [b, btVals.filter(v => v === b).length])),
+            driveType: Object.fromEntries(driveTypes.map(d => [d, dtVals.filter(v => v === d).length])),
+            allocation: {
+                export: allocVals.filter(v => v === 'export').length,
+                khitai: allocVals.filter(v => v === 'khitai').length,
+                'resale-to-auction': allocVals.filter(v => v === 'resale-to-auction').length,
+            },
+            country: Object.fromEntries(countries.map(c => [c, countryVals.filter(v => v === c).length])),
+        }
+
+        return { makes, models, fuelTypes, transmissions, bodyTypes, driveTypes, countries, vehicleCounts }
     }, [vehicles, fields])
 
     const activeFilterCount = Object.values(filters).filter(Boolean).length
@@ -150,16 +176,16 @@ export const VehicleFilterBar = ({
                         <div>
                             <label style={labelStyle}>Make</label>
                             <select value={filters.make} onChange={e => updateFilter('make', e.target.value)} style={selectStyle}>
-                                <option value="">All Makes</option>
-                                {filterOptions.makes.map(m => <option key={m} value={m}>{m}</option>)}
+                                <option value="">{`All Makes (${vehicles.length})`}</option>
+                                {filterOptions.makes.map(m => <option key={m} value={m}>{`${m} (${filterOptions.vehicleCounts.make[m]})`}</option>)}
                             </select>
                         </div>
                         {/* Model */}
                         <div>
                             <label style={labelStyle}>Model</label>
                             <select value={filters.model} onChange={e => updateFilter('model', e.target.value)} style={selectStyle}>
-                                <option value="">All Models</option>
-                                {filterOptions.models.map(m => <option key={m} value={m}>{m}</option>)}
+                                <option value="">{`All Models (${vehicles.length})`}</option>
+                                {filterOptions.models.map(m => <option key={m} value={m}>{`${m} (${filterOptions.vehicleCounts.model[m]})`}</option>)}
                             </select>
                         </div>
                         {/* Allocation */}
@@ -167,10 +193,10 @@ export const VehicleFilterBar = ({
                             <div>
                                 <label style={labelStyle}>Status</label>
                                 <select value={filters.allocation} onChange={e => updateFilter('allocation', e.target.value)} style={selectStyle}>
-                                    <option value="">All Status</option>
-                                    <option value="export">Export</option>
-                                    <option value="khitai">Khitai</option>
-                                    <option value="resale-to-auction">Resale to Auction</option>
+                                    <option value="">{`All Status (${vehicles.length})`}</option>
+                                    <option value="export">{`Export (${filterOptions.vehicleCounts.allocation.export})`}</option>
+                                    <option value="khitai">{`Khitai (${filterOptions.vehicleCounts.allocation.khitai})`}</option>
+                                    <option value="resale-to-auction">{`Resale to Auction (${filterOptions.vehicleCounts.allocation['resale-to-auction']})`}</option>
                                 </select>
                             </div>
                         )}
@@ -188,32 +214,32 @@ export const VehicleFilterBar = ({
                         <div>
                             <label style={labelStyle}>Fuel Type</label>
                             <select value={filters.fuelType} onChange={e => updateFilter('fuelType', e.target.value)} style={selectStyle}>
-                                <option value="">All Fuels</option>
-                                {filterOptions.fuelTypes.map(f => <option key={f} value={f}>{f}</option>)}
+                                <option value="">{`All Fuels (${vehicles.length})`}</option>
+                                {filterOptions.fuelTypes.map(f => <option key={f} value={f}>{`${f} (${filterOptions.vehicleCounts.fuelType[f]})`}</option>)}
                             </select>
                         </div>
                         {/* Transmission */}
                         <div>
                             <label style={labelStyle}>Transmission</label>
                             <select value={filters.transmission} onChange={e => updateFilter('transmission', e.target.value)} style={selectStyle}>
-                                <option value="">All Types</option>
-                                {filterOptions.transmissions.map(t => <option key={t} value={t}>{t}</option>)}
+                                <option value="">{`All Types (${vehicles.length})`}</option>
+                                {filterOptions.transmissions.map(t => <option key={t} value={t}>{`${t} (${filterOptions.vehicleCounts.transmission[t]})`}</option>)}
                             </select>
                         </div>
                         {/* Body Type */}
                         <div>
                             <label style={labelStyle}>Body Type</label>
                             <select value={filters.bodyType} onChange={e => updateFilter('bodyType', e.target.value)} style={selectStyle}>
-                                <option value="">All Bodies</option>
-                                {filterOptions.bodyTypes.map(b => <option key={b} value={b}>{b}</option>)}
+                                <option value="">{`All Bodies (${vehicles.length})`}</option>
+                                {filterOptions.bodyTypes.map(b => <option key={b} value={b}>{`${b} (${filterOptions.vehicleCounts.bodyType[b]})`}</option>)}
                             </select>
                         </div>
                         {/* Drive Type */}
                         <div>
                             <label style={labelStyle}>Drive Type</label>
                             <select value={filters.driveType} onChange={e => updateFilter('driveType', e.target.value)} style={selectStyle}>
-                                <option value="">All Drives</option>
-                                {filterOptions.driveTypes.map(d => <option key={d} value={d}>{d}</option>)}
+                                <option value="">{`All Drives (${vehicles.length})`}</option>
+                                {filterOptions.driveTypes.map(d => <option key={d} value={d}>{`${d} (${filterOptions.vehicleCounts.driveType[d]})`}</option>)}
                             </select>
                         </div>
                         {/* Min Price */}
@@ -231,8 +257,8 @@ export const VehicleFilterBar = ({
                             <div>
                                 <label style={labelStyle}>Country</label>
                                 <select value={filters.country} onChange={e => updateFilter('country', e.target.value)} style={selectStyle}>
-                                    <option value="">All Countries</option>
-                                    {filterOptions.countries.map(c => <option key={c} value={c}>{c}</option>)}
+                                    <option value="">{`All Countries (${vehicles.length})`}</option>
+                                    {filterOptions.countries.map(c => <option key={c} value={c}>{`${c} (${filterOptions.vehicleCounts.country[c]})`}</option>)}
                                 </select>
                             </div>
                         )}
