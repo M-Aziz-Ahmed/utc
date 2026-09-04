@@ -21,7 +21,7 @@ export const PORTALS = [
 // Route prefix -> portal key. Longest / most specific entries must come first.
 const RULES = [
     ['/admin/users', 'users'],
-    ['/admin/rikuso/companies', 'manage'],
+    ['/admin/rikuso/companies', 'setup'],
     ['/admin/vehicles/accounts', 'accounts'],
     ['/admin/vehicles/accounts', 'accounts'],
     ['/admin/vehicles', 'vehicles'],
