@@ -759,6 +759,47 @@ const Page = () => {
     const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
     const paginated  = filtered.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE)
 
+    // CSV export of the currently-filtered vehicle set.
+    const handleExportCSV = () => {
+        if (filtered.length === 0) { alert('No vehicles to export'); return }
+        const cols = [
+            ['Stock #', v => v.stockId || ''],
+            ['Make', v => v.manufacturer || ''],
+            ['Model', v => v.model || ''],
+            ['Year', v => v.year || ''],
+            ['Chassis', v => ['Chassis No.', 'Chassis No', 'Chassis Number', 'VIN'].reduce((acc, k) => acc || (v[k] ?? ''), '') || ''],
+            ['Mileage', v => v['Mileage'] ?? v['KM'] ?? v['Odometer'] ?? ''],
+            ['Allocation', v => v.allocation || ''],
+            ['Rikuso', v => v.rikusoStatus ? 'Yes' : ''],
+            ['Country', v => v.exportCountry || ''],
+            ['Purchase Date', v => v['Purchase Date'] || ''],
+            ['Added', v => v.createdAt ? new Date(v.createdAt).toISOString().slice(0,10) : ''],
+        ]
+        // Append admin-defined non-file/non-image fields as extra columns where possible.
+        const dynamicCols = fields
+            .filter(f => f.type !== 'file' && f.type !== 'image' && f.belongsto === 'add-vehicles')
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+            .filter(f => !cols.some(c => c[0] === f.label))
+            .map(f => [f.label, v => v[f._id] || v[f.label] || v[f.label?.replace(/\./g, '')] || ''])
+
+        const allCols = [...cols, ...dynamicCols]
+        const esc = (val) => {
+            const s = String(val ?? '')
+            return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+        }
+        const headers = allCols.map(c => esc(c[0])).join(',')
+        const rows = filtered.map(v => allCols.map(c => esc(c[1](v))).join(','))
+        const csv = [headers, ...rows].join('\n')
+        const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `vehicles-export-${new Date().toISOString().slice(0,10)}.csv`
+        a.click()
+        URL.revokeObjectURL(url)
+    }
+
+
     return (
         <div className="px-3 md:px-5 py-5">
             {/* Toolbar */}
@@ -793,6 +834,11 @@ const Page = () => {
                             </svg>
                         </button>
                     </div>
+                    <button onClick={handleExportCSV}
+                        style={{padding:'8px 16px', borderRadius:8, border:'1px solid #e2e8f0', background:'#fff', color:'#374151', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6}}>
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        Export CSV
+                    </button>
                     <Link href="/admin/vehicles/add"
                         className="flex items-center gap-1.5"
                         style={{padding:'8px 16px', borderRadius:8, background:'#DC2626', color:'#fff', fontSize:13, fontWeight:600, textDecoration:'none'}}>

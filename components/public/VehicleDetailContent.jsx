@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import InquiryModal from '@/components/public/InquiryModal'
 import ReservationModal from '@/components/public/ReservationModal'
+import { useAuth } from '@/components/public/AuthContext'
 
 export default function VehicleDetailContent({ vehicle }) {
   const [selectedImage, setSelectedImage] = useState(0)
@@ -11,6 +12,7 @@ export default function VehicleDetailContent({ vehicle }) {
   const [reservationOpen, setReservationOpen] = useState(false)
   const [compareList, setCompareList] = useState([])
   const [favoriteList, setFavoriteList] = useState([])
+  const { loggedIn, loading: authLoading, openAuthModal } = useAuth()
 
   useEffect(() => {
     const load = async () => {
@@ -71,10 +73,44 @@ export default function VehicleDetailContent({ vehicle }) {
     }
   }
 
+  // Price is only revealed to signed-in users (matches card & row gating).
+  // Guests see a blurred placeholder that opens the signup modal.
+  const renderPrice = () => {
+    if (authLoading) {
+      return <div className="detail-price" style={{ color: '#ccc' }}>—</div>
+    }
+    if (loggedIn) {
+      return <div className="detail-price">{formatPrice(vehicle.price)}</div>
+    }
+    return (
+      <button
+        onClick={openAuthModal}
+        title="Sign up to see price"
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 7,
+          background: 'none', border: '1px dashed #e8450a',
+          borderRadius: 4, padding: '6px 12px', cursor: 'pointer',
+          marginBottom: 4, transition: 'all 0.15s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = '#fff4f1' }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
+      >
+        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="#e8450a" strokeWidth={2.2}>
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M7 11V7a5 5 0 0110 0v4"/>
+        </svg>
+        <span style={{ fontSize: 16, fontWeight: 700, color: '#e8450a', filter: 'blur(4px)', userSelect: 'none', letterSpacing: '0.05em' }}>
+          $XX,XXX
+        </span>
+        <span style={{ fontSize: 11, fontWeight: 600, color: '#e8450a' }}>Sign up to view</span>
+      </button>
+    )
+  }
+
   const handleDownloadPDF = () => {
     const content = [
       vehicle.title,
-      `Price: ${formatPrice(vehicle.price)}`,
+      ...(loggedIn ? [`Price: ${formatPrice(vehicle.price)}`] : []),
       `Mileage: ${formatMileage(vehicle.mileage)}`,
       `Engine: ${vehicle.engine || 'N/A'}`,
       `Transmission: ${vehicle.transmission || 'N/A'}`,
@@ -169,7 +205,7 @@ export default function VehicleDetailContent({ vehicle }) {
                   {vehicle.title}
                   {vehicle.allocationStatus && <span className="vehicle-badge badge-presold" style={{ display: 'inline-block', verticalAlign: 'middle', marginLeft: 10 }}>Pre-Sold</span>}
                 </h1>
-                <div className="detail-price">{formatPrice(vehicle.price)}</div>
+                {renderPrice()}
                 <div className="detail-id">Stock ID: {vehicle.stockId || vehicle.vehicleId}</div>
               </div>
 
@@ -215,7 +251,7 @@ export default function VehicleDetailContent({ vehicle }) {
                   &#9993; Inquire Now
                 </button>
                 <a
-                  href={`https://wa.me/?text=${encodeURIComponent(`I'm interested in ${vehicle.title}. Price: ${formatPrice(vehicle.price)} - ${typeof window !== 'undefined' ? window.location.href : ''}`)}`}
+                  href={`https://wa.me/?text=${encodeURIComponent(`${loggedIn && vehicle.price ? `I'm interested in ${vehicle.title}. Price: ${formatPrice(vehicle.price)} - ` : `I'm interested in ${vehicle.title} - `}${typeof window !== 'undefined' ? window.location.href : ''}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -226,9 +262,11 @@ export default function VehicleDetailContent({ vehicle }) {
                 <button className="btn-outline" onClick={() => setReservationOpen(true)}>
                   &#128274; Reserve This Car
                 </button>
-                <button className="btn-outline" style={{ width: '100%' }}>
-                  &#128722; Calculate Shipping
-                </button>
+                <Link href="/shipping" style={{ textDecoration: 'none', display: 'block' }}>
+                  <button className="btn-outline" style={{ width: '100%' }}>
+                    &#128722; Calculate Shipping
+                  </button>
+                </Link>
 
                 <div className="detail-secondary-actions">
                   <button onClick={handleCompare}>

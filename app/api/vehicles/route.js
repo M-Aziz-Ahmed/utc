@@ -150,7 +150,7 @@ export const POST = async (req) => {
             type: 'vehicle_added',
             message: `New vehicle added: ${vName || 'Unknown'} (Stock #${sanitizedData.stockId})`,
             vehicleId: String(newVehicle._id),
-            link: `/admin/vehicles`,
+            link: `/admin/vehicles/edit/${newVehicle._id}`,
         })
         // ──────────────────────────────────────────────────────────────────────
 

@@ -1,10 +1,11 @@
 'use client'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect, useRef, useCallback } from 'react'
 
 const Navbar = ({ user }) => {
     const pathname = usePathname()
+    const router = useRouter()
     const [userMenuOpen, setUserMenuOpen] = useState(false)
     const [notifOpen, setNotifOpen] = useState(false)
     const [notifications, setNotifications] = useState([])
@@ -50,13 +51,29 @@ const Navbar = ({ user }) => {
     }, [])
 
     const markAsRead = async (id) => {
-        await fetch('/api/notifications', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notificationId: id }) })
-        fetchNotifications()
+        // Optimistic local update so the UI feels instant (no flash/re-fetch).
+        setNotifications(prev => prev.map(n => n._id === id ? { ...n, read: true } : n))
+        setUnreadCount(prev => Math.max(0, prev - 1))
+        try {
+            await fetch('/api/notifications', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notificationId: id }) })
+        } catch {
+            // Restore on failure so the badge stays accurate.
+            setNotifications(prev => prev.map(n => n._id === id ? { ...n, read: false } : n))
+            setUnreadCount(prev => prev + 1)
+        }
     }
 
     const markAllRead = async () => {
-        await fetch('/api/notifications', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ markAllRead: true }) })
-        fetchNotifications()
+        if (unreadCount === 0) return
+        const prev = notifications
+        setNotifications(prev.map(n => ({ ...n, read: true })))
+        setUnreadCount(0)
+        try {
+            await fetch('/api/notifications', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ markAllRead: true }) })
+        } catch {
+            setNotifications(prev)
+            setUnreadCount(prev.filter(n => !n.read).length)
+        }
     }
 
     const notifTypeIcon = (type) => {
@@ -66,6 +83,38 @@ const Navbar = ({ user }) => {
         }
         return icons[type] || '🔔'
     }
+
+    // Accent colour per notification type for quick visual triage.
+    const notifTypeColor = (type) => {
+        const colors = {
+            vehicle_added: '#16A34A', allocation_changed: '#EA580C', gate_pass: '#DC2626',
+            rikuso_assigned: '#7C3AED', export_cert: '#2563EB', account_updated: '#0F766E', general: '#6B7280',
+        }
+        return colors[type] || '#6B7280'
+    }
+
+    // Split notifications into day groups ordered newest first.
+    const formatDayLabel = (ts) => {
+        const today = new Date()
+        const yesterday = new Date(today)
+        yesterday.setDate(today.getDate() - 1)
+        const sameDay = (a, b) => a.toDateString() === b.toDateString()
+        if (sameDay(ts, today)) return 'Today'
+        if (sameDay(ts, yesterday)) return 'Yesterday'
+        return ts.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short' })
+    }
+
+    const groupedNotifications = useCallback((list) => {
+        const groups = []
+        for (const n of list) {
+            const ts = new Date(n.createdAt)
+            const dayKey = ts.toDateString()
+            const last = groups[groups.length - 1]
+            if (last && last.dayKey === dayKey) last.items.push(n)
+            else groups.push({ dayKey, label: formatDayLabel(ts), items: [n] })
+        }
+        return groups
+    }, [])
 
     return (
         <nav className="sticky top-0 z-40" style={{background:'#FFFFFF', borderBottom:'1px solid #E5E7EB', boxShadow:'0 1px 3px rgba(0,0,0,0.05)'}}>
@@ -129,22 +178,29 @@ const Navbar = ({ user }) => {
                                             <div className="px-4 py-8 text-center">
                                                 <p style={{fontSize:'13px', color:'#9CA3AF'}}>No notifications yet</p>
                                             </div>
-                                        ) : notifications.map(n => (
-                                            <button key={n._id} onClick={() => { markAsRead(n._id); if (n.link) window.location.href = n.link; setNotifOpen(false) }}
-                                                className="w-full text-left px-4 py-3 transition-colors flex gap-3"
-                                                style={{borderBottom:'1px solid #F3F4F6', background: n.read ? '#fff' : '#F0F7FF', cursor:'pointer'}}
-                                                onMouseEnter={e => e.currentTarget.style.background = '#F9FAFB'}
-                                                onMouseLeave={e => e.currentTarget.style.background = n.read ? '#fff' : '#F0F7FF'}
-                                            >
-                                                <span style={{fontSize:'16px', flexShrink:0, marginTop:'2px'}}>{notifTypeIcon(n.type)}</span>
-                                                <div className="min-w-0 flex-1">
-                                                    <p style={{fontSize:'12px', color:'#111827', fontWeight: n.read ? 400 : 600, lineHeight:1.4, margin:0}}>{n.message}</p>
-                                                    <p style={{fontSize:'10px', color:'#9CA3AF'}}>
-                                                        {new Date(n.createdAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
-                                                    </p>
+                                        ) : groupedNotifications(notifications).map(group => (
+                                            <div key={group.dayKey}>
+                                                <div style={{padding:'6px 16px 2px', fontSize:'10px', fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.06em', background:'#FAFAFA', borderTop:'1px solid #F3F4F6'}}>
+                                                    {group.label}
                                                 </div>
-                                                {!n.read && <span className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{background:'#1a73e8'}} />}
-                                            </button>
+                                                {group.items.map(n => (
+                                                    <button key={n._id} onClick={() => { markAsRead(n._id); setNotifOpen(false); if (n.link) router.push(n.link) }}
+                                                        className="w-full text-left px-4 py-3 transition-colors flex gap-3"
+                                                        style={{borderBottom:'1px solid #F3F4F6', background: n.read ? '#fff' : '#F0F7FF', cursor:'pointer', borderLeft:`3px solid ${n.read ? 'transparent' : notifTypeColor(n.type)}`}}
+                                                        onMouseEnter={e => e.currentTarget.style.background = '#F9FAFB'}
+                                                        onMouseLeave={e => e.currentTarget.style.background = n.read ? '#fff' : '#F0F7FF'}
+                                                    >
+                                                        <span style={{fontSize:'16px', flexShrink:0, marginTop:'2px'}}>{notifTypeIcon(n.type)}</span>
+                                                        <div className="min-w-0 flex-1">
+                                                            <p style={{fontSize:'12px', color:'#111827', fontWeight: n.read ? 400 : 600, lineHeight:1.4, margin:0}}>{n.message}</p>
+                                                            <p style={{fontSize:'10px', color:'#9CA3AF'}}>
+                                                                {new Date(n.createdAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
+                                                            </p>
+                                                        </div>
+                                                        {!n.read && <span className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{background:notifTypeColor(n.type)}} />}
+                                                    </button>
+                                                ))}
+                                            </div>
                                         ))}
                                     </div>
                                 </div>
