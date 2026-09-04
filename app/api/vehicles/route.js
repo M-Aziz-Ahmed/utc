@@ -7,6 +7,20 @@ import { notifyAdmins } from '@/utils/notify'
 import { requirePortal } from '@/utils/apiAuth'
 import { NextResponse } from "next/server"
 
+// Extract a human-readable chassis number from a vehicle doc (dynamic fields
+// store chassis under field _id / label, so we scan the keys defensively).
+const chassisOf = (v) => {
+    if (!v || typeof v !== 'object') return ''
+    const staticKeys = ['chassisNumber', 'Chassis No.', 'Chassis No', 'Chassis Number', 'VIN', 'Chassis', 'chassis']
+    for (const k of staticKeys) { const val = v[k]; if (val && String(val).trim()) return String(val).trim() }
+    for (const [k, val] of Object.entries(v)) {
+        if (!val || typeof val === 'object') continue
+        const lk = k.toLowerCase().replace(/[\s._-]/g, '')
+        if ((lk.includes('chassis') || lk === 'vin') && String(val).trim()) return String(val).trim()
+    }
+    return ''
+}
+
 export const POST = async (req) => {
     try {
         const { error } = await requirePortal('vehicles')
@@ -212,14 +226,17 @@ export const PATCH = async (req) => {
 
         // ── Notify on allocation change ────────────────────────────────────────
         if ('allocation' in updateData && updateData.allocation !== oldVehicle?.allocation) {
-            const vName = [oldVehicle?.manufacturer, oldVehicle?.model].filter(Boolean).join(' ')
-            const allocLabel = updateData.allocation === 'export' ? 'Export'
-                : updateData.allocation === 'khitai' ? 'Khitai'
-                : updateData.allocation === 'resale-to-auction' ? 'Resale'
+            const vName = [updatedVehicle?.manufacturer, updatedVehicle?.model].filter(Boolean).join(' ')
+            const allocLabel = updatedVehicle.allocation === 'export' ? 'Export'
+                : updatedVehicle.allocation === 'khitai' ? 'Khitai'
+                : updatedVehicle.allocation === 'resale-to-auction' ? 'Resale'
                 : 'Unallocated'
+            const stockRef = updatedVehicle?.stockId ? `Stock #${updatedVehicle.stockId}` : ''
+            const chassisRef = chassisOf(updatedVehicle)
+            const refs = [stockRef, chassisRef ? `Chassis: ${chassisRef}` : ''].filter(Boolean).join(' · ')
             notifyAdmins({
                 type: 'allocation_changed',
-                message: `Allocation changed: ${vName || 'Vehicle'} → ${allocLabel}`,
+                message: `Allocation changed: ${vName || 'Vehicle'} → ${allocLabel}${refs ? ` (${refs})` : ''}`,
                 vehicleId: vehicleId,
                 link: `/admin/rikuso`,
             })
@@ -233,9 +250,12 @@ export const PATCH = async (req) => {
             && String(newRikuso || '') !== String(oldRikuso || '')
         if (rikusoChanged) {
             const vName = [updatedVehicle?.manufacturer, updatedVehicle?.model].filter(Boolean).join(' ')
+            const stockRef = updatedVehicle?.stockId ? `Stock #${updatedVehicle.stockId}` : ''
+            const chassisRef = chassisOf(updatedVehicle)
+            const refs = [stockRef, chassisRef ? `Chassis: ${chassisRef}` : ''].filter(Boolean).join(' · ')
             notifyAdmins({
                 type: 'rikuso_assigned',
-                message: `Rikuso assigned: ${vName || 'Vehicle'} → ${newRikuso || 'None'}`,
+                message: `Rikuso assigned: ${vName || 'Vehicle'} → ${newRikuso || 'None'}${refs ? ` (${refs})` : ''}`,
                 vehicleId: vehicleId,
                 link: `/admin/rikuso`,
             })

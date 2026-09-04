@@ -147,17 +147,18 @@ export const POST = async (req) => {
         try {
             const vName = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ')
             const yardName = populated?.yard?.name || ''
+            const stockRef = vehicle?.stockId ? ` Stock #${vehicle.stockId}` : ''
             if (body.type === 'IGP') {
                 notifyAdmins({
                     type: 'gate_pass',
-                    message: `🚘 IGP created: ${vName || 'Vehicle'} — ${gatePass.gatePassNumber}${yardName ? ` @ ${yardName}` : ''}`,
+                    message: `🚘 IGP created: ${vName || 'Vehicle'} — ${gatePass.gatePassNumber}${yardName ? ` @ ${yardName}` : ''}${stockRef}`,
                     vehicleId: String(body.vehicle),
                     link: `/admin/gatePass`,
                 })
             } else if (body.type === 'OGP') {
                 notifyAdmins({
                     type: 'gate_pass',
-                    message: `🚢 OGP created: ${vName || 'Vehicle'} — ${gatePass.gatePassNumber}`,
+                    message: `🚢 OGP created: ${vName || 'Vehicle'} — ${gatePass.gatePassNumber}${stockRef}`,
                     vehicleId: String(body.vehicle),
                     link: `/admin/gatePass`,
                 })

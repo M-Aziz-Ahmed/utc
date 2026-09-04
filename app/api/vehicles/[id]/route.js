@@ -72,9 +72,10 @@ export const PATCH = async (req, { params }) => {
                 const pct = total > 0 ? Math.round((filled / total) * 100) : 0
 
                 const vName = [updated.manufacturer, updated.model].filter(Boolean).join(' ')
+                const stockRef = updated?.stockId ? ` Stock #${updated.stockId}` : ''
                 notifyAdmins({
                     type: 'account_updated',
-                    message: `Account updated: ${vName || 'Vehicle'} — ${filled}/${total} fields (${pct}%)`,
+                    message: `Account updated: ${vName || 'Vehicle'} — ${filled}/${total} fields (${pct}%)${stockRef}`,
                     vehicleId: id,
                     link: `/admin/vehicles/accounts/${id}`,
                 })
