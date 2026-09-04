@@ -23,7 +23,6 @@ const RULES = [
     ['/admin/users', 'users'],
     ['/admin/rikuso/companies', 'setup'],
     ['/admin/vehicles/accounts', 'accounts'],
-    ['/admin/vehicles/accounts', 'accounts'],
     ['/admin/vehicles', 'vehicles'],
     ['/admin/gatePass/review', 'review'],
     ['/admin/gatePass', 'igp'],
