@@ -204,6 +204,101 @@ const AddAccountFieldModal = ({ FIELD_TYPES, existingFields, onDone, onClose }) 
     )
 }
 
+// ── Vehicle workflow tracker ──────────────────────────────────────────────────
+// Read-only visualization of where this vehicle sits in its lifecycle. Stages
+// are derived from existing vehicle fields so nothing here writes data.
+const WorkflowTracker = ({ vehicle }) => {
+    const allocation = (vehicle.allocation || '').toLowerCase()
+    const allocLabel = { export: 'Export', khitai: 'Khitai', 'resale-to-auction': 'Resale' }[allocation] || null
+    const presold    = !!(vehicle.allocationStatus || vehicle.consignee)
+
+    const stages = [
+        {
+            key: 'registered', label: 'Registered', tip: 'Vehicle record created',
+            done: true, link: null,
+        },
+        {
+            key: 'arrived', label: 'In Yard', tip: 'Inward Gate Pass (IGP) completed',
+            done: !!vehicle.physicalIn, link: '/admin/gatePass', linkLabel: 'Gate Pass',
+        },
+        {
+            key: 'allocated', label: allocLabel ? `Allocated · ${allocLabel}` : 'Allocated',
+            tip: presold ? 'Marked as pre-sold to a consignee' : 'Assigned to Export, Khitai or Resale channel',
+            done: !!(allocation || presold), link: '/admin/rikuso', linkLabel: 'Allocation',
+        },
+        {
+            key: 'documented', label: 'Documented',
+            tip: 'Export Certificate (EC) and Bill of Lading (BL) issued',
+            done: !!(vehicle.exportCertNumber || vehicle.blNumber), link: '/admin/export', linkLabel: 'Export Docs',
+        },
+        {
+            key: 'published', label: 'On Website', tip: 'Live on the public stock page',
+            done: !!vehicle.published, link: '/admin/vehicles', linkLabel: 'Stock',
+        },
+        {
+            key: 'shipped', label: 'Shipped', tip: 'Outward Gate Pass (OGP) completed',
+            done: !!vehicle.physicalOut, link: '/admin/gatePass', linkLabel: 'Gate Pass',
+        },
+    ]
+
+    const firstIncomplete = stages.findIndex(s => !s.done)
+
+    return (
+        <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e8eaed', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', padding: '18px 20px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#5f6368' }}>
+                    Vehicle Workflow
+                </span>
+                {presold && (
+                    <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 10px', borderRadius: '999px', background: '#1a3060', color: '#fff', letterSpacing: '0.04em' }}>PRE-SOLD</span>
+                )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: '4px' }}>
+                {stages.map((s, i) => {
+                    const isActive = i === firstIncomplete
+                    return (
+                        <div key={s.key} style={{ display: 'flex', alignItems: 'flex-start', flex: '1 1 120px', minWidth: '120px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                                    {i > 0 && (
+                                        <div style={{ flex: 1, height: 2, background: s.done ? '#16a34a' : '#e5e7eb', marginBottom: '14px' }} />
+                                    )}
+                                    <div title={s.tip} style={{
+                                        width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontSize: 11, fontWeight: 700,
+                                        background: s.done ? '#16a34a' : isActive ? '#fef3c7' : '#f3f4f6',
+                                        color: s.done ? '#fff' : isActive ? '#92400e' : '#9ca3af',
+                                        border: s.done ? '3px solid #dcfce7' : isActive ? '3px solid #fde68a' : '3px solid #f3f4f6',
+                                        boxSizing: 'border-box',
+                                    }}>
+                                        {s.done ? '✓' : i + 1}
+                                    </div>
+                                    {i < stages.length - 1 && (
+                                        <div style={{ flex: 1, height: 2, background: stages[i + 1].done ? '#16a34a' : '#e5e7eb', marginBottom: '14px' }} />
+                                    )}
+                                </div>
+                                <span style={{ fontSize: 10, fontWeight: s.done || isActive ? 700 : 500, color: s.done ? '#166534' : isActive ? '#92400e' : '#9ca3af', textAlign: 'center', lineHeight: 1.2, marginTop: '6px' }}>
+                                    {s.label}
+                                </span>
+                                {s.link && (
+                                    <a href={s.link} style={{ fontSize: 9, color: '#1a73e8', textDecoration: 'none', marginTop: 2 }} target="_blank" rel="noopener noreferrer">
+                                        {s.linkLabel} →
+                                    </a>
+                                )}
+                            </div>
+                            {i < stages.length - 1 && <div style={{ width: 4 }} />}
+                        </div>
+                    )
+                })}
+            </div>
+            <p style={{ fontSize: 10, color: '#9aa0a6', margin: '12px 0 0', lineHeight: 1.5 }}>
+                Auto-tracked from vehicle data. Open the linked portal to advance each stage.
+            </p>
+        </div>
+    )
+}
+
 export default function EditVehiclePage({ params }) {
     const { id: vehicleId } = use(params)
     const router = useRouter()
@@ -455,6 +550,9 @@ export default function EditVehiclePage({ params }) {
                 <h1 style={{ fontSize: '20px', fontWeight: 700, color: '#202124', margin: 0 }}>{nameLine || 'Edit Vehicle'}</h1>
                 {subtitle && <p style={{ fontSize: '13px', color: '#9aa0a6', margin: '3px 0 0' }}>{subtitle}</p>}
             </div>
+
+            {/* Workflow tracker */}
+            <WorkflowTracker vehicle={vehicle} />
 
             {/* Two-column card */}
             <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e8eaed', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
