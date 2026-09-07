@@ -1,11 +1,11 @@
 import { readJson } from '@/utils/readJson'
 import Consignee from "@/models/Consignee";
 import dbConnect from "@/utils/dbConnection";
-import { requirePortal } from '@/utils/apiAuth'
+import { requireAnyPortal } from '@/utils/apiAuth'
 import { NextResponse } from "next/server";
 
 export const GET = async () => {
-    const { error } = await requirePortal('manage')
+    const { error } = await requireAnyPortal()
     if (error) return error
 
     try {
@@ -19,7 +19,7 @@ export const GET = async () => {
 
 export const POST = async (req) => {
     try {
-        const { error } = await requirePortal('manage')
+        const { error } = await requireAnyPortal()
         if (error) return error
 
         await dbConnect();

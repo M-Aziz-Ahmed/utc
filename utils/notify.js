@@ -3,11 +3,12 @@
  * that uses the admin portal bell. Recipients are:
  *   • every Admin (role matched case-insensitively), and
  *   • every other user granted portal access (non-empty `permissions` array),
- * so admins, allocation, accounts, gate-pass, export, etc. all see the event.
+ *     or — when `permissions` is passed — only users holding one of those
+ *     portal keys (e.g. `['allocation', 'accounts']` for "new car raised").
  *
  * Usage:
  *   import { notifyAdmins } from '@/utils/notify'
- *   await notifyAdmins({ type, message, vehicleId, link, excludeUserId })
+ *   await notifyAdmins({ type, message, vehicleId, link, excludeUserId, permissions })
  *
  * This is intentionally fire-and-forget — it never throws; errors are only
  * logged so that failures here never block the main API response.
@@ -24,18 +25,23 @@ import User        from '@/models/User'
  * @param {string}  [opts.vehicleId]   — MongoDB ObjectId string
  * @param {string}  [opts.link]        — admin portal URL to navigate to on click
  * @param {string}  [opts.excludeUserId] — don't notify this user (usually the one who triggered it)
+ * @param {string[]} [opts.permissions] — only notify users holding one of these portal keys
  */
-export async function notifyAdmins({ type = 'general', message, vehicleId, link, excludeUserId } = {}) {
+export async function notifyAdmins({ type = 'general', message, vehicleId, link, excludeUserId, permissions } = {}) {
     try {
         await dbConnect()
 
         // Recipients = all Admins (case-insensitive, covers 'Admin'/'admin'/'ADMIN'…)
-        // plus every portal user (someone with at least one permission). The same
-        // bell lives in the shared /admin layout, so all of them must be notified.
+        // plus portal users. No `permissions` filter → every portal user; otherwise
+        // only users holding one of the listed portal keys.
+        const targeted = Array.isArray(permissions) && permissions.length
+            ? [{ permissions: { $in: permissions } }]
+            : [{ 'permissions.0': { $exists: true } }]
+
         const recipients = await User.find({
             $or: [
                 { role: { $regex: /^admin$/i } },
-                { 'permissions.0': { $exists: true } },
+                ...targeted,
             ],
         }).select('_id').lean()
         if (!recipients.length) return

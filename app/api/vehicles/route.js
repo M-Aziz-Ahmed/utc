@@ -4,7 +4,7 @@ import dbConnect from "@/utils/dbConnection"
 import { uploadToCloudinary } from "@/utils/cloudinary"
 import { getSession } from '@/utils/auth'
 import { notifyAdmins } from '@/utils/notify'
-import { requirePortal } from '@/utils/apiAuth'
+import { requireAnyPortal, requirePortal } from '@/utils/apiAuth'
 import { NextResponse } from "next/server"
 
 // Extract a human-readable chassis number from a vehicle doc (dynamic fields
@@ -151,6 +151,7 @@ export const POST = async (req) => {
             message: `New vehicle added: ${vName || 'Unknown'} (Stock #${sanitizedData.stockId})`,
             vehicleId: String(newVehicle._id),
             link: `/admin/vehicles/edit/${newVehicle._id}`,
+            permissions: ['allocation', 'accounts'],
         })
         // ──────────────────────────────────────────────────────────────────────
 
@@ -173,7 +174,7 @@ export const POST = async (req) => {
 }
 
 export const GET = async () => {
-    const { error } = await requirePortal('vehicles')
+    const { error } = await requireAnyPortal()
     if (error) return error
 
     try {
@@ -188,7 +189,7 @@ export const GET = async () => {
 
 export const PATCH = async (req) => {
     try {
-        const { error } = await requirePortal('vehicles')
+        const { error } = await requireAnyPortal()
         if (error) return error
 
         await dbConnect();

@@ -9,7 +9,7 @@ import { deleteFromCloudinary } from "@/utils/cloudinary";
 import { unlink } from "fs/promises";
 import path from "path";
 import { notifyAdmins } from "@/utils/notify";
-import { requirePortal } from "@/utils/apiAuth";
+import { requireAnyPortal, requirePortal } from "@/utils/apiAuth";
 import { NextResponse } from "next/server";
 
 async function removeStoredImage(img) {
@@ -38,7 +38,7 @@ async function nextGatePassNumber(type) {
 
 export const GET = async (req) => {
     try {
-        const { error } = await requirePortal('igp')
+        const { error } = await requireAnyPortal()
         if (error) return error
 
         await dbConnect();
