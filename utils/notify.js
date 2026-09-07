@@ -1,6 +1,9 @@
 /**
- * Notification helper — creates a Notification document for every Admin user
- * (so all admins see the event in their bell).
+ * Notification helper — creates a Notification document for every staff account
+ * that uses the admin portal bell. Recipients are:
+ *   • every Admin (role matched case-insensitively), and
+ *   • every other user granted portal access (non-empty `permissions` array),
+ * so admins, allocation, accounts, gate-pass, export, etc. all see the event.
  *
  * Usage:
  *   import { notifyAdmins } from '@/utils/notify'
@@ -26,14 +29,21 @@ export async function notifyAdmins({ type = 'general', message, vehicleId, link,
     try {
         await dbConnect()
 
-        // Find all admin users
-        const admins = await User.find({ role: 'Admin' }).select('_id').lean()
-        if (!admins.length) return
+        // Recipients = all Admins (case-insensitive, covers 'Admin'/'admin'/'ADMIN'…)
+        // plus every portal user (someone with at least one permission). The same
+        // bell lives in the shared /admin layout, so all of them must be notified.
+        const recipients = await User.find({
+            $or: [
+                { role: { $regex: /^admin$/i } },
+                { 'permissions.0': { $exists: true } },
+            ],
+        }).select('_id').lean()
+        if (!recipients.length) return
 
-        const docs = admins
-            .filter(a => !excludeUserId || String(a._id) !== String(excludeUserId))
-            .map(a => ({
-                userId:    a._id,
+        const docs = recipients
+            .filter(r => !excludeUserId || String(r._id) !== String(excludeUserId))
+            .map(r => ({
+                userId:    r._id,
                 type,
                 message,
                 vehicleId: vehicleId || undefined,
