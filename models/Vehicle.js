@@ -10,6 +10,12 @@ const vehicleSchema = new mongoose.Schema({
     allocation: { type: String, enum: ['export', 'khitai', 'resale-to-auction', ''], default: '' },
     allocationStatus: { type: Boolean, default: false },
     rikusoStatus: { type: Boolean, default: false },
+    // Accounts portal: whether the approximate costing has been finalised.
+    // Set by the accounts user via the "Costing Complete" button, which makes
+    // the costing price visible in the Allocation form and notifies the team.
+    costingComplete: { type: Boolean, default: false },
+    costingCompletedAt: { type: Date },
+    costingCompletedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     consignee: { type: mongoose.Schema.Types.ObjectId, ref: 'Consignee' },
     rikusoCompany: { type: mongoose.Schema.Types.ObjectId, ref: 'Manufacturer' },
     // Whether the vehicle is visible on the public website

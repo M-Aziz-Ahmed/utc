@@ -56,6 +56,25 @@ const fmtNumInput = (v) => {
     return parts.length === 1 ? intFmt : `${intFmt}.${parts[1]}`
 }
 
+// Resolve the finalised approximate costing for a vehicle. Only shown once the
+// accounts team marks the costing as complete (`costingComplete`). The account
+// form stores the computed sum/formula/tax totals under both the field label
+// and the field _id, so we scan for a field whose label reads like the costing
+// total (e.g. "Final Price" / "Costing Price") and read its stored value.
+const resolveCostingTotal = (vehicle, fields) => {
+    if (!vehicle || !Array.isArray(fields)) return null
+    const costLabels = ['final price', 'costing price', 'total costing', 'approximate costing', 'costing']
+    for (const f of fields) {
+        const label = (f.label || '').toLowerCase().trim()
+        if (!costLabels.some(cl => label.includes(cl))) continue
+        const val = vehicle[f._id] ?? vehicle[f.label] ?? vehicle[f.label?.replace(/\./g, '')]
+        if (val === undefined || val === null || val === '') continue
+        const num = parseFloat(String(val).replace(/[^0-9.\-]/g, ''))
+        if (!isNaN(num) && num > 0) return num
+    }
+    return null
+}
+
 // ── Export / Khitai details modal ──────────────────────────────────────────────
 const ExportModal = ({ vehicle, mode, countries, onSave, onClose }) => {
     const [country, setCountry] = useState(vehicle.exportCountry || '')
@@ -338,6 +357,8 @@ const AllocCard = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, a
     const adminFields = quickEditFields(fields).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     const alloc  = (vehicle.allocation || '').toLowerCase()
     const rikuso = !!vehicle.rikusoStatus
+    const costingDone = !!vehicle.costingComplete
+    const costingTotal = costingDone ? resolveCostingTotal(vehicle, fields) : null
 
     return (
         <div onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
@@ -358,6 +379,14 @@ const AllocCard = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, a
                         background: alloc === 'export' ? 'rgba(34,197,94,0.18)' : alloc === 'khitai' ? 'rgba(251,191,36,0.18)' : 'rgba(196,181,253,0.18)',
                     }}>
                         {alloc === 'export' ? 'EXP' : alloc === 'khitai' ? 'KAI' : alloc === 'resale-to-auction' ? 'RES' : alloc.toUpperCase()}
+                    </span>
+                )}
+                {costingDone && (
+                    <span style={{
+                        fontSize: '8px', fontWeight: 700, padding: '2px 7px', borderRadius: '10px', letterSpacing: '0.06em', flexShrink: 0,
+                        color: '#059669', background: 'rgba(16,185,129,0.18)', border: '1px solid rgba(16,185,129,0.35)',
+                    }} title="Approximate costing finalised">
+                        ✓ COSTING
                     </span>
                 )}
             </div>
@@ -563,6 +592,19 @@ const AllocCard = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, a
                 )
             })()}
 
+            {/* approx. costing (finalised by accounts) */}
+            {costingDone && (
+                <div style={{ padding: '8px 10px', borderBottom: '1px solid #d1fae5', background: 'linear-gradient(90deg,#ecfdf5,#f0fdf4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                    <div>
+                        <div style={{ fontSize: '8px', fontWeight: 700, color: '#047857', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Approx. Costing</div>
+                        <div style={{ fontSize: '8px', color: '#059669', fontWeight: 600 }}>Finalised by accounts</div>
+                    </div>
+                    <div style={{ fontSize: '13px', fontWeight: 800, color: '#065f46', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                        {costingTotal !== null ? `${costingTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                    </div>
+                </div>
+            )}
+
             {/* status dots — same as VehicleCard */}
             <div style={{ padding: '6px 10px', background: '#f8fafc', borderBottom: '1px solid #f0f4f8' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -616,6 +658,8 @@ const AllocRow = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, al
     const isPresold = vehicle.allocationStatus || false
     const alloc     = (allocations[vehicle._id] || '').toLowerCase()
     const rikuso    = !!vehicle.rikusoStatus
+    const costingDone = !!vehicle.costingComplete
+    const costingTotal = costingDone ? resolveCostingTotal(vehicle, fields) : null
 
     const lotField   = fields.find(f => f.label?.toLowerCase().includes('lot'))
     const lotVal     = lotField ? (vehicle[lotField._id] || vehicle[lotField.label]) : null
@@ -853,8 +897,9 @@ const AllocRow = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, al
                         { label: 'I', active: !!vehicle.physicalIn, title: 'IGP' },
                         { label: 'O', active: !!vehicle.physicalOut, title: 'OGP' },
                         { label: 'EC', active: !!vehicle.exportCertNumber, title: vehicle.exportCertNumber ? 'Export Certificate added' : 'Export Certificate', ec: true },
+                        { label: 'CC', active: costingDone, title: costingDone ? `Costing complete${costingTotal !== null ? ' — ' + costingTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}` : 'Costing pending', cc: true },
                     ].map((s, idx) => (
-                        <span key={idx} title={s.title} onClick={s.onClick} style={{ width: s.label.includes('/') ? 'auto' : '14px', minWidth: '14px', height: '14px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: s.ec ? '50%' : '3px', fontSize: '8px', fontWeight: 700, background: s.ec ? (s.active ? '#1a73e8' : '#e2e8f0') : (s.active ? '#dc2626' : '#e2e8f0'), color: s.active ? '#fff' : '#94a3b8', padding: s.label.includes('/') ? '0 3px' : '0', cursor: s.onClick ? 'pointer' : 'default', whiteSpace: 'nowrap', boxShadow: s.ec && s.active ? '0 0 5px rgba(26,115,232,0.5)' : 'none' }}>
+                        <span key={idx} title={s.title} onClick={s.onClick} style={{ width: s.label.includes('/') ? 'auto' : s.ec ? '15px' : '14px', minWidth: s.ec ? '15px' : '14px', height: s.ec ? '15px' : '14px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: (s.ec || s.cc) ? '50%' : '3px', fontSize: '8px', fontWeight: 700, background: s.ec ? (s.active ? '#1a73e8' : '#e2e8f0') : s.cc ? (s.active ? '#059669' : '#e2e8f0') : (s.active ? '#dc2626' : '#e2e8f0'), color: s.active ? '#fff' : '#94a3b8', padding: s.label.includes('/') ? '0 3px' : '0', cursor: s.onClick ? 'pointer' : 'default', whiteSpace: 'nowrap', boxShadow: (s.ec || s.cc) && s.active ? `0 0 5px ${s.ec ? 'rgba(26,115,232,0.5)' : 'rgba(5,150,105,0.5)'}` : 'none' }}>
                             {s.label}
                         </span>
                     ))}

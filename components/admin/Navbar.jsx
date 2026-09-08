@@ -79,7 +79,7 @@ const Navbar = ({ user }) => {
     const notifTypeIcon = (type) => {
         const icons = {
             vehicle_added: '🚗', allocation_changed: '📋', gate_pass: '🚧', rikuso_assigned: '🤝',
-            export_cert: '📄', account_updated: '💰', general: '🔔',
+            export_cert: '📄', account_updated: '💰', costing_complete: '✅', general: '🔔',
         }
         return icons[type] || '🔔'
     }
@@ -88,7 +88,8 @@ const Navbar = ({ user }) => {
     const notifTypeColor = (type) => {
         const colors = {
             vehicle_added: '#16A34A', allocation_changed: '#EA580C', gate_pass: '#DC2626',
-            rikuso_assigned: '#7C3AED', export_cert: '#2563EB', account_updated: '#0F766E', general: '#6B7280',
+            rikuso_assigned: '#7C3AED', export_cert: '#2563EB', account_updated: '#0F766E',
+            costing_complete: '#059669', general: '#6B7280',
         }
         return colors[type] || '#6B7280'
     }

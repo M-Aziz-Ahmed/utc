@@ -345,7 +345,7 @@ const VehicleAccountPage = ({ params }) => {
         setDeletedImages(prev => { const s = new Set(prev[fieldId] || []); s.has(idx) ? s.delete(idx) : s.add(idx); return { ...prev, [fieldId]: s } })
     }
 
-    const handleSave = async (e) => {
+    const handleSave = async (e, opts = {}) => {
         e.preventDefault(); setSaving(true); setSaveMsg(null)
         try {
             const payload = {}
@@ -399,9 +399,33 @@ const VehicleAccountPage = ({ params }) => {
                 if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || `Error ${res.status}`) }
                 setVehicle(await res.json())
             }
-            setSaveMsg({ type: 'success', text: 'Saved successfully.' })
-            setTimeout(() => setSaveMsg(null), 3000)
+            if (!opts.skipMsg) { setSaveMsg({ type: 'success', text: 'Saved successfully.' }); setTimeout(() => setSaveMsg(null), 3000) }
         } catch (err) { setSaveMsg({ type: 'error', text: err.message }) }        finally { setSaving(false) }
+    }
+
+    // ── "Costing Complete" action ─────────────────────────────────────────────
+    // Saves the current form first (so the costing reflects the latest values),
+    // then finalises the vehicle's costing. This sets `costingComplete` on the
+    // vehicle — which makes the approximate costing show in the Allocation form
+    // and fires a notification to the team.
+    const handleCostingComplete = async (e) => {
+        e.preventDefault()
+        if (viewOnly) return
+        if (!confirm('Mark this vehicle as Costing Complete? The approximate costing will be shown in the Allocation form and the team will be notified.')) return
+        setSaving(true); setSaveMsg(null)
+        try {
+            // Persist any pending form changes first, then finalise.
+            await handleSave(e, { skipMsg: true })
+            const res = await fetch(`/api/vehicles/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ costingComplete: true }),
+            })
+            if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || `Error ${res.status}`) }
+            setVehicle(await res.json())
+            setSaveMsg({ type: 'success', text: 'Costing marked complete — team notified. The approximate costing is now visible in the Allocation form.' })
+            setTimeout(() => setSaveMsg(null), 6000)
+        } catch (err) { setSaveMsg({ type: 'error', text: err.message }) } finally { setSaving(false) }
     }
 
     if (loading) return (
@@ -450,17 +474,17 @@ const VehicleAccountPage = ({ params }) => {
         <div style={{ padding: '16px', minHeight: '100vh', background: '#f6f8fc' }}>
             <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
 
-            {/* Page header: breadcrumbs + title */}
+            {/* Page header: info split left/right, nav centered below */}
             <div style={{ marginBottom: '16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '6px' }}>
-                    {/* Breadcrumbs */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                    {/* Left info */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                         <Link href="/admin/vehicles/accounts" style={{ fontSize: '12px', color: '#9aa0a6', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
                             onMouseEnter={e => e.currentTarget.style.color='#1a73e8'} onMouseLeave={e => e.currentTarget.style.color='#9aa0a6'}>
                             <svg style={{ width: '12px', height: '12px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                             Vehicle Accounts
                         </Link>
-                        {crumbs.map((c, i) => (
+                        {crumbs.slice(0, Math.ceil(crumbs.length / 2)).map((c, i) => (
                             <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
                                 <span style={{ color: '#dadce0' }}>›</span>
                                 <span style={{ background: '#e8f0fe', color: '#1a73e8', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>{c}</span>
@@ -468,19 +492,33 @@ const VehicleAccountPage = ({ params }) => {
                         ))}
                     </div>
 
-                    {/* Prev / Next navigation */}
-                    {listIds.length > 0 && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500 }}>
-                                {currentIdx + 1} / {listIds.length}
-                            </span>
+                    {/* Right info */}
+                    {Math.ceil(crumbs.length / 2) > 0 && crumbs.slice(Math.ceil(crumbs.length / 2)).length > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            {crumbs.slice(Math.ceil(crumbs.length / 2)).map((c, i) => (
+                                <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
+                                    <span style={{ color: '#dadce0' }}>›</span>
+                                    <span style={{ background: '#e8f0fe', color: '#1a73e8', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>{c}</span>
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#202124', margin: '14px 0 0' }}>{nameLine || 'Vehicle Account'}</h1>
+                {subtitle && <p style={{ fontSize: '13px', color: '#9aa0a6', margin: '3px 0 0' }}>{subtitle}</p>}
+
+                {/* Prev / Next — centered, a little gap below the header info */}
+                {listIds.length > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: '14px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '26px', padding: '4px 6px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                             <button
                                 onClick={() => prevId && navTo(prevId)}
                                 disabled={!prevId}
-                                title="Previous record"
+                                title="Previous record (Alt+←)"
                                 style={{
                                     display: 'inline-flex', alignItems: 'center', gap: '5px',
-                                    padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
+                                    padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
                                     border: '1px solid #e2e8f0', background: prevId ? '#fff' : '#f8fafc',
                                     color: prevId ? '#1a73e8' : '#cbd5e1', cursor: prevId ? 'pointer' : 'not-allowed',
                                     transition: 'all 0.14s',
@@ -488,13 +526,16 @@ const VehicleAccountPage = ({ params }) => {
                                 <svg style={{ width: 13, height: 13 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
                                 Prev
                             </button>
+                            <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500, padding: '0 4px' }}>
+                                {currentIdx + 1} / {listIds.length}
+                            </span>
                             <button
                                 onClick={() => nextId && navTo(nextId)}
                                 disabled={!nextId}
-                                title="Next record"
+                                title="Next record (Alt+→)"
                                 style={{
                                     display: 'inline-flex', alignItems: 'center', gap: '5px',
-                                    padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
+                                    padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
                                     border: '1px solid #e2e8f0', background: nextId ? '#fff' : '#f8fafc',
                                     color: nextId ? '#1a73e8' : '#cbd5e1', cursor: nextId ? 'pointer' : 'not-allowed',
                                     transition: 'all 0.14s',
@@ -503,11 +544,8 @@ const VehicleAccountPage = ({ params }) => {
                                 <svg style={{ width: 13, height: 13 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
                             </button>
                         </div>
-                    )}
-                </div>
-
-                <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#202124', margin: 0 }}>{nameLine || 'Vehicle Account'}</h1>
-                {subtitle && <p style={{ fontSize: '13px', color: '#9aa0a6', margin: '3px 0 0' }}>{subtitle}</p>}
+                    </div>
+                )}
             </div>
 
             <form onSubmit={handleSave}>
@@ -665,6 +703,9 @@ const VehicleAccountPage = ({ params }) => {
                                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                             Account Status
                                             <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 9px', borderRadius: '12px', background: statusGreen ? '#ecfdf5' : '#fef3c7', color: statusGreen ? (pct >= 100 ? '#137333' : '#16a34a') : '#d97706', border: `1px solid ${statusGreen ? (pct >= 100 ? '#a7e0c0' : '#bbf7d0') : '#fde68a'}` }}>{statusLabel}</span>
+                                            <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 9px', borderRadius: '12px', background: vehicle.costingComplete ? '#d1fae5' : '#f8fafc', color: vehicle.costingComplete ? '#065f46' : '#94a3b8', border: `1px solid ${vehicle.costingComplete ? '#a7f3d0' : '#e2e8f0'}` }}>
+                                                {vehicle.costingComplete ? '✓ COSTING COMPLETE' : 'COSTING PENDING'}
+                                            </span>
                                         </span>
                                         <span style={{ fontSize: '12px', fontWeight: 800, color: barColor }}>{filled}/{total} · {pct}%</span>
                                     </div>
@@ -749,6 +790,13 @@ const VehicleAccountPage = ({ params }) => {
                                         <svg style={{ width: 13, height: 13 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
                                     </button>
                                 )}
+                                {/* Costing Complete — finalises the approximate costing */}
+                                <button type="button" disabled={saving || viewOnly || !!vehicle.costingComplete}
+                                    onClick={handleCostingComplete}
+                                    title={vehicle.costingComplete ? 'This vehicle is already marked costing complete' : 'Finalise the approximate costing and notify the allocation team'}
+                                    style={{ padding: '10px 22px', fontSize: '13px', fontWeight: 700, color: vehicle.costingComplete ? '#fff' : '#065f46', background: vehicle.costingComplete ? '#16a34a' : '#d1fae5', border: '1px solid' + (vehicle.costingComplete ? '#16a34a' : '#a7f3d0'), borderRadius: '24px', cursor: (saving || viewOnly || !!vehicle.costingComplete) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px', opacity: (saving || viewOnly) ? 0.5 : 1, transition: 'all 0.15s' }}>
+                                    {saving ? 'Saving…' : vehicle.costingComplete ? '✓ Costing Complete' : 'Mark Costing Complete'}
+                                </button>
                                 <button type="submit" disabled={saving || viewOnly}
                                     style={{ padding: '10px 28px', fontSize: '14px', fontWeight: 600, color: '#fff', background: (saving || viewOnly) ? '#9aa0a6' : '#1a73e8', border: 'none', borderRadius: '24px', cursor: (saving || viewOnly) ? 'not-allowed' : 'pointer', boxShadow: (saving || viewOnly) ? 'none' : '0 2px 8px rgba(26,115,232,0.3)', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     {saving && <svg style={{ width: '14px', height: '14px', animation: 'spin 0.8s linear infinite' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 12a8 8 0 018-8v8H4z" /></svg>}

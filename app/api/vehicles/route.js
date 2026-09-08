@@ -145,13 +145,17 @@ export const POST = async (req) => {
         const newVehicle = await Vehicle.create(sanitizedData);
 
         // ── Notify all admins ──────────────────────────────────────────────────
+        // Recipients are narrowed by portal access: every Admin, plus users who
+        // hold the Vehicle Entry Form, Accounts or Allocation portal. This way
+        // each normal user is only notified when the new car is relevant to the
+        // portal(s) they can actually open.
         const vName = [sanitizedData.manufacturer, sanitizedData.model].filter(Boolean).join(' ')
         notifyAdmins({
             type: 'vehicle_added',
             message: `New vehicle added: ${vName || 'Unknown'} (Stock #${sanitizedData.stockId})`,
             vehicleId: String(newVehicle._id),
             link: `/admin/vehicles/edit/${newVehicle._id}`,
-            permissions: ['allocation', 'accounts'],
+            permissions: ['vehicles', 'allocation', 'accounts'],
         })
         // ──────────────────────────────────────────────────────────────────────
 

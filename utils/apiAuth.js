@@ -33,6 +33,17 @@ export const requirePortal = async (key) => {
     return { user }
 }
 
+// Portal guard accepting any one of several portal keys.
+// e.g. the vehicle account detail API is shared between the Vehicle Entry Form
+// ('vehicles') and the Vehicle Accounts ('accounts') portals.
+export const requirePortalAny = async (keys = []) => {
+    const user = await getAuthUser()
+    if (!user) return { error: NextResponse.json({ message: 'Unauthorized' }, { status: 401 }) }
+    const ok = keys.some(k => canAccessPortal(user, k))
+    if (!ok) return { error: NextResponse.json({ message: 'Forbidden' }, { status: 403 }) }
+    return { user }
+}
+
 // Shared data guard. Returns { user } or { error }.
 // Any authenticated member of the admin portal (an Admin, or a user granted at
 // least one portal key) may use the shared vehicle-workflow APIs. The Allocation,
