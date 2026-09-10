@@ -32,6 +32,7 @@ const FieldsPage = () => {
     const [displayAsPrice, setDisplayAsPrice] = useState(false);
     const [showOnPublicCard, setShowOnPublicCard] = useState(false);
     const [showOnAdminCard, setShowOnAdminCard] = useState(false);
+    const [checkDuplicate, setCheckDuplicate] = useState(false);
 
     // Fetch unique forms from fields
     useEffect(() => {
@@ -161,6 +162,7 @@ const FieldsPage = () => {
             fieldData.displayAsPrice = displayAsPrice;
             fieldData.showOnPublicCard = showOnPublicCard;
             fieldData.showOnAdminCard = showOnAdminCard;
+            fieldData.checkDuplicate = checkDuplicate;
 
             // Add vehicle field linking
             if (vehicleField) {
@@ -189,6 +191,7 @@ const FieldsPage = () => {
             setDisplayAsPrice(false);
             setShowOnPublicCard(false);
             setShowOnAdminCard(false);
+            setCheckDuplicate(false);
             setRefreshKey((k) => k + 1);
         } catch (err) {
             setMessage({ type: 'error', text: err.message });
@@ -696,6 +699,26 @@ const FieldsPage = () => {
                                         </div>
                                     </div>
                                 </label>
+
+                                {/* Check for duplicate values */}
+                                {['text', 'number', 'email', 'password', 'dropdown', 'select-year', 'select-country', 'date'].includes(type) && (
+                                    <label style={{display:'flex', alignItems:'start', gap:'8px', cursor:'pointer', padding:'8px', borderRadius:'6px', background:'#fff', border:'1px solid #e0e0e0', transition:'all 0.15s', marginTop:'10px'}}>
+                                        <input
+                                            type="checkbox"
+                                            checked={checkDuplicate}
+                                            onChange={(e) => setCheckDuplicate(e.target.checked)}
+                                            style={{marginTop:'2px', accentColor:'#1a73e8', flexShrink:0}}
+                                        />
+                                        <div>
+                                            <div style={{fontSize:'12px', fontWeight:600, color:'#202124'}}>
+                                                Check for Duplicate Values
+                                            </div>
+                                            <div style={{fontSize:'11px', color:'#9aa0a6', marginTop:'2px'}}>
+                                                No two vehicles are allowed to have the same value in this field (e.g. Chassis No.)
+                                            </div>
+                                        </div>
+                                    </label>
+                                )}
                             </div>
 
                             {/* Submit */}

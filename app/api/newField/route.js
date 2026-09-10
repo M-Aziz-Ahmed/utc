@@ -9,7 +9,7 @@ export const POST = async (req) => {
     if (error) return error
 
     const body = await readJson(req);
-    const { label, type, isRequired, belongsto, options, linkedTax, linkedField, linkedFields, vehicleField, formulaFields, displayAsPrice, showOnPublicCard, showOnAdminCard } = body;
+    const { label, type, isRequired, belongsto, options, linkedTax, linkedField, linkedFields, vehicleField, formulaFields, displayAsPrice, showOnPublicCard, showOnAdminCard, checkDuplicate } = body;
 
     if (!label || !type) {
         return NextResponse.json({ message: 'Label and type are required' }, { status: 400 });
@@ -44,6 +44,7 @@ export const POST = async (req) => {
         if (displayAsPrice !== undefined) fieldData.displayAsPrice = displayAsPrice;
         if (showOnPublicCard !== undefined) fieldData.showOnPublicCard = showOnPublicCard;
         if (showOnAdminCard !== undefined) fieldData.showOnAdminCard = showOnAdminCard;
+        if (checkDuplicate !== undefined) fieldData.checkDuplicate = checkDuplicate;
 
         if (options && Array.isArray(options)) {
             fieldData.options = options;

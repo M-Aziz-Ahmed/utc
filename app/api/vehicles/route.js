@@ -1,5 +1,6 @@
 import { readJson } from '@/utils/readJson'
 import Vehicle from "@/models/Vehicle"
+import DynamicFeilds from "@/models/DynamicFeilds"
 import dbConnect from "@/utils/dbConnection"
 import { uploadToCloudinary } from "@/utils/cloudinary"
 import { getSession } from '@/utils/auth'
@@ -20,6 +21,59 @@ const chassisOf = (v) => {
     }
     return ''
 }
+
+const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+// Fields that must hold unique values per vehicle: every dynamic field flagged
+// checkDuplicate, plus the chassis field which is always enforced.
+const getUniqueFields = async () => {
+    const flagged = await DynamicFeilds.find({ checkDuplicate: true }).lean()
+    const out = Array.isArray(flagged) ? [...flagged] : []
+    const ids = new Set(out.map(f => String(f._id)))
+    const chassis = await DynamicFeilds.findOne({ label: { $regex: /chassis|vin/i }, belongsto: 'add-vehicles' }).lean()
+    if (chassis && !ids.has(String(chassis._id))) out.push(chassis)
+    return out
+}
+
+// The keys a value can be stored under for a given field: its _id and its
+// (dot-stripped) label, mirroring how the client writes dynamic values.
+const fieldKeys = (field) => {
+    const keys = [String(field._id)]
+    if (field.label) keys.push(field.label.replace(/\./g, ''))
+    return [...new Set(keys)]
+}
+
+// Returns { field, value, refs } on the first pre-existing duplicate, else null.
+const assertNoDuplicate = async (data, excludeId) => {
+    const fields = await getUniqueFields()
+    for (const field of fields) {
+        let raw
+        for (const k of fieldKeys(field)) {
+            if (data[k] !== undefined && data[k] !== null && data[k] !== '') { raw = data[k]; break }
+        }
+        if (raw === undefined || typeof raw === 'object') continue
+        const value = String(raw).trim()
+        if (!value || value === '[object Object]') continue
+        const exact = { $regex: `^${escapeRegExp(value)}$`, $options: 'i' }
+        const or = []
+        for (const k of fieldKeys(field)) or.push({ [k]: exact })
+        if (!isNaN(Number(value)) && String(Number(value)) === value) {
+            const num = Number(value)
+            for (const k of fieldKeys(field)) or.push({ [k]: num })
+        }
+        const match = await Vehicle.findOne({ ...(excludeId ? { _id: { $ne: excludeId } } : {}), $or: or })
+            .select('stockId manufacturer model').lean()
+        if (match) {
+            const refs = [match.stockId ? `Stock #${match.stockId}` : '', [match.manufacturer, match.model].filter(Boolean).join(' ')].filter(Boolean).join(' · ')
+            return { field: field.label || String(field._id), value, refs }
+        }
+    }
+    return null
+}
+
+const duplicateError = (dup) => NextResponse.json({
+    message: `Duplicate "${dup.field}" — "${dup.value}" is already used by ${dup.refs || 'another vehicle'}.`,
+}, { status: 409 })
 
 export const POST = async (req) => {
     try {
@@ -142,6 +196,10 @@ export const POST = async (req) => {
         const lastStock = await Vehicle.findOne({}, { stockId: 1 }).sort({ stockId: -1 }).lean();
         sanitizedData.stockId = (lastStock?.stockId || 0) + 1;
 
+        // Reject duplicate values for unique fields (chassis is always enforced).
+        const dup = await assertNoDuplicate(sanitizedData)
+        if (dup) return duplicateError(dup)
+
         const newVehicle = await Vehicle.create(sanitizedData);
 
         // ── Notify all admins ──────────────────────────────────────────────────
@@ -216,8 +274,20 @@ export const PATCH = async (req) => {
         }
         const safeUpdate = sanitize(updateData)
 
+        // Reject duplicate values for unique fields (chassis is always enforced).
+        const dup = await assertNoDuplicate(safeUpdate, vehicleId)
+        if (dup) return duplicateError(dup)
+
         // Capture old allocation before update for change detection
-        const oldVehicle = await Vehicle.findById(vehicleId).select('allocation manufacturer model stockId rikusoCompanyName rikusoStatus').lean()
+        const oldVehicle = await Vehicle.findById(vehicleId).select('allocation manufacturer model stockId rikusoCompanyName rikusoStatus rikusoCompany').lean()
+
+        // Rikuso status reflects BOTH an allocation and a rikuso company being set —
+        // it must not flip on until the vehicle has both.
+        if ('allocation' in updateData || 'rikusoCompany' in updateData || 'rikusoCompanyName' in updateData || 'rikusoStatus' in updateData) {
+            const nAllocation = 'allocation' in updateData ? (safeUpdate.allocation ?? '') : (oldVehicle?.allocation || '')
+            const nRikusoCompany = 'rikusoCompany' in updateData ? safeUpdate.rikusoCompany : (oldVehicle?.rikusoCompany || null)
+            safeUpdate.rikusoStatus = Boolean(nAllocation && nRikusoCompany)
+        }
 
         const updatedVehicle = await Vehicle.findByIdAndUpdate(
             vehicleId,
@@ -337,6 +407,10 @@ export const PUT = async (req) => {
             return out
         }
         const safeFields = sanitize(updateFields)
+
+        // Reject duplicate values for unique fields (chassis is always enforced).
+        const dup = await assertNoDuplicate(safeFields, vehicleId)
+        if (dup) return duplicateError(dup)
 
         const updatedVehicle = await Vehicle.findByIdAndUpdate(
             vehicleId,

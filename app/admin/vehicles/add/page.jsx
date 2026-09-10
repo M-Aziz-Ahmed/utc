@@ -485,7 +485,7 @@ const AddVehiclePage = () => {
         })
         try {
             const res = await fetch('/api/vehicles', { method: 'POST', body: fd })
-            if (!res.ok) throw new Error('Failed to add vehicle')
+            if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || 'Failed to add vehicle') }
             const data = await res.json()
             setCreatedVehicleId(data.vehicleId)
             setSuccess(true)

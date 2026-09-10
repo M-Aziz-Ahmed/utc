@@ -21,6 +21,8 @@ const DynFeildsSchema = new mongoose.Schema({
     displayAsPrice: { type: Boolean, default: false },
     showOnPublicCard: { type: Boolean, default: false },
     showOnAdminCard: { type: Boolean, default: false },
+    // Enforces that no two vehicles share the same value in this field
+    checkDuplicate: { type: Boolean, default: false },
 });
 
 export default mongoose.models.DynFeilds || mongoose.model('DynFeilds', DynFeildsSchema);

@@ -28,7 +28,7 @@ const ADD_VEHICLES_FIELDS = [
     { label: 'Seats', type: 'number', isRequired: true },
     { label: 'Color', type: 'text', isRequired: true },
     { label: 'Millage', type: 'number', isRequired: true },
-    { label: 'Chassis No.', type: 'text', isRequired: true },
+    { label: 'Chassis No.', type: 'text', isRequired: true, checkDuplicate: true },
     { label: 'PP', type: 'number' },
     { label: 'Condition', type: 'dropdown', isRequired: true, options: ['Good', 'Excellent', 'Fair', 'Poor', 'New'] },
     { label: 'Vehicle Images', type: 'image' },
@@ -120,6 +120,11 @@ export const POST = async () => {
                 const existing = await DynamicFeilds.findOne({ label: f.label, belongsto });
                 if (existing) {
                     skipped.push(`${belongsto}: ${f.label}`);
+                    // Upgrade existing fields that now carry new seed config
+                    if (f.checkDuplicate && !existing.checkDuplicate) {
+                        existing.checkDuplicate = true;
+                        await existing.save();
+                    }
                     continue;
                 }
 
@@ -133,6 +138,7 @@ export const POST = async () => {
                     displayAsPrice: false,
                     showOnPublicCard: false,
                     showOnAdminCard: !!f.showOnAdminCard,
+                    checkDuplicate: !!f.checkDuplicate,
                 };
 
                 if (f.type === 'tax') {

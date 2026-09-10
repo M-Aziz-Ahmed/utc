@@ -140,7 +140,7 @@ const AllocControls = ({ vehicle, rikusoCompanies, consignees, allocations,
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {/* Allocation */}
-            <select value={alloc} onChange={e => {
+            <select className="alloc-select" value={alloc} onChange={e => {
                 const val = e.target.value
                 if (val === 'export' || val === 'khitai') {
                     // first set the allocation, then open the country modal
@@ -164,7 +164,7 @@ const AllocControls = ({ vehicle, rikusoCompanies, consignees, allocations,
             )}
 
             {/* Rikuso */}
-            <select value={rikusoVal} onChange={e => onRikusoChange(vehicle._id, e.target.value)}
+            <select className="alloc-select" value={rikusoVal} onChange={e => onRikusoChange(vehicle._id, e.target.value)}
                 style={{ width: '100%', padding: '5px 8px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '11px', outline: 'none', background: '#fff', color: rikusoVal ? '#202124' : '#9aa0a6' }}>
                 <option value="">Rikuso company…</option>
                 {rikusoCompanies.map(c => <option key={c._id} value={c._id}>{c.companyName || c.name}</option>)}
@@ -908,7 +908,7 @@ const AllocRow = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, al
             {/* Allocation select */}
             <td style={{ padding: '5px 8px', minWidth: '130px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                    <select value={allocations[vehicle._id] || ''} onChange={e => {
+                    <select className="alloc-select" value={allocations[vehicle._id] || ''} onChange={e => {
                         const val = e.target.value
                         onAllocChange(vehicle._id, val)
                         if (val === 'export' || val === 'khitai') onExportSelect(vehicle, val)
@@ -930,7 +930,7 @@ const AllocRow = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, al
             </td>
             {/* Rikuso select */}
             <td style={{ padding: '5px 8px', minWidth: '130px' }}>
-                <select value={vehicle.rikusoCompany || ''} onChange={e => onRikusoChange(vehicle._id, e.target.value)}
+                <select className="alloc-select" value={vehicle.rikusoCompany || ''} onChange={e => onRikusoChange(vehicle._id, e.target.value)}
                     style={{ width: '100%', padding: '4px 6px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '11px', outline: 'none', background: '#fff' }}>
                     <option value="">Rikuso…</option>
                     {rikusoCompanies.map(c => <option key={c._id} value={c._id}>{c.companyName || c.name}</option>)}
@@ -1007,10 +1007,16 @@ const RikusoManagementPage = () => {
 
     const handleAllocChange = async (vehicleId, allocation) => {
         try {
-            const res = await fetch('/api/vehicles', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vehicleId, allocation }) })
+            const vehicle = vehicles.find(v => v._id === vehicleId)
+            const rikusoCompany = (vehicle && vehicle.rikusoCompany) || ''
+            const rikusoStatus = allocation !== '' && rikusoCompany !== ''
+            const res = await fetch('/api/vehicles', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vehicleId, allocation, rikusoStatus }) })
             if (res.ok) {
                 setAllocations(p => ({ ...p, [vehicleId]: allocation }))
-                setVehicles(p => p.map(v => v._id === vehicleId ? { ...v, allocation } : v))
+                setVehicles(p => p.map(v => v._id === vehicleId ? { ...v, allocation, rikusoStatus } : v))
+            } else {
+                const err = await res.json().catch(() => ({}))
+                alert(err.message || 'Failed to update allocation')
             }
         } catch (e) { alert('Failed to update allocation') }
     }
@@ -1019,8 +1025,15 @@ const RikusoManagementPage = () => {
         try {
             const company = rikusoCompanies.find(c => c._id === rikusoCompanyId)
             const companyName = rikusoCompanyId ? (company?.companyName || company?.name || '') : ''
-            const res = await fetch('/api/vehicles', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vehicleId, rikusoCompany: rikusoCompanyId || null, rikusoCompanyName: companyName, rikusoStatus: rikusoCompanyId !== '' }) })
-            if (res.ok) setVehicles(p => p.map(v => v._id === vehicleId ? { ...v, rikusoCompany: rikusoCompanyId || null, rikusoCompanyName: companyName, rikusoStatus: rikusoCompanyId !== '' } : v))
+            const allocation = (vehicles.find(v => v._id === vehicleId)?.allocation) || ''
+            const rikusoStatus = allocation !== '' && rikusoCompanyId !== ''
+            const res = await fetch('/api/vehicles', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vehicleId, rikusoCompany: rikusoCompanyId || null, rikusoCompanyName: companyName, rikusoStatus }) })
+            if (res.ok) {
+                setVehicles(p => p.map(v => v._id === vehicleId ? { ...v, rikusoCompany: rikusoCompanyId || null, rikusoCompanyName: companyName, rikusoStatus } : v))
+            } else {
+                const err = await res.json().catch(() => ({}))
+                alert(err.message || 'Failed to update rikuso')
+            }
         } catch (e) { alert('Failed to update rikuso') }
     }
 
@@ -1126,6 +1139,8 @@ const RikusoManagementPage = () => {
                     .alloc-controls { flex-wrap: wrap !important; }
                     .alloc-filter-tabs { width: 100%; justify-content: stretch; }
                     .alloc-filter-tabs button { flex: 1; text-align: center; }
+                    .alloc-select { min-height: 44px !important; font-size: 14px !important; padding: 9px 10px !important; border-radius: 8px !important; }
+                    .alloc-select option { font-size: 14px !important; }
                 }
             `}</style>
             {/* Header */}
