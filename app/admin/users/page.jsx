@@ -65,7 +65,6 @@ const UsersPage = () => {
     const hasFilters = searchTerm || roleFilter !== 'all' || statusFilter !== 'all'
 
     const addIcon = <svg style={{ width: 12, height: 12 }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-    console.log(users)
 
     return (
         <Page>
