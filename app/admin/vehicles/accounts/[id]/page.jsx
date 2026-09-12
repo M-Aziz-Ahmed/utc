@@ -251,20 +251,7 @@ const VehicleAccountPage = ({ params }) => {
     const navTo = (targetId) => {
         router.push(`/admin/vehicles/accounts/${targetId}?list=${encodeURIComponent(listIds.join(','))}`)
     }
-
-    // Keyboard navigation (Alt+← / Alt+→) for prev/next records
-    useEffect(() => {
-        const handler = (e) => {
-            if (!e.altKey) return
-            const tag = (e.target.tagName || '').toLowerCase()
-            const isTyping = tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'button'
-            if (isTyping) return
-            if (e.key === 'ArrowLeft' && prevId) { e.preventDefault(); navTo(prevId) }
-            else if (e.key === 'ArrowRight' && nextId) { e.preventDefault(); navTo(nextId) }
-        }
-        window.addEventListener('keydown', handler)
-        return () => window.removeEventListener('keydown', handler)
-    }, [prevId, nextId, listIds])
+    const [navLabels, setNavLabels]         = useState({ prev: null, next: null })
     const [vehicle, setVehicle]             = useState(null)
     const [vehicleFields, setVehicleFields] = useState([])
     const [accountFields, setAccountFields] = useState([])
@@ -428,6 +415,43 @@ const VehicleAccountPage = ({ params }) => {
         } catch (err) { setSaveMsg({ type: 'error', text: err.message }) } finally { setSaving(false) }
     }
 
+    // Short label shown on the Prev / Next buttons (stock id or maker + model)
+    const navLabelFor = (v) => v ? [v.stockId ? `#${v.stockId}` : null, v.manufacturer, v.model].filter(Boolean).join(' ') : ''
+
+    // Load a short label for the previous / next vehicles
+    useEffect(() => {
+        let cancelled = false
+        Promise.all([
+            prevId ? fetch(`/api/vehicles/${prevId}`).then(r => r.json()).then(v => ({ id: prevId, label: navLabelFor(v) })).catch(() => null) : Promise.resolve(null),
+            nextId ? fetch(`/api/vehicles/${nextId}`).then(r => r.json()).then(v => ({ id: nextId, label: navLabelFor(v) })).catch(() => null) : Promise.resolve(null),
+        ]).then(([prev, next]) => { if (!cancelled) setNavLabels({ prev, next }) })
+        return () => { cancelled = true }
+    }, [prevId, nextId])
+
+    // Save the current form, then navigate to another vehicle (used by Prev / Next)
+    const saveAndNav = async (targetId) => {
+        if (!targetId) return
+        if (!viewOnly && !saving) {
+            const fakeEvent = { preventDefault: () => {} }
+            await handleSave(fakeEvent, { skipMsg: true })
+        }
+        navTo(targetId)
+    }
+
+    // Keyboard navigation (Alt+← / Alt+→) — saves the current form first
+    useEffect(() => {
+        const handler = (e) => {
+            if (!e.altKey) return
+            const tag = (e.target.tagName || '').toLowerCase()
+            const isTyping = tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'button'
+            if (isTyping) return
+            if (e.key === 'ArrowLeft' && prevId) { e.preventDefault(); saveAndNav(prevId) }
+            else if (e.key === 'ArrowRight' && nextId) { e.preventDefault(); saveAndNav(nextId) }
+        }
+        window.addEventListener('keydown', handler)
+        return () => window.removeEventListener('keydown', handler)
+    }, [prevId, nextId, listIds, saving, viewOnly])
+
     if (loading) return (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
             <div style={{ width: '36px', height: '36px', borderRadius: '50%', border: '3px solid #e8f0fe', borderTopColor: '#1a73e8', animation: 'spin 0.8s linear infinite' }} />
@@ -474,48 +498,33 @@ const VehicleAccountPage = ({ params }) => {
         <div style={{ padding: '16px', minHeight: '100vh', background: '#f6f8fc' }}>
             <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
 
-            {/* Page header: info split left/right, nav centered below */}
+            {/* Page header: info on the left, nav below */}
             <div style={{ marginBottom: '16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-                    {/* Left info */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                        <Link href="/admin/vehicles/accounts" style={{ fontSize: '12px', color: '#9aa0a6', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
-                            onMouseEnter={e => e.currentTarget.style.color='#1a73e8'} onMouseLeave={e => e.currentTarget.style.color='#9aa0a6'}>
-                            <svg style={{ width: '12px', height: '12px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                            Vehicle Accounts
-                        </Link>
-                        {crumbs.slice(0, Math.ceil(crumbs.length / 2)).map((c, i) => (
-                            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
-                                <span style={{ color: '#dadce0' }}>›</span>
-                                <span style={{ background: '#e8f0fe', color: '#1a73e8', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>{c}</span>
-                            </span>
-                        ))}
-                    </div>
-
-                    {/* Right info */}
-                    {Math.ceil(crumbs.length / 2) > 0 && crumbs.slice(Math.ceil(crumbs.length / 2)).length > 0 && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                            {crumbs.slice(Math.ceil(crumbs.length / 2)).map((c, i) => (
-                                <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
-                                    <span style={{ color: '#dadce0' }}>›</span>
-                                    <span style={{ background: '#e8f0fe', color: '#1a73e8', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>{c}</span>
-                                </span>
-                            ))}
-                        </div>
-                    )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <Link href="/admin/vehicles/accounts" style={{ fontSize: '12px', color: '#9aa0a6', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        onMouseEnter={e => e.currentTarget.style.color='#1a73e8'} onMouseLeave={e => e.currentTarget.style.color='#9aa0a6'}>
+                        <svg style={{ width: '12px', height: '12px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                        Vehicle Accounts
+                    </Link>
+                    {crumbs.map((c, i) => (
+                        <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
+                            <span style={{ color: '#dadce0' }}>›</span>
+                            <span style={{ background: '#e8f0fe', color: '#1a73e8', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>{c}</span>
+                        </span>
+                    ))}
                 </div>
 
                 <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#202124', margin: '14px 0 0' }}>{nameLine || 'Vehicle Account'}</h1>
                 {subtitle && <p style={{ fontSize: '13px', color: '#9aa0a6', margin: '3px 0 0' }}>{subtitle}</p>}
 
-                {/* Prev / Next — centered, a little gap below the header info */}
+                {/* Prev / Next — centered, a little gap below the header info (saves before navigating) */}
                 {listIds.length > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'center', marginTop: '14px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '26px', padding: '4px 6px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                             <button
-                                onClick={() => prevId && navTo(prevId)}
-                                disabled={!prevId}
-                                title="Previous record (Alt+←)"
+                                onClick={() => saveAndNav(prevId)}
+                                disabled={!prevId || saving}
+                                title="Previous record (Alt+←) — auto saves current data"
                                 style={{
                                     display: 'inline-flex', alignItems: 'center', gap: '5px',
                                     padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
@@ -525,14 +534,17 @@ const VehicleAccountPage = ({ params }) => {
                                 }}>
                                 <svg style={{ width: 13, height: 13 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
                                 Prev
+                                {navLabels.prev?.id === prevId && navLabels.prev.label && (
+                                    <span style={{ fontSize: '10px', fontWeight: 500, color: '#475569', background: '#f1f3f4', padding: '2px 7px', borderRadius: '10px', maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{navLabels.prev.label}</span>
+                                )}
                             </button>
                             <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500, padding: '0 4px' }}>
                                 {currentIdx + 1} / {listIds.length}
                             </span>
                             <button
-                                onClick={() => nextId && navTo(nextId)}
-                                disabled={!nextId}
-                                title="Next record (Alt+→)"
+                                onClick={() => saveAndNav(nextId)}
+                                disabled={!nextId || saving}
+                                title="Next record (Alt+→) — auto saves current data"
                                 style={{
                                     display: 'inline-flex', alignItems: 'center', gap: '5px',
                                     padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
@@ -541,6 +553,9 @@ const VehicleAccountPage = ({ params }) => {
                                     transition: 'all 0.14s',
                                 }}>
                                 Next
+                                {navLabels.next?.id === nextId && navLabels.next.label && (
+                                    <span style={{ fontSize: '10px', fontWeight: 500, color: '#475569', background: '#f1f3f4', padding: '2px 7px', borderRadius: '10px', maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{navLabels.next.label}</span>
+                                )}
                                 <svg style={{ width: 13, height: 13 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
                             </button>
                         </div>
@@ -774,22 +789,6 @@ const VehicleAccountPage = ({ params }) => {
                                 Cancel
                             </Link>
                             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                {nextId && (
-                                    <button type="button" disabled={saving || viewOnly}
-                                        onClick={async (e) => {
-                                            // Submit the form first, then navigate to next
-                                            const form = e.currentTarget.closest('form')
-                                            if (form) {
-                                                const fakeEvent = { preventDefault: () => {} }
-                                                await handleSave(fakeEvent)
-                                            }
-                                            navTo(nextId)
-                                        }}
-                                        style={{ padding: '10px 20px', fontSize: '13px', fontWeight: 600, color: '#1a73e8', background: '#e8f0fe', border: '1px solid #d2e3fc', borderRadius: '24px', cursor: (saving || viewOnly) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px', opacity: (saving || viewOnly) ? 0.5 : 1 }}>
-                                        Save &amp; Next
-                                        <svg style={{ width: 13, height: 13 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
-                                    </button>
-                                )}
                                 {/* Costing Complete — finalises the approximate costing */}
                                 <button type="button" disabled={saving || viewOnly || !!vehicle.costingComplete}
                                     onClick={handleCostingComplete}
