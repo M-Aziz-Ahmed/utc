@@ -538,7 +538,7 @@ const VehicleAccountPage = ({ params }) => {
                                 <svg style={{ width: 13, height: 13 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
                                 Prev
                                 {navLabels.prev?.id === prevId && navLabels.prev.label && (
-                                    <span style={{ fontSize: '10px', fontWeight: 500, color: '#475569', background: '#f1f3f4', padding: '2px 7px', borderRadius: '10px', maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{navLabels.prev.label}</span>
+                                    <span style={{ fontSize: '10px', fontWeight: 500, color: '#475569', background: '#f1f3f4', padding: '2px 7px', borderRadius: '10px', whiteSpace: 'nowrap' }}>{navLabels.prev.label}</span>
                                 )}
                             </button>
                             <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500, padding: '0 4px' }}>
@@ -557,7 +557,7 @@ const VehicleAccountPage = ({ params }) => {
                                 }}>
                                 Next
                                 {navLabels.next?.id === nextId && navLabels.next.label && (
-                                    <span style={{ fontSize: '10px', fontWeight: 500, color: '#475569', background: '#f1f3f4', padding: '2px 7px', borderRadius: '10px', maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{navLabels.next.label}</span>
+                                    <span style={{ fontSize: '10px', fontWeight: 500, color: '#475569', background: '#f1f3f4', padding: '2px 7px', borderRadius: '10px', whiteSpace: 'nowrap' }}>{navLabels.next.label}</span>
                                 )}
                                 <svg style={{ width: 13, height: 13 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
                             </button>
