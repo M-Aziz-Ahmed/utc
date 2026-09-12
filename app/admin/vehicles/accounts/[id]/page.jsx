@@ -312,6 +312,9 @@ const VehicleAccountPage = ({ params }) => {
     // and lock all editing so the page is effectively read-only.
     const isAdmin = String(viewer.role || '').toLowerCase() === 'admin'
     const viewOnly = !!viewer.viewOnly
+    // Vehicle pictures (upload / set cover / remove) are admin-only — portal
+    // users (e.g. allocation) can view them but must not edit or delete them.
+    const canManageImages = isAdmin && !viewOnly
     const HIDDEN_COST_LABELS = ['pp', 'push price', 'auction fee', 'recycle', 'zekin', 'rikuso expense', 'rikuso tax', 'utc commiss', 'fob price', 'total price', 'total amount', 'conversion rate', 'vehicle duty', 'custom clearance', 'costing', 'price in million', 'final price']
     const isHiddenCostField = (field) => {
         const label = (field.label || '').toLowerCase().trim()
@@ -660,18 +663,18 @@ const VehicleAccountPage = ({ params }) => {
                                                                 return (
                                                                     <div key={idx} style={{ position: 'relative', width: '52px', height: '40px', borderRadius: '6px', overflow: 'hidden', border: `2px solid ${isMain ? '#f59e0b' : deleted ? '#ef4444' : '#e5e7eb'}`, opacity: deleted ? 0.35 : 1, flexShrink: 0 }}>
                                                                         <img src={f.path} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                                                                        {!deleted && <button type="button" disabled={viewOnly} onClick={() => setMainImageUrl(isMain ? '' : f.path)} style={{ position: 'absolute', top: '1px', left: '1px', width: '14px', height: '14px', borderRadius: '50%', background: isMain ? '#f59e0b' : 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', fontSize: '8px', cursor: viewOnly ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: viewOnly ? 0.5 : 1 }}>★</button>}
-                                                                        <button type="button" disabled={viewOnly} onClick={() => toggleDeleteImage(field._id, idx)} style={{ position: 'absolute', top: '1px', right: '1px', width: '14px', height: '14px', borderRadius: '50%', background: deleted ? '#16a34a' : '#ef4444', border: 'none', color: '#fff', fontSize: '9px', cursor: viewOnly ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, opacity: viewOnly ? 0.5 : 1 }}>{deleted ? '↺' : '×'}</button>
+                                                                        {!deleted && <button type="button" disabled={!canManageImages} onClick={() => setMainImageUrl(isMain ? '' : f.path)} style={{ position: 'absolute', top: '1px', left: '1px', width: '14px', height: '14px', borderRadius: '50%', background: isMain ? '#f59e0b' : 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', fontSize: '8px', cursor: canManageImages ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: canManageImages ? 1 : 0.5 }}>★</button>}
+                                                                        <button type="button" disabled={!canManageImages} onClick={() => toggleDeleteImage(field._id, idx)} style={{ position: 'absolute', top: '1px', right: '1px', width: '14px', height: '14px', borderRadius: '50%', background: deleted ? '#16a34a' : '#ef4444', border: 'none', color: '#fff', fontSize: '9px', cursor: canManageImages ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, opacity: canManageImages ? 1 : 0.5 }}>{deleted ? '↺' : '×'}</button>
                                                                     </div>
                                                                 )
                                                             })}
                                                         </div>
                                                     </div>
                                                 )}
-                                                <input type="file" multiple accept={field.type === 'image' ? 'image/*' : '*'} disabled={viewOnly} onChange={async e => {
+                                                <input type="file" multiple accept={field.type === 'image' ? 'image/*' : '*'} disabled={!canManageImages} onChange={async e => {
                                                     const compressed = await Promise.all(Array.from(e.target.files).map(f => compressImage(f)))
                                                     setNewImages(prev => ({ ...prev, [field._id]: compressed }))
-                                                }} style={{ width: '100%', padding: '5px 8px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '11px', boxSizing: 'border-box', cursor: viewOnly ? 'not-allowed' : 'pointer' }} />
+                                                }} style={{ width: '100%', padding: '5px 8px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '11px', boxSizing: 'border-box', cursor: canManageImages ? 'pointer' : 'not-allowed' }} />
                                                 {newImages[field._id]?.length > 0 && <p style={{ fontSize: '10px', color: '#1a73e8', marginTop: '3px', fontWeight: 600 }}>{newImages[field._id].length} new file{newImages[field._id].length > 1 ? 's' : ''} selected</p>}
                                             </div>
                                         )
