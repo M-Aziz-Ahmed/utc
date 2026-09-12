@@ -1102,16 +1102,19 @@ const RikusoManagementPage = () => {
 
     const filtered = applyVehicleFilters(vehicles, fields, search, filters)
 
+    // A vehicle counts as allocated only once BOTH an allocation and a Rikuso company are assigned
+    const isAllocated = (v) => Boolean(v.allocation && v.rikusoCompany)
+
     // Apply allocation status filter
     const allocFiltered = allocFilter === 'all' ? filtered
-        : allocFilter === 'allocated' ? filtered.filter(v => v.allocation)
-        : filtered.filter(v => !v.allocation)
+        : allocFilter === 'allocated' ? filtered.filter(isAllocated)
+        : filtered.filter(v => !isAllocated(v))
 
     // Allocation tab counts (based on VehicleFilterBar-filtered set)
     const allocTabCounts = {
         all: filtered.length,
-        allocated: filtered.filter(v => v.allocation).length,
-        unallocated: filtered.filter(v => !v.allocation).length,
+        allocated: filtered.filter(isAllocated).length,
+        unallocated: filtered.filter(v => !isAllocated(v)).length,
     }
 
     const exportCountries = [...new Set(vehicles.map(v => v.exportCountry).filter(Boolean))].sort((a, b) => a.localeCompare(b))
