@@ -76,7 +76,7 @@ const resolveCostingTotal = (vehicle, fields) => {
 }
 
 // ── Export / Khitai details modal ──────────────────────────────────────────────
-const ExportModal = ({ vehicle, mode, countries, onSave, onClose }) => {
+const ExportModal = ({ vehicle, mode, countries, frequentCountries = [], onSave, onClose }) => {
     const [country, setCountry] = useState(vehicle.exportCountry || '')
     const [saving, setSaving]   = useState(false)
     const isKhitai = mode === 'khitai'
@@ -109,6 +109,7 @@ const ExportModal = ({ vehicle, mode, countries, onSave, onClose }) => {
                             value={country}
                             onChange={setCountry}
                             extraOptions={countries}
+                            frequentOptions={frequentCountries}
                             required
                             autoFocus
                             placeholder="Type or select a country…"
@@ -130,22 +131,55 @@ const ExportModal = ({ vehicle, mode, countries, onSave, onClose }) => {
     )
 }
 
+// ── generic confirmation modal (used before committing allocation changes) ────
+const ConfirmModal = ({ title, message, vehicleName, confirmLabel = 'Confirm', tone = 'blue', onConfirm, onClose }) => {
+    const toneColor = tone === 'red' ? '#c5221f' : tone === 'green' ? '#059669' : '#1a73e8'
+    return (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 55, padding: '16px' }} onClick={onClose}>
+            <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', maxWidth: '360px', width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }} onClick={e => e.stopPropagation()}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ width: '34px', height: '34px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: tone === 'red' ? '#fce8e6' : tone === 'green' ? '#ecfdf5' : '#e8f0fe', color: toneColor, fontSize: '15px', fontWeight: 700 }}>
+                            {tone === 'red' ? '!' : '?'}
+                        </span>
+                        <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#202124', margin: 0 }}>{title}</h3>
+                    </div>
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9aa0a6', display: 'flex', padding: '4px' }}>
+                        <svg style={{ width: '14px', height: '14px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+                <p style={{ fontSize: '12px', color: '#5f6368', margin: '0 0 4px', lineHeight: 1.5 }}>{message}</p>
+                <p style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', margin: '0 0 16px' }}>{vehicleName || '—'}</p>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={onClose}
+                        style={{ flex: 1, padding: '10px', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '12px', cursor: 'pointer', background: '#fff', color: '#5f6368', fontWeight: 600 }}>
+                        Cancel
+                    </button>
+                    <button onClick={onConfirm}
+                        style={{ flex: 1, padding: '10px', background: toneColor, color: '#fff', border: 'none', borderRadius: '20px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                        {confirmLabel}
+                    </button>
+                </div>
+            </div>
+        </div>
+    )
+}
+
 // ── compact allocation controls (shared by both views) ────────────────────────
 const AllocControls = ({ vehicle, rikusoCompanies, consignees, allocations,
-    onAllocChange, onRikusoChange, onPresold, onRemovePresold, onExportSelect }) => {
+    onAllocChange, onAllocRequest, onRikusoRequest, onPresold, onRemovePresold, onExportSelect }) => {
     const alloc      = allocations[vehicle._id] || ''
     const rikusoVal  = vehicle.rikusoCompany || ''
     const isPresold  = vehicle.allocationStatus || false
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div className="alloc-card-controls" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {/* Allocation */}
             <select className="alloc-select" value={alloc} onChange={e => {
                 const val = e.target.value
                 if (val === 'export' || val === 'khitai') {
-                    // first set the allocation, then open the country modal
-                    onAllocChange(vehicle._id, val)
-                    onExportSelect(vehicle, val)
+                    // ask for confirmation before committing an Export/Khitai allocation
+                    onAllocRequest(vehicle, val)
                 } else {
                     onAllocChange(vehicle._id, val)
                 }
@@ -164,7 +198,7 @@ const AllocControls = ({ vehicle, rikusoCompanies, consignees, allocations,
             )}
 
             {/* Rikuso */}
-            <select className="alloc-select" value={rikusoVal} onChange={e => onRikusoChange(vehicle._id, e.target.value)}
+            <select className="alloc-select" value={rikusoVal} onChange={e => onRikusoRequest(vehicle, e.target.value)}
                 style={{ width: '100%', padding: '5px 8px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '11px', outline: 'none', background: '#fff', color: rikusoVal ? '#202124' : '#9aa0a6' }}>
                 <option value="">Rikuso company…</option>
                 {rikusoCompanies.map(c => <option key={c._id} value={c._id}>{c.companyName || c.name}</option>)}
@@ -200,7 +234,7 @@ const AllocControls = ({ vehicle, rikusoCompanies, consignees, allocations,
 
 // ── Grid card (same thumbnail/header as vehicles page) ─────────────────────────
 const AllocCard = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, allocations,
-    onAllocChange, onRikusoChange, onPresold, onRemovePresold, onExportSelect, onZoom }) => {
+    onAllocChange, onAllocRequest, onRikusoChange, onRikusoRequest, onPresold, onRemovePresold, onExportSelect, onZoom }) => {
     const [imgIdx, setImgIdx] = useState(0)
     const [hov, setHov]       = useState(false)
     const [editableValues, setEditableValues] = useState({})
@@ -392,7 +426,7 @@ const AllocCard = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, a
             </div>
 
             {/* image */}
-            <div style={{ position: 'relative', height: '140px', background: '#f1f5f9', flexShrink: 0 }}>
+            <div className="alloc-card-img" style={{ position: 'relative', height: '140px', background: '#f1f5f9', flexShrink: 0 }}>
                 {imgs.length > 0 ? (
                     <>
                         <img src={imgs[imgIdx]} alt="" onClick={e => { e.stopPropagation(); if (onZoom) onZoom(imgs, imgIdx) }} style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#f1f5f9', display: 'block', cursor: onZoom ? 'zoom-in' : 'default' }} />
@@ -642,7 +676,8 @@ const AllocCard = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, a
             {/* allocation controls */}
             <div style={{ padding: '8px 10px', flex: 1 }}>
                 <AllocControls vehicle={vehicle} rikusoCompanies={rikusoCompanies} consignees={consignees}
-                    allocations={allocations} onAllocChange={onAllocChange} onRikusoChange={onRikusoChange}
+                    allocations={allocations} onAllocChange={onAllocChange} onAllocRequest={onAllocRequest}
+                    onRikusoRequest={onRikusoRequest}
                     onPresold={onPresold} onRemovePresold={onRemovePresold} onExportSelect={onExportSelect} />
             </div>
         </div>
@@ -651,7 +686,7 @@ const AllocCard = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, a
 
 // ── List row ──────────────────────────────────────────────────────────────────
 const AllocRow = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, allocations,
-    onAllocChange, onRikusoChange, onPresold, onRemovePresold, onExportSelect, onZoom }) => {
+    onAllocChange, onAllocRequest, onRikusoChange, onRikusoRequest, onPresold, onRemovePresold, onExportSelect, onZoom }) => {
     const [editableValues, setEditableValues] = useState({})
     const [saving, setSaving] = useState(false)
     const imgs      = getVehicleImages(vehicle)
@@ -910,8 +945,8 @@ const AllocRow = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, al
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                     <select className="alloc-select" value={allocations[vehicle._id] || ''} onChange={e => {
                         const val = e.target.value
-                        onAllocChange(vehicle._id, val)
-                        if (val === 'export' || val === 'khitai') onExportSelect(vehicle, val)
+                        if (val === 'export' || val === 'khitai') onAllocRequest(vehicle, val)
+                        else onAllocChange(vehicle._id, val)
                     }}
                         style={{ width: '100%', padding: '4px 6px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '11px', outline: 'none', background: '#fff' }}>
                         <option value="">Allocation…</option>
@@ -930,7 +965,7 @@ const AllocRow = ({ vehicle, fields, taxes = [], rikusoCompanies, consignees, al
             </td>
             {/* Rikuso select */}
             <td style={{ padding: '5px 8px', minWidth: '130px' }}>
-                <select className="alloc-select" value={vehicle.rikusoCompany || ''} onChange={e => onRikusoChange(vehicle._id, e.target.value)}
+                <select className="alloc-select" value={vehicle.rikusoCompany || ''} onChange={e => onRikusoRequest(vehicle, e.target.value)}
                     style={{ width: '100%', padding: '4px 6px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '11px', outline: 'none', background: '#fff' }}>
                     <option value="">Rikuso…</option>
                     {rikusoCompanies.map(c => <option key={c._id} value={c._id}>{c.companyName || c.name}</option>)}
@@ -976,6 +1011,13 @@ const RikusoManagementPage = () => {
     const [exportVehicle, setExportVehicle] = useState(null)
     const [exportMode, setExportMode] = useState('export')
 
+    // confirmation modals (export/khitai allocation + rikuso assignment)
+    const [pendingAlloc, setPendingAlloc] = useState(null)
+    const [pendingRikuso, setPendingRikuso] = useState(null)
+
+    // mobile viewport detection (force grid layout on phones)
+    const [isMobile, setIsMobile] = useState(false)
+
     // shared filters
     const [filters, setFilters] = useState(EMPTY_FILTERS)
     const [allocFilter, setAllocFilter] = useState('all') // 'all' | 'allocated' | 'unallocated'
@@ -1004,6 +1046,42 @@ const RikusoManagementPage = () => {
             setAllocations(init)
         }).finally(() => setLoading(false))
     }, [])
+
+    useEffect(() => {
+        const onResize = () => setIsMobile(window.innerWidth < 768)
+        onResize()
+        window.addEventListener('resize', onResize)
+        return () => window.removeEventListener('resize', onResize)
+    }, [])
+
+    const requestAllocChange = (vehicle, value) => {
+        if (value === 'export' || value === 'khitai') setPendingAlloc({ vehicle, value })
+        else handleAllocChange(vehicle._id, value)
+    }
+
+    const confirmAlloc = async () => {
+        if (!pendingAlloc) return
+        const { vehicle, value } = pendingAlloc
+        setPendingAlloc(null)
+        await handleAllocChange(vehicle._id, value)
+        if (value === 'export' || value === 'khitai') {
+            setExportVehicle(vehicle)
+            setExportMode(value)
+        }
+    }
+
+    const requestRikusoChange = (vehicle, companyId) => {
+        const company = rikusoCompanies.find(c => c._id === companyId)
+        const companyName = companyId ? (company?.companyName || company?.name || '') : ''
+        setPendingRikuso({ vehicle, companyId, companyName })
+    }
+
+    const confirmRikuso = () => {
+        if (!pendingRikuso) return
+        const { vehicle, companyId } = pendingRikuso
+        setPendingRikuso(null)
+        handleRikusoChange(vehicle._id, companyId)
+    }
 
     const handleAllocChange = async (vehicleId, allocation) => {
         try {
@@ -1119,7 +1197,18 @@ const RikusoManagementPage = () => {
 
     const exportCountries = [...new Set(vehicles.map(v => v.exportCountry).filter(Boolean))].sort((a, b) => a.localeCompare(b))
 
-    const controlProps = { onZoom: (imgs, idx) => { setZoomList(imgs); setZoomIndex(idx || 0); setZoomImage(imgs[idx || 0] || null) }, rikusoCompanies, consignees, allocations, onAllocChange: handleAllocChange, onRikusoChange: handleRikusoChange, onPresold: handlePresold, onRemovePresold: handleRemovePresold, onExportSelect: (v, mode) => { setExportVehicle(v); setExportMode(mode || (v.allocation || '').toLowerCase()) } }
+    // The 10 most frequently allocated export countries, ranked by usage
+    const countryCountMap = vehicles.reduce((acc, v) => {
+        const c = v.exportCountry
+        if (c) acc[c] = (acc[c] || 0) + 1
+        return acc
+    }, {})
+    const frequentCountries = Object.entries(countryCountMap)
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .slice(0, 10)
+        .map(([c]) => c)
+
+    const controlProps = { onZoom: (imgs, idx) => { setZoomList(imgs); setZoomIndex(idx || 0); setZoomImage(imgs[idx || 0] || null) }, rikusoCompanies, consignees, allocations, onAllocChange: handleAllocChange, onAllocRequest: requestAllocChange, onRikusoChange: handleRikusoChange, onRikusoRequest: requestRikusoChange, onPresold: handlePresold, onRemovePresold: handleRemovePresold, onExportSelect: (v, mode) => { setExportVehicle(v); setExportMode(mode || (v.allocation || '').toLowerCase()) } }
 
     // Helper to find chassis number from dynamic fields
     const chassisOf = (v) => {
@@ -1134,9 +1223,23 @@ const RikusoManagementPage = () => {
         return ''
     }
 
+    // On phones always use the card grid (the list table requires horizontal scrolling)
+    const showGrid = isMobile || viewMode === 'grid'
+
     return (
-        <div style={{ padding: '12px', minHeight: '100vh', background: '#f6f8fc' }}>
+        <div className="alloc-main" style={{ padding: '12px', minHeight: '100vh', background: '#f6f8fc' }}>
             <style>{`
+                @media (max-width: 768px) {
+                    .alloc-main { padding: 10px !important; }
+                    .alloc-header { flex-direction: column !important; align-items: stretch !important; gap: 10px !important; }
+                    .alloc-header h1 { font-size: 16px !important; }
+                    .alloc-header p { font-size: 11px !important; }
+                    .alloc-controls { width: 100% !important; }
+                    .alloc-filter-tabs { width: 100% !important; }
+                    .alloc-filter-tabs button { flex: 1 !important; text-align: center !important; padding: 8px 10px !important; font-size: 12px !important; }
+                    .alloc-view-toggle { display: none !important; }
+                    .alloc-company-link { width: 100% !important; justify-content: center !important; }
+                }
                 @media (max-width: 640px) {
                     .alloc-header { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
                     .alloc-controls { flex-wrap: wrap !important; }
@@ -1144,6 +1247,9 @@ const RikusoManagementPage = () => {
                     .alloc-filter-tabs button { flex: 1; text-align: center; }
                     .alloc-select { min-height: 44px !important; font-size: 14px !important; padding: 9px 10px !important; border-radius: 8px !important; }
                     .alloc-select option { font-size: 14px !important; }
+                    .alloc-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
+                    .alloc-card-img { height: 180px !important; }
+                    .alloc-card-controls select, .alloc-card-controls button { min-height: 44px !important; font-size: 13px !important; }
                 }
             `}</style>
             {/* Header */}
@@ -1166,7 +1272,7 @@ const RikusoManagementPage = () => {
                         ))}
                     </div>
                     {/* view toggle */}
-                    <div style={{ display: 'flex', gap: '2px', padding: '2px', background: '#f1f3f4', borderRadius: '8px' }}>
+                    <div className="alloc-view-toggle" style={{ display: 'flex', gap: '2px', padding: '2px', background: '#f1f3f4', borderRadius: '8px' }}>
                         {[['grid', 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z'],
                          ['list', 'M4 6h16M4 10h16M4 14h16M4 18h16']].map(([mode, d]) => (
                             <button key={mode} onClick={() => setViewMode(mode)}
@@ -1179,6 +1285,7 @@ const RikusoManagementPage = () => {
                         ))}
                     </div>
                     <Link href="/admin/rikuso/companies"
+                        className="alloc-company-link"
                         style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '7px 14px', borderRadius: '20px', background: '#fff', border: '1px solid #e0e0e0', fontSize: '12px', fontWeight: 500, color: '#444746', textDecoration: 'none' }}>
                         ⚙ Rikuso Companies
                     </Link>
@@ -1204,8 +1311,8 @@ const RikusoManagementPage = () => {
                 <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e0e0e0', padding: '48px', textAlign: 'center' }}>
                     <p style={{ fontSize: '13px', color: '#9aa0a6', margin: 0 }}>{search ? 'No vehicles match your search' : allocFilter === 'allocated' ? 'No allocated vehicles' : allocFilter === 'unallocated' ? 'No unallocated vehicles' : 'No vehicles yet'}</p>
                 </div>
-            ) : viewMode === 'grid' ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+            ) : showGrid ? (
+                <div className="alloc-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
                     {allocFiltered.map(v => <AllocCard key={v._id} vehicle={v} fields={fields} taxes={taxes} {...controlProps} />)}
                 </div>
             ) : (
@@ -1354,12 +1461,43 @@ const RikusoManagementPage = () => {
                 </div>
             )}
 
+            {/* Confirm Export / Khitai allocation */}
+            {pendingAlloc && (() => {
+                const isExport = pendingAlloc.value === 'export'
+                return (
+                    <ConfirmModal
+                        title={isExport ? 'Confirm Export Allocation' : 'Confirm Khitai Allocation'}
+                        message={`Allocate this vehicle to ${isExport ? 'Export' : 'Khitai'}? After confirming, you'll be asked to set the destination country.`}
+                        vehicleName={[pendingAlloc.vehicle.manufacturer, pendingAlloc.vehicle.model].filter(Boolean).join(' ')}
+                        confirmLabel="Confirm"
+                        onConfirm={confirmAlloc}
+                        onClose={() => setPendingAlloc(null)}
+                    />
+                )
+            })()}
+
+            {/* Confirm Rikuso assignment / removal */}
+            {pendingRikuso && (
+                <ConfirmModal
+                    title={pendingRikuso.companyName ? 'Confirm Rikuso Assignment' : 'Remove Rikuso Company'}
+                    message={pendingRikuso.companyName
+                        ? `Assign this vehicle to ${pendingRikuso.companyName} as the Rikuso company?`
+                        : 'Remove the Rikuso company from this vehicle?'}
+                    vehicleName={[pendingRikuso.vehicle.manufacturer, pendingRikuso.vehicle.model].filter(Boolean).join(' ')}
+                    confirmLabel={pendingRikuso.companyName ? 'Assign' : 'Remove'}
+                    tone={pendingRikuso.companyName ? 'green' : 'red'}
+                    onConfirm={confirmRikuso}
+                    onClose={() => setPendingRikuso(null)}
+                />
+            )}
+
             {/* Export / Khitai Modal */}
             {exportVehicle && (
                 <ExportModal
                     vehicle={exportVehicle}
                     mode={exportMode}
                     countries={exportCountries}
+                    frequentCountries={frequentCountries}
                     onSave={handleExportSave}
                     onClose={() => setExportVehicle(null)}
                 />

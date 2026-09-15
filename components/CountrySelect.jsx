@@ -21,18 +21,42 @@ export const ALL_COUNTRIES = [
     'United Kingdom','United States','Uruguay','Uzbekistan','Venezuela','Vietnam','Yemen','Zambia','Zimbabwe',
 ]
 
-const CountrySelect = ({ value, onChange, placeholder = 'Select country…', extraOptions = [], required, autoFocus, style, onFocus, onBlur }) => {
+const CountrySelect = ({ value, onChange, placeholder = 'Select country…', extraOptions = [], frequentOptions = [], required, autoFocus, style, onFocus, onBlur }) => {
     const [open, setOpen] = useState(false)
     const [query, setQuery] = useState('')
     const [highlight, setHighlight] = useState(0)
     const ref = useRef(null)
     const inputRef = useRef(null)
 
+    // Every country, deduped and alphabetically sorted
+    const combined = useMemo(() =>
+        [...new Set([...ALL_COUNTRIES, ...(Array.isArray(extraOptions) ? extraOptions : [])].map(x => String(x).trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+        [extraOptions]
+    )
+
+    // Frequently used countries, kept in the caller's rank order and deduped
+    const frequent = useMemo(() => {
+        const out = []
+        const seen = new Set()
+        for (const raw of (Array.isArray(frequentOptions) ? frequentOptions : [])) {
+            const c = String(raw).trim()
+            if (!c || seen.has(c) || !combined.includes(c)) continue
+            seen.add(c)
+            out.push(c)
+        }
+        return out
+    }, [combined, frequentOptions])
+
+    // Options shown in the dropdown: when not searching, frequently used
+    // countries float to the top, then the rest alphabetically.
     const options = useMemo(() => {
-        const combined = [...new Set([...ALL_COUNTRIES, ...(Array.isArray(extraOptions) ? extraOptions : [])].map(x => String(x).trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b))
         const q = query.trim().toLowerCase()
-        return q ? combined.filter(c => c.toLowerCase().includes(q)) : combined
-    }, [query, extraOptions])
+        if (q) return combined.filter(c => c.toLowerCase().includes(q))
+        if (frequent.length === 0) return combined
+        return [...frequent, ...combined.filter(c => !frequent.includes(c))]
+    }, [query, combined, frequent])
+
+    const restStart = (query.trim() || frequent.length === 0) ? 0 : frequent.length
 
     useEffect(() => {
         const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
@@ -47,6 +71,8 @@ const CountrySelect = ({ value, onChange, placeholder = 'Select country…', ext
     }
 
     const shown = open ? options : []
+    const isSearching = query.trim().length > 0
+    const sectionLabel = { padding: '6px 10px 3px', fontSize: '9px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#f8fafc', position: 'sticky', top: 0, zIndex: 1 }
 
     return (
         <div ref={ref} style={{ position: 'relative' }}>
@@ -73,10 +99,18 @@ const CountrySelect = ({ value, onChange, placeholder = 'Select country…', ext
             </svg>
             {shown.length > 0 && (
                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 30, background: '#fff', border: '1px solid #e0e0e0', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.14)', marginTop: '4px', maxHeight: '220px', overflowY: 'auto' }}>
+                    {!isSearching && frequent.length > 0 && (
+                        <div style={sectionLabel}>Frequently used</div>
+                    )}
                     {shown.map((c, i) => (
-                        <div key={c} onMouseDown={e => { e.preventDefault(); select(c) }} onMouseEnter={() => setHighlight(i)}
-                            style={{ padding: '7px 10px', fontSize: '13px', cursor: 'pointer', background: i === highlight ? '#e8f0fe' : '#fff', color: '#202124', fontWeight: i === highlight ? 600 : 400 }}>
-                            {c}
+                        <div key={c}>
+                            {!isSearching && restStart > 0 && i === restStart && (
+                                <div style={sectionLabel}>All countries</div>
+                            )}
+                            <div onMouseDown={e => { e.preventDefault(); select(c) }} onMouseEnter={() => setHighlight(i)}
+                                style={{ padding: '7px 10px', fontSize: '13px', cursor: 'pointer', background: i === highlight ? '#e8f0fe' : '#fff', color: '#202124', fontWeight: i === highlight ? 600 : 400 }}>
+                                {c}
+                            </div>
                         </div>
                     ))}
                 </div>
