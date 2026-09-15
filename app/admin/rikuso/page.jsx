@@ -1284,11 +1284,11 @@ const RikusoManagementPage = () => {
                             </button>
                         ))}
                     </div>
-                    <Link href="/admin/rikuso/companies"
+                    {/* <Link href="/admin/rikuso/companies"
                         className="alloc-company-link"
                         style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '7px 14px', borderRadius: '20px', background: '#fff', border: '1px solid #e0e0e0', fontSize: '12px', fontWeight: 500, color: '#444746', textDecoration: 'none' }}>
                         ⚙ Rikuso Companies
-                    </Link>
+                    </Link> */}
                 </div>
             </div>
 
